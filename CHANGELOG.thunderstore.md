@@ -8,47 +8,33 @@ Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
 ---
 
-## 0.65.6 — Long-session slowdown fixed, plus a "Refresh Raphael" button
+## 0.65.6 — Long-session slowdown fixed, plus a Refresh button
 
-- **Fixed: the game slowing down over a long session** (until you relogged). The chat window was redrawing its
-  whole history on every message, even when closed, and stale tooltips piled up. Both are fixed; chat looks the
-  same.
-- **New: Refresh** button at the bottom-right of the main panel (also on the Connection tab) clears chat history
-  and cached UI leftovers without leaving the world. Your settings and windows are kept.
-- **Fixed:** a flood of messages containing `<` (like `<3`) could still blank the chat box.
-- **Fixed:** several memory leaks when panels rebuild, and when reloading or capturing the Faust world-map image.
-- **Docs:** new screenshots on this page, grouped into collapsible sections.
+- **Fixed:** the game getting slower the longer you played, until you relogged.
+- **New: Refresh** button (bottom-right of the main panel, also on the Connection tab). Clears chat history and
+  cached UI leftovers without leaving the world. Settings are kept.
+- **Fixed:** a flood of messages containing `<` (like `<3`) could blank the chat box.
+- **Fixed:** several memory leaks, including in the Faust world map.
+- **Docs:** new screenshots on this page.
 
-## 0.65.5 — Chat length cap lowered to protect non-Raphael players, plus Uriel v0.20.0 support
+## 0.65.5 — Safer chat length cap, plus Uriel v0.20.0 support
 
-- **Fixed: a very long chat message could flood chat and freeze the chat box for players who don't run
-  Raphael.** Messages around 480+ characters made the server re-broadcast the line repeatedly and left
-  non-Raphael players unable to open chat until they teleported. Raphael now caps chat input at **470
-  characters** (down from 500), safely under the threshold. Normal messages are unaffected. *(Thanks to Howl.)*
-- **New: support for Uriel v0.20.0's flush-to-ground placement.** **Raise nearest / Lower nearest** buttons on
-  the Object Spawning tab nudge the object you placed nearest you up/down so it stops floating or sinking, and
-  admins get a **Height offset** field (per-object or global) under Uriel → Admin → Spawn conditions. The Uriel
-  guide pages document all three new commands.
+- **Fixed:** very long messages (480+ characters) could flood chat and freeze it for players without Raphael.
+  Chat input is now capped at **470 characters**. *(Thanks to Howl.)*
+- **New (Uriel v0.20.0):** **Raise / Lower nearest** buttons on Object Spawning to fix floating or sunken
+  objects, plus an admin **Height offset** field.
 
-## 0.65.4 — Chat fixes: typed text re-centers after long pastes, and long messages stop flooding
+## 0.65.4 — Chat fixes
 
-- **Fixed: the chat input stopped centering your text after you'd pasted a long message.** It now re-centers
-  reliably as soon as your message is back to a single line. *(Thanks to Kruczarz.)*
-- **Fixed: a very long message could show up duplicated many times from a single send.** Sending a message
-  that hit the character cap could spam receivers with copies of it; the chat window now recognizes and drops
-  those duplicate copies. Short messages are untouched. *(Thanks to Howl and Strie.)*
+- **Fixed:** chat input stayed off-center after pasting a long message. *(Thanks to Kruczarz.)*
+- **Fixed:** one long message could appear many times. *(Thanks to Howl and Strie.)*
 
-## 0.65.3 — Chat polish: no more random italics, centered typing, optional idle auto-hide
+## 0.65.3 — Chat polish, plus optional auto-hide
 
-- **Fixed: a chat tab could randomly turn italic and stay that way.** A message that left a rich-text tag
-  open (e.g. a system message with an unclosed `<i>`) leaked its formatting into every line after it. Each
-  chat line is now self-contained, so formatting can't bleed between messages. *(Thanks to Howl.)*
-- **Changed: text you type in the tabbed chat is now vertically centered** on a single line (top-aligned once
-  it wraps to multiple lines). *(Thanks to Kruczarz.)*
-- **New: optional chat auto-hide (off by default).** Under Game UI → chat, the window can fade out after an
-  idle delay (3–120s, default 12) and fade back in on activity — like the native chat. Configurable wake
-  triggers keep it from blinking on busy servers: player messages wake it, but System lines (incl. Raphael's
-  background pings) don't unless you opt in; hovering or opening chat always wakes it. *(Requested by Kruczarz.)*
+- **Fixed:** chat tabs randomly turning italic. *(Thanks to Howl.)*
+- **Changed:** typed chat text is vertically centered. *(Thanks to Kruczarz.)*
+- **New:** optional chat auto-hide (off by default). It fades out when idle and returns on new messages or
+  hover. Turn it on under Game UI. *(Requested by Kruczarz.)*
 
 ---
 
