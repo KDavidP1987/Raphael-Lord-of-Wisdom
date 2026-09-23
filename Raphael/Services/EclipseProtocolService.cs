@@ -120,6 +120,14 @@ public static class EclipseProtocolService
         // ACK re-fires `.fam boxes` to redetect FamiliarSystem availability
         // on the new server.
         _familiarProbeScheduled = false;
+        // 0.65.6: unregister a still-pending probe. Its closure removes whatever _familiarProbeAction
+        // points at, so if a relog re-scheduled before it fired, the old closure was orphaned in
+        // CoreUpdateBehavior.Actions and enqueued `.fam boxes` every frame. (Pure list op — teardown-safe.)
+        if (_familiarProbeAction != null)
+        {
+            Raphael.Behaviors.CoreUpdateBehavior.Actions.Remove(_familiarProbeAction);
+            _familiarProbeAction = null;
+        }
         // 0.15.0: per-feature detection is per-session. Resetting registration
         // (e.g. world exit / re-login) also clears the sticky-Enabled flags
         // and the settling timer so the next session starts fresh.
@@ -310,7 +318,21 @@ public static class EclipseProtocolService
         // Defensive parsing: each subsection only fires if its fields are present.
         // Bloodcraft may add fields in future versions - we won't crash on a longer
         // payload, just on a shorter one.
-        var p = csv.Split(',');
+        //
+        // 0.65.1: the payload is a comma-joined CSV, but Bloodcraft inserts three
+        // FREE-TEXT fields into it un-escaped - the familiar name (p[17]) and the
+        // daily/weekly quest target names (p[38]/p[43]) - via `GetLocalizedName()`.
+        // On a localized client those names can CONTAIN a comma (e.g. Polish
+        // "Alfa, Biały Wilk" = "Alpha the White Wolf", or a gather target like
+        // "Klejnot krwi, poziom 1"). Every such comma shifts all downstream fields
+        // by one, so the familiar stats field becomes a name fragment (HP/PP/SP read
+        // as 0) and the quest target reads a numeric column (shows "only numbers").
+        // English names have no commas, which is why only localized clients saw it
+        // (Discord reports from Kruczarz on a Polish client). NormalizeProgressFields
+        // re-aligns the fields when the split yields more than the expected count;
+        // it's a no-op (returns the same array) for the normal 46-field case, so
+        // every currently-working client is unaffected.
+        var p = NormalizeProgressFields(csv.Split(','));
         int n = p.Length;
 
         if (n < 4)
@@ -447,6 +469,130 @@ public static class EclipseProtocolService
         PlayerStateService.RecomputeFeatureFlagsFromLatest();
     }
 
+    // Expected ProgressToClient field count for the v1.3.x layout documented in
+    // HandleProgressMessage (indices 0..45).
+    private const int EXPECTED_PROGRESS_FIELDS = 46;
+
+    /// <summary>
+    /// 0.65.1: recover the fixed 46-field ProgressToClient layout when an
+    /// un-escaped comma inside one of the three free-text fields (familiar name,
+    /// daily target, weekly target) has split the payload into MORE tokens than
+    /// expected. See the root-cause note at the call site.
+    ///
+    /// Fast path: when the token count is already the expected value (or SHORTER —
+    /// an older/leaner Bloodcraft the existing `if (n >= X)` guards handle), the
+    /// input array is returned unchanged so no currently-working client is touched.
+    ///
+    /// Recovery relies on the layout's rigid anchors, none of which a localized
+    /// name can impersonate:
+    ///   • indices 0..16 are always numeric/structured (no free text before p[17]);
+    ///   • the familiar-stats field (p[18]) is empty OR a run of ≥10 digits
+    ///     (server packs MaxHealth D4 + PhysicalPower D3 + SpellPower D3);
+    ///   • the two quest isVBlood fields are the only bool tokens (matched
+    ///     case-insensitively — the server sends lowercase "false" for non-kill
+    ///     quests, capitalized "True"/"False" only for kill quests), and the
+    ///     weekly one is always second-to-last (only the numeric shift-spell
+    ///     field follows it).
+    /// If any anchor fails to line up we return the original tokens untouched and
+    /// let the naive index parse run — recovery never makes things worse than today.
+    /// </summary>
+    private static string[] NormalizeProgressFields(string[] tokens)
+    {
+        try
+        {
+            int n = tokens.Length;
+            if (n <= EXPECTED_PROGRESS_FIELDS) return tokens; // fast path / short payload
+
+            // 0.65.2: MUST be case-insensitive. Bloodcraft's EclipseService.GetQuestData
+            // emits capitalized "True"/"False" ONLY for kill quests (type 0) whose target
+            // is a known prefab; for every non-kill quest (gather/craft/etc.) and as its
+            // default it emits LOWERCASE "false". If we only matched the capitalized forms,
+            // a player whose daily/weekly quest was a non-kill quest had NO recognizable
+            // isVBlood anchor, so this whole recovery bailed to the naive parse — which is
+            // wrong for a comma-shifted payload. That surfaced as familiar-specific HP=0 +
+            // garbled quests on localized clients (Kruczarz, Polish): only familiars whose
+            // localized name contains a comma trip the recovery path, so only they broke,
+            // and only while a non-kill quest was active. bool.TryParse on the read side is
+            // already case-insensitive, so accepting either casing here loses nothing.
+            static bool IsBool(string s) =>
+                string.Equals(s, "True", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(s, "False", StringComparison.OrdinalIgnoreCase);
+            static bool IsPackedStats(string s)
+            {
+                if (string.IsNullOrEmpty(s) || s.Length < 10) return false;
+                foreach (var c in s) if (c < '0' || c > '9') return false;
+                return true;
+            }
+
+            var r = new string[EXPECTED_PROGRESS_FIELDS];
+
+            // [0..16] fixed numeric/structured block — nothing free-text precedes p[17].
+            for (int i = 0; i <= 16; i++) r[i] = tokens[i];
+
+            // Rigid tail: [45] shift spell, [44] weekly isVBlood.
+            if (!IsBool(tokens[n - 2])) return tokens; // anchor missing → bail to naive
+            r[45] = tokens[n - 1];
+            r[44] = tokens[n - 2];
+
+            // Daily isVBlood = the last "True"/"False" token strictly before the weekly one.
+            int bi1 = -1;
+            for (int i = n - 3; i >= 17; i--) { if (IsBool(tokens[i])) { bi1 = i; break; } }
+            if (bi1 < 0) return tokens;
+            r[39] = tokens[bi1];
+
+            // Weekly section sits between daily isVBlood (bi1) and weekly isVBlood (n-2):
+            //   [type][progress][goal][target(≥1 token, may hold commas)].
+            if (bi1 + 4 > n - 2) return tokens; // no room for weekly target
+            r[40] = tokens[bi1 + 1];
+            r[41] = tokens[bi1 + 2];
+            r[42] = tokens[bi1 + 3];
+            r[43] = string.Join(",", tokens, bi1 + 4, (n - 2) - (bi1 + 4));
+
+            // Familiar name (free text from p[17]) / familiar stats boundary.
+            int statsIdx;
+            if (string.IsNullOrEmpty(tokens[17]))
+            {
+                // No familiar bound: name and stats are both empty and un-shifted.
+                statsIdx = 18;
+                r[17] = tokens[17];
+                r[18] = tokens[18];
+            }
+            else
+            {
+                // Familiar active: name may span several tokens; the first ≥10-digit
+                // run after it is the packed-stats field.
+                statsIdx = -1;
+                for (int j = 18; j < bi1; j++) { if (IsPackedStats(tokens[j])) { statsIdx = j; break; } }
+                if (statsIdx < 0) return tokens;
+                r[17] = string.Join(",", tokens, 17, statsIdx - 17);
+                r[18] = tokens[statsIdx];
+            }
+
+            // [19..34] professions (16 numeric fields) immediately follow the stats field.
+            int profStart = statsIdx + 1;
+            if (profStart + 16 + 3 > bi1) return tokens; // no room for prof + daily type/prog/goal
+            for (int i = 0; i < 16; i++) r[19 + i] = tokens[profStart + i];
+
+            // Daily quest: [type][progress][goal] then the free-text target up to bi1-1.
+            int dType = profStart + 16;
+            r[35] = tokens[dType];
+            r[36] = tokens[dType + 1];
+            r[37] = tokens[dType + 2];
+            if (dType + 3 > bi1) return tokens; // no room for daily target
+            r[38] = string.Join(",", tokens, dType + 3, bi1 - (dType + 3));
+
+            LogUtils.LogDebug($"Eclipse: recovered comma-corrupted progress payload ({n} → {EXPECTED_PROGRESS_FIELDS} fields).");
+            return r;
+        }
+        catch (Exception ex)
+        {
+            // Any surprise in the anchoring math falls back to the naive tokens so we
+            // degrade to today's behavior rather than dropping the update.
+            LogUtils.LogDebug($"Eclipse: NormalizeProgressFields fell back to naive parse: {ex.Message}");
+            return tokens;
+        }
+    }
+
     private static void HandleConfigMessage(string csv)
     {
         var parts = csv.Split(',');
@@ -498,6 +644,12 @@ public static class EclipseProtocolService
         if (SharedKey == null) return;
         if (UserRegistered) return;
         if (RegistrationGaveUp) return;
+
+        // 0.65.0 RELOG-SPAM FIX (defense-in-depth): if the admin has explicitly declared this
+        // server has no Bloodcraft (BloodcraftAvailability=Off), never emit the handshake at all.
+        // Nothing would consume it, so on a non-Bloodcraft server it'd only be chat noise. Auto/On
+        // still register (via the self-whisper below, which keeps even those from leaking).
+        if (Config.Settings.BloodcraftAvailability == Config.Settings.ModAvailability.Off) return;
 
         // 0.17.1 EXPERIMENT: stand down from the passive Bloodcraft layer when the
         // Eclipse mod is present — never register, so Raphael receives no structured
@@ -554,7 +706,10 @@ public static class EclipseProtocolService
             _registrationSentAt = UnityEngine.Time.realtimeSinceStartup;
             _registrationAttemptCount++;
             RegistrationPending = true;
-            MessageService.SendRaw(signed);
+            // 0.65.0: send as a self-whisper, not Local — a real Bloodcraft server still consumes it
+            // by content, but a non-Bloodcraft server can't leak it to nearby players. See
+            // MessageService.SendRawSelfWhisper.
+            MessageService.SendRawSelfWhisper(signed);
             LogUtils.LogInfo($"Eclipse: registration attempt #{_registrationAttemptCount}/{REGISTRATION_MAX_ATTEMPTS} sent (platformId={platformId}).");
         }
         catch (Exception ex)

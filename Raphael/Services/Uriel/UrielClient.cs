@@ -86,6 +86,10 @@ internal static class UrielClient
     public static void Move()    => SendUser(".uriel move");
     public static void Rotate()  => SendUser(".uriel rotate");
     public static void Despawn() => SendUser(".uriel despawn");
+    // 0.20.0 (Uriel): flush-to-ground nudges — each click shifts the nearest placed object
+    // up/down by Uriel's default step (0.25m, sent argument-less so Uriel supplies it).
+    public static void Raise()   => SendUser(".uriel raise");
+    public static void Lower()   => SendUser(".uriel lower");
     public static void Notify(bool on)   => SendUser($".uriel notify {(on ? "on" : "off")}");
     // Item-name -> numeric id search (≤8 results), for the cost-item picker.
     public static void FindItem(string name) => SendUser($".uriel finditem {name}");

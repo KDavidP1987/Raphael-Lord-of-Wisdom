@@ -45,6 +45,13 @@ public class BCHubUIManager : UIManagerBase
     private ChatWindowOverlayPanel _chatWindowOverlay; // 0.17: standalone tabbed chat window
     private SecondaryChatOverlayPanel _secondaryChatOverlay; // 0.24: view-only second chat window (channel subset)
     private ProjectM.UI.HUDChatWindow _nativeChat; // 0.17: cached native chat window (for the takeover)
+    // 0.65.1: root CanvasGroup on the native chat window's OWN GameObject, lazily added, used by the
+    // experimental AggressiveNativeChatHide to zero the WHOLE window's alpha (covering the element that
+    // still flickered through the ContentCanvasGroup-only hide). Null until first aggressive hide.
+    private UnityEngine.CanvasGroup _nativeChatRootCg;
+    // Tracks whether the aggressive root-alpha hide is currently applied, so we restore alpha=1 exactly
+    // once when it's turned off or the takeover ends (rather than fighting the game every frame for nothing).
+    private bool _aggressiveHideApplied;
     // 0.14.0: single combined info overlay. Mutually exclusive with the 4
     // standalone info overlays (XP / Familiar / Daily Quest / Profession);
     // when ShowCombinedOverlay is true, those are hidden regardless of
@@ -1184,6 +1191,32 @@ public class BCHubUIManager : UIManagerBase
     // 0.24: re-render the secondary chat window when its channel selection / text scale changes.
     public void RefreshSecondaryChatOverlay() => _secondaryChatOverlay?.Refresh();
 
+    /// <summary>0.65.6: "Refresh Raphael" (Connection tab). Clears the session caches a relog would clear —
+    /// chat scrollback first — prunes stale tooltip bindings, and starts a Unity unused-asset unload.
+    /// Deliberately NO forced GC: the codebase has a latent Il2CppInterop finalizer crash (see
+    /// EclipseProtocolService probe notes), and the cleared references are collected naturally anyway.
+    /// No settings, server detection, or open windows are touched. Returns a short summary for the readout.</summary>
+    public string SoftRefresh()
+    {
+        int chatLines = ChatRelayService.Buffer.Count;
+        try { ChatRelayService.ClearHistory(); } catch (Exception ex) { Raphael.Utils.LogUtils.LogError($"[Refresh] chat clear failed: {ex}"); }
+        try { _chatWindowOverlay?.Refresh(); } catch { }
+        try { _secondaryChatOverlay?.Refresh(); } catch { }
+        int tooltips = 0;
+        try { tooltips = TooltipHover.PruneDestroyed(); } catch { }
+        string unload;
+        try
+        {
+            if (_assetUnload != null && !_assetUnload.isDone) unload = "asset cleanup already running";
+            else { _assetUnload = UnityEngine.Resources.UnloadUnusedAssets(); unload = "asset cleanup started"; }
+        }
+        catch (Exception ex) { unload = "asset cleanup skipped"; Raphael.Utils.LogUtils.LogWarning($"[Refresh] UnloadUnusedAssets failed: {ex.Message}"); }
+        var summary = $"Cleared {chatLines} chat line(s) and {tooltips} stale tooltip(s); {unload}.";
+        Raphael.Utils.LogUtils.LogInfo($"[Refresh] {summary}");
+        return summary;
+    }
+    private static UnityEngine.AsyncOperation _assetUnload;
+
     // 0.17 (2c): replace the game's chat with the tabbed window. When the tabbed
     // chat window is open AND Settings.HideNativeChat is on, hide the native chat
     // by zeroing its ContentCanvasGroup (alpha + raycasts + interactable). This
@@ -1325,6 +1358,10 @@ public class BCHubUIManager : UIManagerBase
                 // safety net below instead.
             }
 
+            // 0.65.1: apply/clear the experimental whole-window hide. When hiding, honor the
+            // setting; when showing, always pass false so the root alpha is restored to 1.
+            ApplyAggressiveNativeChatHide(hide && Raphael.Config.Settings.AggressiveNativeChatHide);
+
             // Freeze-safety net: if the native chat is somehow focused while we're
             // taking over, force it unfocused so V Rising's ChatInputFocused flag
             // can't stay stuck (the cause of the movement/actions/menus freeze).
@@ -1353,10 +1390,72 @@ public class BCHubUIManager : UIManagerBase
             if (!IsNativeChatHideActive()) return;   // only while we've taken over
             if (_nativeChat == null)
                 _nativeChat = UnityEngine.Object.FindObjectOfType<ProjectM.UI.HUDChatWindow>();
-            if (_nativeChat != null && _nativeChat.IsChatFocused)
+            if (_nativeChat == null) return;
+
+            // 0.65.0 FLICKER FIX: re-zero the native chat's alpha EVERY frame while we've
+            // taken over. ApplyNativeChatVisibility only re-applies alpha=0 on the unreliable
+            // ClientChatSystem tick, so V Rising's own fade animation (re-triggered by every
+            // incoming System message, and by the fade-in/animated-fade-out when the user opens
+            // the chat bar to type) wins the frames in between and the native window flickers
+            // through. Whether it's visible is pure frame/tick interleaving — which is why it
+            // shows on a normal PC but not on a VM. Countering the fade at full frame rate here
+            // collapses the flicker window to at most one frame. alpha-only (never .interactable)
+            // for the same freeze-safety reason documented in ApplyNativeChatVisibility.
+            var cg = _nativeChat.ContentCanvasGroup;
+            if (cg != null)
+            {
+                if (cg.alpha != 0f) cg.alpha = 0f;
+                cg.blocksRaycasts = false;
+            }
+
+            // 0.65.1: experimental stronger hide — also zero the WHOLE window's alpha via a root
+            // CanvasGroup, covering whatever element still flickered through the content-only hide.
+            ApplyAggressiveNativeChatHide(Raphael.Config.Settings.AggressiveNativeChatHide);
+
+            if (_nativeChat.IsChatFocused)
                 _nativeChat.SetFocused(false);
         }
         catch { /* best-effort guard; never throw into the per-frame pump */ }
+    }
+
+    /// <summary>
+    /// 0.65.1: opt-in stronger native-chat hide. Adds (once) a CanvasGroup on the native chat window's
+    /// own GameObject and drives its alpha to 0 while active, so the ENTIRE window — including whatever
+    /// sub-element still flickered past the ContentCanvasGroup-only hide — stays invisible. Alpha +
+    /// blocksRaycasts only (never <c>interactable</c>), preserving the same freeze-safety the normal hide
+    /// relies on. When <paramref name="hide"/> is false it restores alpha=1 exactly once so turning the
+    /// setting off (or ending the takeover) returns the native chat to normal.
+    /// </summary>
+    private void ApplyAggressiveNativeChatHide(bool hide)
+    {
+        try
+        {
+            if (_nativeChat == null) return;
+
+            if (hide)
+            {
+                if (_nativeChatRootCg == null)
+                {
+                    // Use Unity's overloaded != null (fake-null aware), not ?? which is plain reference equality.
+                    var existing = _nativeChat.gameObject.GetComponent<UnityEngine.CanvasGroup>();
+                    _nativeChatRootCg = existing != null
+                        ? existing
+                        : _nativeChat.gameObject.AddComponent<UnityEngine.CanvasGroup>();
+                }
+                if (_nativeChatRootCg == null) return;
+                if (_nativeChatRootCg.alpha != 0f) _nativeChatRootCg.alpha = 0f;
+                _nativeChatRootCg.blocksRaycasts = false;
+                _aggressiveHideApplied = true;
+            }
+            else if (_aggressiveHideApplied && _nativeChatRootCg != null)
+            {
+                // Restore once. Leave the (harmless) added CanvasGroup in place at full alpha.
+                _nativeChatRootCg.alpha = 1f;
+                _nativeChatRootCg.blocksRaycasts = true;
+                _aggressiveHideApplied = false;
+            }
+        }
+        catch { /* engine can throw during teardown; never propagate into the frame pump */ }
     }
 
     private void EnsureCombinedOverlay()

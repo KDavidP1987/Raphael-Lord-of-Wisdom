@@ -124,8 +124,28 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
     // viewing bumps that tab's count; selecting the tab resets it. The All tab
     // (index 0) shows everything, so it never carries a badge.
     private readonly int[] _unread = new int[TabDefs.Length];
-    // Max chars per chat message — under the FixedString512Bytes wire cap.
-    private const int MaxChatChars = 500;
+    // Max chars per chat message. The hard wire cap is FixedString512Bytes, but the
+    // real limit is lower: tester reports (Howl, 0.65.x) showed that messages of 480+
+    // chars make the SERVER re-broadcast the line repeatedly, spam-flooding chat and
+    // freezing the chat box for NON-Raphael clients (teleporting to reload fixed it).
+    // 479 and below were clean; 480+ repeated. We cap at 470 for margin so a Raphael
+    // user can't emit a message that breaks vanilla clients around them.
+    private const int MaxChatChars = 470;
+    // 0.65.0: hard cap on how many newest lines we hand to the single TMP _log component
+    // per render. A TextMeshPro mesh tops out at 65,535 vertices (~16k glyphs); above that
+    // it silently renders blank. Bounds the rendered window WITHOUT shrinking the retention
+    // buffer (scrollback/Copy keep the full 2000 lines). See the note in Render().
+    // internal so SecondaryChatOverlayPanel.Render shares the identical cap.
+    //
+    // 0.65.1: a flat LINE cap wasn't enough — 300 long proximity lines on a busy server
+    // still crossed the glyph ceiling and blanked (Howl: "Local went blank again"). The mesh
+    // limit is about VISIBLE GLYPHS, not lines, so we now bound the newest lines by a glyph
+    // budget (color-tag markup adds no vertices and is not counted). MaxRenderedLines stays as
+    // a cheap secondary guard against pathological cases. See ComputeRenderStart.
+    internal const int MaxRenderedLines  = 600;
+    // Conservative visible-glyph budget per TMP draw. TMP blanks at ~16,383 glyphs; 12,000
+    // leaves headroom for quad/sprite overhead and rounding in the tag-stripping estimate.
+    internal const int MaxRenderedGlyphs = 12000;
 
     // 0.17.0: All-tab compose target — mirrors the native chat's Enter+Tab flow.
     // On the All tab a "Send to:" dropdown picks the outgoing channel/whisper, and
@@ -151,6 +171,22 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
     private Action _tabHotkeyTicker; // 0.17.3: <Modifier>+1..6 tab switch (chat open, not typing)
     private Action _nameClickTicker; // 0.17.3: double-click a name in the log to whisper
     private Action _scrollKeyTicker; // 0.50 r8: Up/Down/PageUp/PageDown scroll the chat history
+    // 0.65.3: idle auto-hide (opt-in). A CanvasGroup on the window root is faded 1→0 after
+    // Settings.ChatAutoHideSeconds of no activity and back on activity — see TickAutoHide. It's a
+    // visual fade only; the persisted ShowChatWindowOverlay visibility is never touched.
+    private Action _autoHideTicker;
+    // 0.65.6 PERF: incoming lines mark the log dirty; TickRender repaints at most every
+    // RenderIntervalSeconds, and only while the window is open. Pre-0.65.6 every line did a full
+    // TMP rebuild + Canvas.ForceUpdateCanvases immediately — a burst of N lines = N rebuilds, even
+    // with the window closed.
+    private Action _renderTicker;
+    private bool _renderDirty;
+    private float _nextRenderAt;
+    private bool _renderRetried; // one retry after a failed render, then give up until the next line
+    internal const float RenderIntervalSeconds = 0.15f;
+    private UnityEngine.CanvasGroup _rootCg;
+    private float _lastActivityUnscaled;
+    private bool _wasEnabledForAutoHide;
     private float _lastNameClickTime;
     private string _lastNameClickId;
     private float _nextComposeRefresh; // 0.17.3: throttle clan-availability re-check (All tab)
@@ -207,6 +243,17 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
             minWidth: 42, preferredWidth: 46, flexibleWidth: 0, minHeight: 22, preferredHeight: 22, flexibleHeight: 0);
         if (copyBtn.ButtonText != null) copyBtn.ButtonText.enableWordWrapping = false;
         copyBtn.OnClick = CopyConversationToClipboard;
+
+        // 0.65.1: manual re-render. Requested by Howl — if a channel ever renders stale/blank
+        // (e.g. after a burst of traffic, or a TMP hiccup), this forces a fresh draw from the
+        // retained history without waiting for the next incoming line or a tab swap. The
+        // glyph-budget cap (0.65.1) should keep the box from blanking in the first place, but
+        // this stays as a zero-cost escape hatch.
+        var refreshBtn = UIFactory.CreateButton(tabRow, "ChatRefreshBtn", "Refresh");
+        UIFactory.SetLayoutElement(refreshBtn.GameObject,
+            minWidth: 54, preferredWidth: 58, flexibleWidth: 0, minHeight: 22, preferredHeight: 22, flexibleHeight: 0);
+        if (refreshBtn.ButtonText != null) refreshBtn.ButtonText.enableWordWrapping = false;
+        refreshBtn.OnClick = () => { try { Render(); } catch { } };
 
         // 0.17.0: whisper sub-tab row — hidden unless the Whispers tab is active.
         _whisperSubRow = UIFactory.CreateHorizontalGroup(ContentRoot, "ChatWhisperSubTabs",
@@ -293,8 +340,13 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         // MultiLineSubmit wraps long messages onto multiple lines while Enter
         // STILL submits (send). The text component already has word-wrapping on.
         _input.Component.lineType = TMPro.TMP_InputField.LineType.MultiLineSubmit;
+        // 0.65.3: vertically CENTER the typed text while it's a single line (messaging-app feel —
+        // tester request). UpdateInputHeight flips it to TopLeft once the message wraps to multiple
+        // lines so every line stays visible as the field grows. Left == middle-vertical, left-horizontal.
         if (_input.Component.textComponent != null)
-            _input.Component.textComponent.alignment = TextAlignmentOptions.TopLeft;
+            _input.Component.textComponent.alignment = TextAlignmentOptions.Left;
+        if (_input.PlaceholderText != null)
+            _input.PlaceholderText.alignment = TextAlignmentOptions.Left; // placeholder is always one line
         // 0.17.0: readable typing area. The framework default is grey-on-grey
         // (light grey box + grey placeholder), which the user found hard to read.
         // Give it a dark, near-opaque box (independent of the window's transparency —
@@ -314,9 +366,10 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
                 _input.PlaceholderText.color = new Color(0.62f, 0.62f, 0.68f, 1f);
         }
         catch { }
-        // Respect the game's chat length: ChatMessageEvent.MessageText is a
-        // FixedString512Bytes, so cap input well under 512 bytes (500 chars leaves
-        // headroom for multi-byte characters). SubmitText also truncates as a backstop.
+        // Cap input at MaxChatChars (470). Not just for the FixedString512Bytes wire
+        // limit — 480+-char messages make the server re-broadcast/flood and freeze the
+        // chat box for non-Raphael clients (see MaxChatChars note). SubmitText also
+        // truncates as a backstop.
         _input.Component.characterLimit = MaxChatChars;
         _input.Component.onSubmit.AddListener(OnChatSubmit);
         _input.Component.onSelect.AddListener(OnChatSelect);
@@ -354,6 +407,12 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         // shrinks to an unusable size once the buffer grows. No-ops unless the window's open.
         _scrollKeyTicker = TickScrollKeys;
         Raphael.Behaviors.CoreUpdateBehavior.Actions.Add(_scrollKeyTicker);
+        // 0.65.3: idle auto-hide fade (opt-in; no-op unless Settings.ChatAutoHideEnabled).
+        _autoHideTicker = TickAutoHide;
+        Raphael.Behaviors.CoreUpdateBehavior.Actions.Add(_autoHideTicker);
+        _renderTicker = TickRender;
+        Raphael.Behaviors.CoreUpdateBehavior.Actions.Add(_renderTicker);
+        NoteChatActivity(); // start fully visible; the idle timer counts from now
 
         ApplyChatTextScale(); // size the input field to match the chat scale
         UpdateComposeRow();   // build + show the compose dropdown if All tab is active
@@ -365,6 +424,8 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
     {
         try
         {
+            // 0.65.3: a qualifying line fades the window back in (System pings gated by their toggle).
+            if (Settings.ChatAutoHideEnabled && WakesAutoHide(line.Channel)) NoteChatActivity();
             // Bump the unread badge for the message's channel tab — unless you're
             // already on that tab, or on All (which shows everything).
             int t = TabIndexForChannel(line.Channel);
@@ -384,9 +445,25 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
             // when the target set actually changed).
             if (line.Channel == ChatRelayService.Channel.Whisper && _activeTab == 0)
                 UpdateComposeRow();
-            Render();
+            _renderDirty = true; // painted by TickRender (coalesced, skipped while closed)
         }
         catch { /* never let chat rendering throw into the inbound pump */ }
+    }
+
+    private void TickRender()
+    {
+        if (!_renderDirty || _log == null || !Enabled) return;
+        float now = UnityEngine.Time.unscaledTime;
+        if (now < _nextRenderAt) return;
+        _nextRenderAt = now + RenderIntervalSeconds;
+        try { Render(); _renderRetried = false; }
+        catch (Exception ex)
+        {
+            // Render() cleared the flag before it threw. Retry once (a transient TMP/layout hiccup), but don't
+            // spin on a persistent fault — that would recreate the very slowdown this throttle exists to prevent.
+            if (!_renderRetried) { _renderRetried = true; _renderDirty = true; }
+            else { _renderRetried = false; Utils.LogUtils.LogWarning($"[Chat] render failed twice; waiting for the next message: {ex.Message}"); }
+        }
     }
 
     // 0.17.3: whether a channel is shown in the consolidated All tab (per settings).
@@ -669,13 +746,29 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
             // alone didn't shrink reliably after a send (TMP keeps the prior multi-
             // line geometry until the mesh is rebuilt), so force the rebuild first.
             string cur = _input.Text;
-            float pref;
-            if (string.IsNullOrEmpty(cur)) { pref = 0f; }
-            else { txt.ForceMeshUpdate(); pref = txt.preferredHeight; }
-            int h = (int)UnityEngine.Mathf.Clamp(pref + 6f, InputBaseHeight, InputMaxHeight);
+            float pref; int lineCount;
+            if (string.IsNullOrEmpty(cur)) { pref = 0f; lineCount = 0; }
+            else { txt.ForceMeshUpdate(); pref = txt.preferredHeight; lineCount = txt.textInfo.lineCount; }
+            // 0.65.4: drive single-vs-multi off the ACTUAL wrapped line count, not a clamped pixel
+            // height. The old `h > InputBaseHeight+2` test was fragile: once the field had grown to
+            // multiple lines (e.g. pasting a long message), TMP's preferredHeight for the SAME text
+            // reduced back to one line reads ~a line taller than it did before the multi-line episode,
+            // so h stayed over the threshold and the input never re-centered — the "center alignment
+            // stops working after pasting long text" report (Kruczarz). lineCount is drift-proof.
+            bool multiLine = lineCount > 1;
+            // Single line (or empty) → always the base height; multi-line → grow with the content.
+            int h = multiLine
+                ? (int)UnityEngine.Mathf.Clamp(pref + 6f, InputBaseHeight, InputMaxHeight)
+                : (int)InputBaseHeight;
             UIFactory.SetLayoutElement(_input.GameObject, minHeight: h, preferredHeight: h);
             if (_inputRow != null)
                 UIFactory.SetLayoutElement(_inputRow, minHeight: h + 2, preferredHeight: h + 2);
+            // Single line → vertically centered (Left); wrapped → top-aligned (TopLeft) so all lines
+            // stay visible as the field grows.
+            var want = multiLine
+                ? TextAlignmentOptions.TopLeft
+                : TextAlignmentOptions.Left;
+            if (txt.alignment != want) txt.alignment = want;
         }
         catch { }
     }
@@ -687,6 +780,7 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
     // sets ChatInputActive so gameplay input is suppressed while you type.
     internal void FocusInput()
     {
+        NoteChatActivity(); // 0.65.3: opening chat wakes the window even if it had faded out
         try
         {
             // 0.17.0: don't re-activate an already-focused field — re-activating
@@ -756,6 +850,85 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
             return UnityEngine.RectTransformUtility.RectangleContainsScreenPoint(rt, UnityEngine.Input.mousePosition, null);
         }
         catch { return false; }
+    }
+
+    // ---- 0.65.3: idle auto-hide fade ----
+
+    // Record "the window is being used right now" so the idle timer restarts (and the window fades
+    // back in on the next tick). Called on construct, tab switch, send, and qualifying messages.
+    private void NoteChatActivity()
+    {
+        try { _lastActivityUnscaled = UnityEngine.Time.unscaledTime; } catch { }
+    }
+
+    // Does a captured line count as "activity" that fades the window back in? System-channel lines
+    // (Raphael's regular BC pings / server broadcasts) are gated behind their own toggle so they can't
+    // blink the window; everything else follows the message toggle.
+    private static bool WakesAutoHide(ChatRelayService.Channel ch)
+        => ch == ChatRelayService.Channel.System
+            ? Settings.ChatAutoHideWakeOnSystem
+            : Settings.ChatAutoHideWakeOnMessage;
+
+    private UnityEngine.CanvasGroup EnsureRootCanvasGroup()
+    {
+        if (_rootCg != null) return _rootCg;
+        try
+        {
+            if (uiRoot == null) return null;
+            _rootCg = uiRoot.GetComponent<UnityEngine.CanvasGroup>()
+                      ?? uiRoot.AddComponent<UnityEngine.CanvasGroup>();
+        }
+        catch { }
+        return _rootCg;
+    }
+
+    // Per-frame fade driver. No-ops (holds full alpha) unless auto-hide is enabled AND the window is
+    // open. Fades toward 0 after the idle timeout, toward 1 whenever the input is focused, the cursor
+    // is over the window, or a qualifying message reset the activity clock. When essentially invisible,
+    // blocksRaycasts drops so the faded window doesn't swallow clicks meant for the world/other UI.
+    private void TickAutoHide()
+    {
+        try
+        {
+            var cg = EnsureRootCanvasGroup();
+            if (cg == null) return;
+
+            // Not actually on screen (window closed, or master "hide all overlays" active): keep the
+            // idle clock fresh and don't touch the fade, so it appears fully visible when shown again.
+            bool visibleInHierarchy = uiRoot != null && uiRoot.activeInHierarchy;
+            if (!visibleInHierarchy || !_wasEnabledForAutoHide)
+            {
+                NoteChatActivity();
+                if (cg.alpha != 1f) { cg.alpha = 1f; cg.blocksRaycasts = true; }
+            }
+            _wasEnabledForAutoHide = visibleInHierarchy;
+            if (!visibleInHierarchy) return;
+
+            float target;
+            if (!Settings.ChatAutoHideEnabled)
+            {
+                target = 1f; // feature off → never leave it dimmed
+            }
+            else if (IsInputFocused() || IsPointerOverWindow())
+            {
+                NoteChatActivity();
+                target = 1f;
+            }
+            else
+            {
+                float idle = UnityEngine.Time.unscaledTime - _lastActivityUnscaled;
+                target = idle >= Settings.ChatAutoHideSeconds ? 0f : 1f;
+            }
+
+            if (!UnityEngine.Mathf.Approximately(cg.alpha, target))
+            {
+                // ~0.3s full fade, frame-rate independent.
+                cg.alpha = UnityEngine.Mathf.MoveTowards(cg.alpha, target, 3.5f * UnityEngine.Time.unscaledDeltaTime);
+            }
+            bool interactive = cg.alpha > 0.05f;
+            if (cg.blocksRaycasts != interactive) cg.blocksRaycasts = interactive;
+        }
+        catch { /* fade is best-effort; never throw from the update loop */ }
     }
 
     private void OnChatSelect(string _)   => Patches.InputSuppression.ChatInputActive = true;
@@ -889,6 +1062,7 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
     private void SwitchToTab(int idx)
     {
         if (idx < 0 || idx >= TabDefs.Length) return;
+        NoteChatActivity();                                            // 0.65.3: interacting keeps it visible
         _activeTab = idx;
         _unread[idx] = 0;                                              // viewing clears its badge
         if (idx == 0) for (int k = 0; k < _unread.Length; k++) _unread[k] = 0; // All sees everything
@@ -1468,6 +1642,7 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
     private void Render()
     {
         if (_log == null) return;
+        _renderDirty = false;
         bool showTime = Settings.ChatShowTimestamps;
         bool showTag  = Settings.ChatShowChannelTags;
         bool newestAtBottom = Settings.ChatNewestAtBottom;
@@ -1477,15 +1652,19 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         bool whisperPartnerFilter = WhispersTabIndex >= 0 && _activeTab == WhispersTabIndex && _activeWhisperPartner != null;
 
         // Build the matching lines in chronological (oldest→newest) order first,
-        // then emit in the user's chosen direction. Cheap — chat is low-volume.
+        // then emit in the user's chosen direction.
         var lines = new List<string>();
         var line = new StringBuilder(160);
-        var buf = ChatRelayService.Buffer;
         bool Visible(ChatRelayService.ChatLine ln)
             => (!filter.HasValue || ln.Channel == filter.Value)
                && (filter.HasValue || AllTabIncludes(ln.Channel))
                && !(!filter.HasValue && Settings.AllTabExcludeNotesToSelf && ChatRelayService.IsNoteToSelf(ln))
                && (!whisperPartnerFilter || ln.Partner == _activeWhisperPartner);
+        // 0.65.6 PERF: only format the newest lines that could possibly be drawn (MaxRenderedLines),
+        // not the whole 2000-line retention buffer. Pre-0.65.6 every incoming message re-formatted
+        // the ENTIRE buffer, so per-message cost climbed all session until the buffer filled —
+        // the "chat gets laggy over time, relog fixes it" report.
+        var buf = NewestVisible(ChatRelayService.Buffer, Visible);
         // 0.17.3: pre-compute tabular column geometry once per render. Fixed-pixel
         // columns (auto-fit) give all extra width to the message column; otherwise the
         // legacy %-of-width columns scale everything with the window.
@@ -1493,7 +1672,6 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         for (int i = 0; i < buf.Count; i++)
         {
             var ln = buf[i];
-            if (!Visible(ln)) continue;
             line.Clear();
             if (tabular)
             {
@@ -1517,16 +1695,127 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
             lines.Add(line.ToString());
         }
 
+        // 0.65.0 BLANK-CHAT FIX: a single TextMeshPro object cannot exceed Unity's 16-bit
+        // mesh index buffer — 65,535 vertices ≈ 16,383 visible glyphs (4 verts/glyph). Feeding
+        // the whole retention buffer (up to ChatRelayService.MaxLines = 2000 lines) into one
+        // _log component eventually crosses that ceiling; TMP then fails to build the mesh and
+        // renders the box BLANK while the buffer stays intact — which is exactly why Copy still
+        // works and only a relog (which clears the buffer) restored it. The "All" tab hits it
+        // first because it aggregates every channel. 0.65.1: bound by a VISIBLE-GLYPH budget
+        // (not a line count) so long lines can't sneak the mesh over the ceiling. The 2000-line
+        // buffer is untouched so scrollback and Copy keep the full history.
+        int start = ComputeRenderStart(lines);
         var sb = new StringBuilder(2048);
         if (newestAtBottom)
-            for (int i = 0; i < lines.Count; i++) sb.Append(lines[i]).Append('\n');
+            for (int i = start; i < lines.Count; i++) sb.Append(lines[i]).Append('\n');
         else
-            for (int i = lines.Count - 1; i >= 0; i--) sb.Append(lines[i]).Append('\n');
+            for (int i = lines.Count - 1; i >= start; i--) sb.Append(lines[i]).Append('\n');
         _log.text = sb.ToString();
 
         // 0.17.0: keep the newest message in view as lines arrive (bottom or top
         // per the setting). Off lets the user scroll back through history freely.
         if (Settings.ChatAutoScroll) ScrollToNewest(newestAtBottom);
+    }
+
+    /// <summary>
+    /// 0.65.6: the newest (up to <see cref="MaxRenderedLines"/>) lines passing <paramref name="visible"/>,
+    /// oldest→newest. ComputeRenderStart can never keep more than that, so formatting anything older
+    /// was wasted work that grew with the retention buffer. Shared by both chat panels.
+    /// </summary>
+    internal static List<ChatRelayService.ChatLine> NewestVisible(
+        IReadOnlyList<ChatRelayService.ChatLine> buf, System.Func<ChatRelayService.ChatLine, bool> visible)
+    {
+        var picked = new List<ChatRelayService.ChatLine>(System.Math.Min(buf.Count, MaxRenderedLines));
+        for (int i = buf.Count - 1; i >= 0 && picked.Count < MaxRenderedLines; i--)
+            if (visible(buf[i])) picked.Add(buf[i]);
+        picked.Reverse();
+        return picked;
+    }
+
+    /// <summary>
+    /// 0.65.1: pick the earliest line index whose NEWEST-first run of rendered lines stays
+    /// under <see cref="MaxRenderedGlyphs"/> visible glyphs (and <see cref="MaxRenderedLines"/>
+    /// lines). Keeps the mesh well under TextMeshPro's ~16k-glyph ceiling so the box can't blank
+    /// on a busy channel. Shared by both chat panels so their caps stay identical.
+    /// Always returns at least the single newest line, even if that line alone is over budget.
+    /// </summary>
+    internal static int ComputeRenderStart(System.Collections.Generic.List<string> lines)
+    {
+        int used = 0;
+        int start = lines.Count;                 // nothing kept yet
+        for (int j = lines.Count - 1; j >= 0; j--)
+        {
+            int g = VisibleGlyphCount(lines[j]) + 1; // +1 for the joining newline
+            // Stop once we'd exceed the glyph budget or the secondary line guard — but only
+            // after we've committed at least the newest line.
+            if (start != lines.Count &&
+                (used + g > MaxRenderedGlyphs || (lines.Count - j) > MaxRenderedLines))
+                break;
+            used += g;
+            start = j;
+        }
+        return start == lines.Count ? 0 : start;
+    }
+
+    /// <summary>
+    /// Count visible glyphs, ignoring well-formed TMP rich-text tags, which draw no vertices.
+    /// Anything that isn't clearly a tag is counted as visible, so the estimate errs high
+    /// (trims a little history) rather than low (could overflow the mesh).
+    /// </summary>
+    internal static int VisibleGlyphCount(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return 0;
+        // 0.65.6: only skip a KNOWN TMP tag — '<' + a letter, '/' or '#', closed by '>' within MaxTagChars with no
+        // '<' inside, whose name is in ZeroGlyphTags (sprite/quad cost 1). Pre-0.65.6 any '<' hid everything up to the next '>' (or the
+        // rest of the line), so player text like "<3 <3 …" counted as ~0 glyphs and a flood of it could push the
+        // mesh past TMP's ceiling and blank the chat again. Over-counting only trims history; never overflows.
+        const int MaxTagChars = 64;
+        int n = 0;
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '<' && i + 1 < s.Length && (char.IsLetter(s[i + 1]) || s[i + 1] == '/' || s[i + 1] == '#'))
+            {
+                int close = -1;
+                for (int j = i + 1; j < s.Length && j - i <= MaxTagChars; j++)
+                {
+                    if (s[j] == '<') break;
+                    if (s[j] == '>') { close = j; break; }
+                }
+                if (close > 0)
+                {
+                    int cost = TagGlyphCost(s, i + 1, close);
+                    if (cost >= 0) { n += cost; i = close; continue; } // known tag: 0 (formatting) or 1 (sprite/quad)
+                }
+            }
+            n++;
+        }
+        return n;
+    }
+
+    // Known TMP tags that draw no geometry. Anything NOT listed is counted as literal text (TMP prints unknown
+    // tags verbatim), so the estimate only ever errs high.
+    private static readonly System.Collections.Generic.HashSet<string> ZeroGlyphTags =
+        new(System.StringComparer.OrdinalIgnoreCase)
+    {
+        "b", "i", "u", "s", "sub", "sup", "color", "size", "font", "mark", "cspace", "mspace", "style", "gradient",
+        "rotate", "voffset", "indent", "align", "nobr", "noparse", "link", "lowercase", "uppercase", "smallcaps",
+        "allcaps", "alpha", "pos", "space", "br", "nbsp", "zwsp", "line-height", "line-indent", "width", "margin",
+        "margin-left", "margin-right", "page", "font-weight", "strikethrough", "underline",
+    };
+
+    // Glyph cost of the tag s[from..closeIdx) (text between '<' and '>'): 0 for a known formatting tag,
+    // 1 for sprite/quad (they draw a quad), -1 when unknown (caller counts it literally).
+    private static int TagGlyphCost(string s, int from, int closeIdx)
+    {
+        if (s[from] == '/') from++;
+        if (from >= closeIdx) return -1;
+        if (s[from] == '#') return 0; // <#RRGGBB> colour shorthand
+        int end = from;
+        while (end < closeIdx && s[end] != '=' && s[end] != ' ') end++;
+        var name = s.Substring(from, end - from);
+        if (name.Equals("sprite", System.StringComparison.OrdinalIgnoreCase)
+            || name.Equals("quad", System.StringComparison.OrdinalIgnoreCase)) return 1;
+        return ZeroGlyphTags.Contains(name) ? 0 : -1;
     }
 
     // 0.17.3: build one chat line in aligned columns using TMP <pos>/<indent>:
@@ -1612,12 +1901,71 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
     // safe even if the source text carries its own tags.
     internal static string BodyText(ChatRelayService.ChatLine ln)
     {
+        // 0.65.3: neutralize any rich-text tag the message leaves OPEN before it joins the shared
+        // TMP block — otherwise an unclosed <i>/<b>/<color>/… bleeds into every line after it (the
+        // "chat randomly turns italic and won't stop" report). See CloseDanglingTags.
+        string body = CloseDanglingTags(ln.Text);
         string hex = null;
         if (Settings.ChatColorOwnMessages && ChatRelayService.IsOwnSender(ln.Sender))
             hex = Settings.ChatOwnMessageColorHex;
         else if (Settings.ChatColorMessageByChannel)
             hex = ChannelColorHex(ln.Channel);
-        return string.IsNullOrEmpty(hex) ? ln.Text : $"<color={hex}>{ln.Text}</color>";
+        return string.IsNullOrEmpty(hex) ? body : $"<color={hex}>{body}</color>";
+    }
+
+    // Scope/style rich-text tags that persist until explicitly closed. If a message opens one of
+    // these and never closes it, the open state carries forward through the '\n'-joined TMP text
+    // into every following line. (Positional / self-contained tags like <pos>, <space>, <br>, <nbsp>
+    // don't leak, so they're deliberately absent.)
+    private static readonly System.Collections.Generic.HashSet<string> ScopedRichTags =
+        new(System.StringComparer.OrdinalIgnoreCase)
+    {
+        "b", "i", "u", "s", "sub", "sup", "color", "size", "font", "mark",
+        "cspace", "mspace", "style", "gradient", "rotate", "voffset", "indent",
+        "align", "nobr", "noparse", "link", "lowercase", "uppercase", "smallcaps", "allcaps",
+    };
+
+    // 0.65.3 ITALICS-BLEED FIX. Every visible chat line is concatenated into ONE TextMeshPro
+    // component (joined by '\n'), so a style/scope tag a SERVER or other-mod message leaves OPEN
+    // — e.g. "<i>" with no matching "</i>", or an unclosed <b>/<color>/<size> — stays active and
+    // bleeds into EVERY line rendered after it (Howl: two back-to-back system messages, one with
+    // a dangling <i>, turned the whole All tab italic with no way to stop it). We can't trust
+    // arbitrary inbound text to balance its own markup, so append the closers for whatever the
+    // message leaves open, making each line self-contained. Markup the text DID close is untouched,
+    // so legitimate in-message formatting still renders.
+    internal static string CloseDanglingTags(string text)
+    {
+        if (string.IsNullOrEmpty(text) || text.IndexOf('<') < 0) return text;
+        var open = new System.Collections.Generic.List<string>(); // open scoped-tag names, in order
+        int i = 0, n = text.Length;
+        while (i < n)
+        {
+            int lt = text.IndexOf('<', i);
+            if (lt < 0) break;
+            int gt = text.IndexOf('>', lt + 1);
+            if (gt < 0) break;                 // a bare '<' with no '>' isn't a tag — stop scanning
+            string inner = text.Substring(lt + 1, gt - lt - 1);
+            i = gt + 1;
+            if (inner.Length == 0) continue;
+            bool closing = inner[0] == '/';
+            string bodyTag = closing ? inner.Substring(1) : inner;
+            int cut = bodyTag.Length;          // tag name ends at the first '=' or ' '
+            for (int k = 0; k < bodyTag.Length; k++) { char c = bodyTag[k]; if (c == '=' || c == ' ') { cut = k; break; } }
+            string name = bodyTag.Substring(0, cut).Trim();
+            if (name.Length == 0 || !ScopedRichTags.Contains(name)) continue;
+            if (closing)
+            {
+                // Pop the nearest matching open tag (lenient about interleaving/over-closing).
+                for (int k = open.Count - 1; k >= 0; k--)
+                    if (string.Equals(open[k], name, System.StringComparison.OrdinalIgnoreCase)) { open.RemoveAt(k); break; }
+            }
+            else open.Add(name);
+        }
+        if (open.Count == 0) return text;
+        var sb = new StringBuilder(text.Length + open.Count * 6);
+        sb.Append(text);
+        for (int k = open.Count - 1; k >= 0; k--) sb.Append("</").Append(open[k]).Append('>');
+        return sb.ToString();
     }
 
     private static void AppendTabularLine(StringBuilder line, ChatRelayService.ChatLine ln, bool showTime, bool showTag, bool separate, TabCols cols)
@@ -1694,9 +2042,11 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
     private static void AppendSenderLinked(StringBuilder line, string sender)
     {
         if (string.IsNullOrEmpty(sender)) return;
-        if (!Settings.ChatDoubleClickNameWhisper) { line.Append(sender); return; }
+        // 0.65.3: close any tag the game-resolved name leaves open too, so a name (or its color tag)
+        // can't bleed formatting into the rest of the line / following lines. See CloseDanglingTags.
+        if (!Settings.ChatDoubleClickNameWhisper) { line.Append(CloseDanglingTags(sender)); return; }
         string plain = StripRichTags(sender).Replace("\"", string.Empty).Trim();
-        if (string.IsNullOrEmpty(plain)) { line.Append(sender); return; }
+        if (string.IsNullOrEmpty(plain)) { line.Append(CloseDanglingTags(sender)); return; }
         // Style clickable names like a hyperlink — underlined + "link blue" — so it's
         // obvious a double-click whispers them. We render the PLAIN name (the game's own
         // color is dropped here on purpose) so our color actually takes effect rather
@@ -1886,6 +2236,22 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
             Raphael.Behaviors.CoreUpdateBehavior.Actions.Remove(_scrollKeyTicker);
             _scrollKeyTicker = null;
         }
+        if (_autoHideTicker != null)
+        {
+            Raphael.Behaviors.CoreUpdateBehavior.Actions.Remove(_autoHideTicker);
+            _autoHideTicker = null;
+        }
+        if (_renderTicker != null)
+        {
+            Raphael.Behaviors.CoreUpdateBehavior.Actions.Remove(_renderTicker);
+            _renderTicker = null;
+        }
+        _renderDirty = false;
+        // Leave the (harmless) CanvasGroup on the root but restore full visibility so a rebuilt
+        // window never inherits a mid-fade alpha.
+        try { if (_rootCg != null) { _rootCg.alpha = 1f; _rootCg.blocksRaycasts = true; } } catch { }
+        _rootCg = null;
+        _wasEnabledForAutoHide = false;
         _composeDropdownObj = null;
         _composeDropdown = null;
         _composeTargets.Clear();

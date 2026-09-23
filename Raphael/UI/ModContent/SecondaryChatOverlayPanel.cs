@@ -58,6 +58,11 @@ public class SecondaryChatOverlayPanel : ResizeablePanelBase
     private UnityEngine.UI.ScrollRect _scrollRect;
     private RectTransform _scrollContentRect;
     private bool _subscribed;
+    // 0.65.6 PERF: coalesced repaint, same as ChatWindowOverlayPanel (see TickRender there).
+    private System.Action _renderTicker;
+    private bool _renderDirty;
+    private float _nextRenderAt;
+    private bool _renderRetried;
 
     public SecondaryChatOverlayPanel(UIBase owner) : base(owner) { }
 
@@ -91,12 +96,29 @@ public class SecondaryChatOverlayPanel : ResizeablePanelBase
         UIFactory.SetLayoutElement(_log.gameObject, flexibleWidth: 1, flexibleHeight: 1);
 
         if (!_subscribed) { ChatRelayService.LineCaptured += OnLineCaptured; _subscribed = true; }
+        if (_renderTicker == null)
+        {
+            _renderTicker = TickRender;
+            Raphael.Behaviors.CoreUpdateBehavior.Actions.Add(_renderTicker);
+        }
         Render();
     }
 
-    private void OnLineCaptured(ChatRelayService.ChatLine line)
+    private void OnLineCaptured(ChatRelayService.ChatLine line) => _renderDirty = true;
+
+    private void TickRender()
     {
-        try { Render(); } catch { /* never throw into the inbound chat pump */ }
+        if (!_renderDirty || _log == null || !Enabled) return;
+        float now = Time.unscaledTime;
+        if (now < _nextRenderAt) return;
+        _nextRenderAt = now + ChatWindowOverlayPanel.RenderIntervalSeconds;
+        try { Render(); _renderRetried = false; }
+        catch (System.Exception ex)
+        {
+            // Same policy as ChatWindowOverlayPanel.TickRender: one retry, then wait for the next line.
+            if (!_renderRetried) { _renderRetried = true; _renderDirty = true; }
+            else { _renderRetried = false; Raphael.Utils.LogUtils.LogWarning($"[Chat2] render failed twice; waiting for the next message: {ex.Message}"); }
+        }
     }
 
     /// <summary>Re-render (e.g. the Game UI settings changed which channels show, or the text scale).</summary>
@@ -127,31 +149,39 @@ public class SecondaryChatOverlayPanel : ResizeablePanelBase
     private void Render()
     {
         if (_log == null) return;
+        _renderDirty = false;
         bool showTime = Settings.ChatShowTimestamps;
         bool showTag  = Settings.ChatShowChannelTags;
         bool newestAtBottom = Settings.ChatNewestAtBottom;
 
         var lines = new List<string>();
         var line = new StringBuilder(160);
-        var buf = ChatRelayService.Buffer;
+        // 0.65.6 PERF: only the newest lines that can be drawn (see ChatWindowOverlayPanel.NewestVisible).
+        var buf = ChatWindowOverlayPanel.NewestVisible(ChatRelayService.Buffer, LineEnabled);
         for (int i = 0; i < buf.Count; i++)
         {
             var ln = buf[i];
-            if (!LineEnabled(ln)) continue;
             line.Clear();
             if (showTime) line.Append("<color=#808080>").Append(ln.Received.ToString("HH:mm")).Append("</color> ");
             if (showTag)  line.Append(ChatWindowOverlayPanel.ChannelTag(ln.Channel)).Append(' ');
             // View-only: plain sender name (no click-to-whisper link — this window can't send).
-            if (!string.IsNullOrEmpty(ln.Sender)) line.Append(ln.Sender).Append(": ");
+            // 0.65.3: close any tag the name leaves open so it can't bleed formatting downward.
+            if (!string.IsNullOrEmpty(ln.Sender))
+                line.Append(ChatWindowOverlayPanel.CloseDanglingTags(ln.Sender)).Append(": ");
             line.Append(ChatWindowOverlayPanel.BodyText(ln));
             lines.Add(line.ToString());
         }
 
+        // 0.65.0 BLANK-CHAT FIX: bound the newest lines handed to the single TMP _log so the
+        // mesh can't exceed TextMeshPro's 65,535-vertex ceiling and render blank. Same defect
+        // and fix as ChatWindowOverlayPanel.Render — the retention buffer is untouched.
+        // 0.65.1: bound by a visible-glyph budget (shared helper) so long lines can't overflow.
+        int start = ChatWindowOverlayPanel.ComputeRenderStart(lines);
         var sb = new StringBuilder(2048);
         if (newestAtBottom)
-            for (int i = 0; i < lines.Count; i++) sb.Append(lines[i]).Append('\n');
+            for (int i = start; i < lines.Count; i++) sb.Append(lines[i]).Append('\n');
         else
-            for (int i = lines.Count - 1; i >= 0; i--) sb.Append(lines[i]).Append('\n');
+            for (int i = lines.Count - 1; i >= start; i--) sb.Append(lines[i]).Append('\n');
         _log.text = sb.ToString();
 
         if (Settings.ChatAutoScroll) ScrollToNewest(newestAtBottom);
@@ -173,6 +203,12 @@ public class SecondaryChatOverlayPanel : ResizeablePanelBase
     internal override void Reset()
     {
         if (_subscribed) { ChatRelayService.LineCaptured -= OnLineCaptured; _subscribed = false; }
+        if (_renderTicker != null)
+        {
+            Raphael.Behaviors.CoreUpdateBehavior.Actions.Remove(_renderTicker);
+            _renderTicker = null;
+        }
+        _renderDirty = false;
         _log = null;
         _scrollRect = null;
         _scrollContentRect = null;

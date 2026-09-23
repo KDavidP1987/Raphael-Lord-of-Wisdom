@@ -93,13 +93,14 @@ internal static class FaustMapCapture
     private static byte[] ToPng(Texture2D tex)
     {
         RenderTexture rt = null;
+        Texture2D readable = null; // 0.65.6: full-size CPU copy — destroyed in finally (was leaked per capture)
         var prev = RenderTexture.active;
         try
         {
             rt = RenderTexture.GetTemporary(tex.width, tex.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
             Graphics.Blit(tex, rt);
             RenderTexture.active = rt;
-            var readable = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32, false);
+            readable = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32, false);
             readable.ReadPixels(new Rect(0, 0, tex.width, tex.height), 0, 0);
             readable.Apply(false);
             var encoded = ImageConversion.EncodeToPNG(readable);
@@ -117,6 +118,7 @@ internal static class FaustMapCapture
         {
             RenderTexture.active = prev;
             if (rt != null) RenderTexture.ReleaseTemporary(rt);
+            if (readable) UnityEngine.Object.Destroy(readable);
         }
     }
 }

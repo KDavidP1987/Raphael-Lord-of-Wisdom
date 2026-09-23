@@ -62,31 +62,59 @@ internal static class FaustMapBackdrop
     }
 
     // Forget the cached sprite so a freshly dropped-in worldmap.png is picked up without a game restart.
-    public static void Reset() { _tried = false; if (_sprite != null) _sprite = null; }
+    // 0.65.6 LEAK FIX: the sprite + texture are HideAndDontSave, so Resources.UnloadUnusedAssets never reclaims
+    // them — just dropping the reference leaked a full world-map texture per Reload/Capture. Destroy both.
+    // Safe: both callers (Reload image / Capture in MainPanel.Faust) synchronously RefreshFaustMapUnderlays(),
+    // which ClearChildren()s every board that could hold an Image using this sprite (_faustHeatGo, _faustWsMapGo).
+    public static void Reset()
+    {
+        var old = _sprite;
+        _sprite = null;
+        _tried = false;
+        DestroyPair(old, null);
+    }
+
+    // Best-effort destroy of a sprite and its texture (either may be null / already destroyed).
+    private static void DestroyPair(Sprite sprite, Texture2D tex)
+    {
+        try { if (sprite && tex == null) tex = sprite.texture; } catch { }
+        try { if (sprite) UnityEngine.Object.Destroy(sprite); } catch { }
+        try { if (tex) UnityEngine.Object.Destroy(tex); } catch { }
+    }
 
     private static Sprite LoadSprite()
     {
         if (_tried) return _sprite;
         _tried = true;
+        // 0.65.6: build into locals and commit to _sprite only as the last step; anything not committed
+        // (LoadImage failure, an exception mid-setup) is destroyed in finally instead of leaking.
+        Texture2D tex = null;
+        Sprite sprite = null;
+        bool committed = false;
         try
         {
             var path = ImagePath;
             if (!File.Exists(path)) return null;
             var data = File.ReadAllBytes(path);
-            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            tex = new Texture2D(2, 2, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
             // IL2CPP: ImageConversion.LoadImage accepts a managed byte[] via the interop implicit conversion.
             if (!ImageConversion.LoadImage(tex, data)) return null;
             tex.hideFlags = HideFlags.HideAndDontSave;
-            _sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
-            _sprite.hideFlags = HideFlags.HideAndDontSave;
+            sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            sprite.hideFlags = HideFlags.HideAndDontSave;
             LogUtils.LogInfo($"[Faust] world-map image loaded ({tex.width}x{tex.height}) from {path}");
+            _sprite = sprite;
+            committed = true;
             return _sprite;
         }
         catch (Exception e)
         {
             LogUtils.LogWarning($"[Faust] world-map image load failed: {e.Message}");
-            _sprite = null;
             return null;
+        }
+        finally
+        {
+            if (!committed) DestroyPair(sprite, tex);
         }
     }
 

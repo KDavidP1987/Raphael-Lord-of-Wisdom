@@ -569,9 +569,43 @@ public static class AbilityInputSuppressionPatch
                 catch { }
             }
 
-            // 0.29.2: phantom-attack guard — after a panel close, suppress a latched Primary cast while the
-            // physical mouse button is UP (the stuck auto-attack). Only reads ECS while the guard is armed.
-            if (!block && InputSuppression.PhantomGuardArmed)
+            // Panel-open / release-grace suppression: the UI owns input, so skip the WHOLE ability
+            // system this frame (unchanged behavior — a click on the open UI must never leak a cast).
+            if (block)
+            {
+                try
+                {
+                    var character = Plugin.LocalCharacter;
+                    if (!Plugin.IsClientNull() && character != Entity.Null)
+                    {
+                        var em = Plugin.EntityManager;
+                        if (em.HasComponent<EntityAbilityInput>(character))
+                        {
+                            var ai = em.GetComponentData<EntityAbilityInput>(character);
+                            ai.Interrupt = true;        // cancel the active cast (kills the stuck primary attack)
+                            ai.CastInput = default;     // treat the cast button as released
+                            ai.QueuedCastGroup = Entity.Null;
+                            ai.PrepareCastGroup = Entity.Null;
+                            em.SetComponentData(character, ai);
+                        }
+                    }
+                }
+                catch { /* best-effort; never let this stop the skip below */ }
+
+                InputSuppression.Diag("blocking AbilityInputSystem.OnUpdate (panel open).");
+                return false; // skip ability/hotkey cast production this frame
+            }
+
+            // 0.65.0 CAST-LOCK FIX: post-close phantom-attack guard. This USED to fold into `block`
+            // and skip the ENTIRE AbilityInputSystem every frame until the user physically pressed the
+            // LMB — which swallowed every spell (Q/E/right-click/number-key casts never press LMB) and
+            // every power/emote-wheel selection after merely opening+closing the UI, clearing only when
+            // the user did a real left-click attack. Now we cancel ONLY the phantom Primary and let the
+            // system keep running, so legitimate casts and wheel selections pass through untouched. A
+            // spurious latch (the leftover CastInput=Primary from the closing UI click) is now harmless:
+            // we only ever zero a Primary that is actually present THIS frame — there's nothing to
+            // cancel on a spell-cast frame, so casting is never blocked.
+            if (InputSuppression.PhantomGuardArmed)
             {
                 try
                 {
@@ -581,38 +615,25 @@ public static class AbilityInputSuppressionPatch
                         var pem = Plugin.EntityManager;
                         bool castPrimary = pem.HasComponent<EntityAbilityInput>(pch)
                             && pem.GetComponentData<EntityAbilityInput>(pch).CastInput.ToString() == "Primary";
-                        if (InputSuppression.ShouldSuppressPhantomAttack(castPrimary)) block = true;
+                        // Always tick the guard (drives its disarm-on-physical-LMB / safety-cap logic),
+                        // but only zero a Primary that's present this frame — the phantom auto-attack.
+                        bool suppress = InputSuppression.ShouldSuppressPhantomAttack(castPrimary);
+                        if (castPrimary && suppress && pem.HasComponent<EntityAbilityInput>(pch))
+                        {
+                            var ai = pem.GetComponentData<EntityAbilityInput>(pch);
+                            ai.Interrupt = true;
+                            ai.CastInput = default;     // cancel just the phantom Primary
+                            ai.QueuedCastGroup = Entity.Null;
+                            ai.PrepareCastGroup = Entity.Null;
+                            pem.SetComponentData(pch, ai);
+                            InputSuppression.Diag("cancelled phantom Primary (post-close); ability system still running.");
+                        }
                     }
                 }
                 catch { }
             }
 
-            if (!block) return true; // run normally
-
-            try
-            {
-                var character = Plugin.LocalCharacter;
-                if (!Plugin.IsClientNull() && character != Entity.Null)
-                {
-                    var em = Plugin.EntityManager;
-                    if (em.HasComponent<EntityAbilityInput>(character))
-                    {
-                        var ai = em.GetComponentData<EntityAbilityInput>(character);
-                        ai.Interrupt = true;        // cancel the active cast (kills the stuck primary attack)
-                        ai.CastInput = default;     // treat the cast button as released
-                        ai.QueuedCastGroup = Entity.Null;
-                        ai.PrepareCastGroup = Entity.Null;
-                        em.SetComponentData(character, ai);
-                    }
-                }
-            }
-            catch
-            {
-                // best-effort; never let this stop the skip below
-            }
-
-            InputSuppression.Diag("blocking AbilityInputSystem.OnUpdate (panel open).");
-            return false; // skip ability/hotkey cast production this frame
+            return true; // run normally — the phantom guard never skips the ability system
         }
         catch
         {

@@ -483,6 +483,16 @@ public partial class MainPanel
         AddUrielButton(manageRow, "UrielObjRotate", "Rotate nearest",
             "Rotate the spawned object nearest you by 90° (.uriel rotate).",
             () => UrielClient.Rotate(), 130);
+        // 0.20.0: flush-to-ground nudges. Each click shifts the nearest placed object up/down by 0.25m
+        // so you can stop it floating or sinking (.uriel raise / .uriel lower). Own row — the manage row
+        // above is already ~290px of a ~400px HorizontalGroup, so these can't share it without overflow.
+        var nudgeRow = MakeUrielRow(progress, "UrielObjNudgeRow");
+        AddUrielButton(nudgeRow, "UrielObjRaise", "Raise nearest",
+            "Nudge the spawned object nearest you UP by 0.25m so it stops sinking into the ground (.uriel raise).",
+            () => UrielClient.Raise(), 150);
+        AddUrielButton(nudgeRow, "UrielObjLower", "Lower nearest",
+            "Nudge the spawned object nearest you DOWN by 0.25m so it stops floating (.uriel lower).",
+            () => UrielClient.Lower(), 150);
 
         // Quick-build palette overlay (0.29): a small draggable list you can use while walking around your
         // base. The main panel forces the camera aside (objects land off-center); the overlay doesn't.
@@ -1080,6 +1090,7 @@ public partial class MainPanel
     private InputFieldRef _urielCfgMaxInput;
     private InputFieldRef _urielCfgCostAmtInput;
     private InputFieldRef _urielCfgCostItemInput;
+    private InputFieldRef _urielCfgYOffsetInput;  // 0.20.0: per-object/global height correction (metres, may be negative)
 
     private ButtonRef AddUrielConfirmButton(GameObject parent, string name, string label, string tooltip,
                                             Action action, int width = 120, Color? color = null)
@@ -1114,6 +1125,18 @@ public partial class MainPanel
         n = 0;
         var t = (field?.Text ?? "").Trim();
         return t.Length > 0 && int.TryParse(t, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out n) && n >= 0;
+    }
+
+    // Require a signed float (metres) from an input field, for objcfg yoffset. Unlike ReqUrielInt this
+    // allows negatives and decimals (an object can need to move down, e.g. -0.4). We hand the raw trimmed
+    // token to Uriel (which also accepts "0"/"clear"), so the parse here is just a validity gate; `s` is
+    // the invariant-culture-normalised string to send.
+    private static bool ReqUrielFloat(InputFieldRef field, out string s)
+    {
+        s = (field?.Text ?? "").Trim();
+        if (s.Length == 0) return false;
+        if (s.Equals("clear", System.StringComparison.OrdinalIgnoreCase)) return true;  // pass-through: Uriel clears the offset
+        return float.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _);
     }
 
     // Prefab autocomplete off the loaded catalog (name → GUID). Empty until the Object Catalog is loaded;
@@ -1236,7 +1259,9 @@ public partial class MainPanel
         AddBodyText(cfgCard,
             "Limits applied to <b>non-admin players'</b> spawns (admins bypass): a <b>max per plot</b>, a <b>per-spawn " +
             "item cost</b>, and whether they may use <b>indestructible</b> / <b>respawn</b>. Set them <b>per-object</b> " +
-            "or as a <b>global default</b>; a refused spawn replies in chat. Stored server-side.");
+            "or as a <b>global default</b>; a refused spawn replies in chat. Stored server-side. The <b>height offset " +
+            "(yoffset)</b> below is a placement correction, not a restriction — it applies to <b>everyone including " +
+            "admins</b>, auto-correcting how flush the object sits with the ground on every spawn and move.");
         var cfgListRow = MakeUrielRow(cfgCard, "UrielCfgListRow");
         AddUrielButton(cfgListRow, "UrielCfgList", "List all conditions",
             "Show the global default + every per-object override in chat (.uriel objcfglist).",
@@ -1261,6 +1286,14 @@ public partial class MainPanel
         AddUrielButton(costRow, "UrielCfgSetCost", "Set cost for this object",
             "Charge this item per spawn of the object (.uriel objcfg <obj> cost <amount> <itemGuid>).",
             () => { if (ReqUriel(_urielCfgPrefab, out var p) && ReqUrielInt(_urielCfgCostAmtInput, out var amt) && ReqUriel(_urielCfgCostItemInput?.Text, out var item)) UrielClient.SendUser($".uriel objcfg {p} cost {amt} {item}"); }, 190);
+
+        // Height offset (0.20.0) — flush-to-ground correction in metres. Positive raises, negative lowers;
+        // "clear" (or 0) removes it. Unlike the limits above this applies to EVERYONE, admins included.
+        _urielCfgYOffsetInput = AddUrielLabeledInput(cfgCard, "UrielCfgYOff", "Height offset — metres (+up / −down, or 'clear')", "e.g. 0.25 or -0.4");
+        var yoffRow = MakeUrielRow(cfgCard, "UrielCfgYOffRow");
+        AddUrielButton(yoffRow, "UrielCfgSetYOff", "Set height for this object",
+            "Auto-correct how flush this object sits with the ground on every spawn/move (.uriel objcfg <obj> yoffset <metres>). Applies to everyone.",
+            () => { if (ReqUriel(_urielCfgPrefab, out var p) && ReqUrielFloat(_urielCfgYOffsetInput, out var v)) UrielClient.SendUser($".uriel objcfg {p} yoffset {v}"); }, 200);
 
         // Permit flags — one row each, "allowed?" yes/no.
         AddBodyText(cfgCard, "May players spawn this object <b>indestructible</b>?");
@@ -1290,7 +1323,7 @@ public partial class MainPanel
 
         // ════ Global default ════ — same fields, applied to every object without its own override.
         AddSectionHeading(cfgCard, "▸ Global default (all objects)");
-        AddBodyText(cfgCard, "Applies to every object that has no per-object override. <b>Max / cost use the input fields above.</b>");
+        AddBodyText(cfgCard, "Applies to every object that has no per-object override. <b>Max / cost / height use the input fields above.</b>");
         var gNumRow = MakeUrielRow(cfgCard, "UrielCfgGNumRow");
         AddUrielButton(gNumRow, "UrielCfgGlobMax", "Set global max",
             "Default max-per-plot for every object (.uriel objcfgglobal max <n>). Uses the Max field above.",
@@ -1298,6 +1331,11 @@ public partial class MainPanel
         AddUrielButton(gNumRow, "UrielCfgGlobCost", "Set global cost",
             "Default per-spawn cost for every object (.uriel objcfgglobal cost <amount> <itemGuid>). Uses the Cost fields above.",
             () => { if (ReqUrielInt(_urielCfgCostAmtInput, out var amt) && ReqUriel(_urielCfgCostItemInput?.Text, out var item)) UrielClient.SendUser($".uriel objcfgglobal cost {amt} {item}"); }, 130);
+        // Own row — gNumRow (max + cost) already fills the ~400px group.
+        var gYOffRow = MakeUrielRow(cfgCard, "UrielCfgGYOffRow");
+        AddUrielButton(gYOffRow, "UrielCfgGlobYOff", "Set global height offset",
+            "Default height offset for every object without its own (.uriel objcfgglobal yoffset <metres>). Uses the Height offset field above.",
+            () => { if (ReqUrielFloat(_urielCfgYOffsetInput, out var v)) UrielClient.SendUser($".uriel objcfgglobal yoffset {v}"); }, 200);
         AddBodyText(cfgCard, "Default — may players spawn <b>indestructible</b>?");
         var gIndRow = MakeUrielRow(cfgCard, "UrielCfgGIndRow");
         AddUrielButton(gIndRow, "UrielCfgGlobIndAllow", "Yes",
@@ -1509,6 +1547,8 @@ public partial class MainPanel
             "• .uriel catalog (page) / .uriel unlocks — the full prefab list / your unlocked set in chat.\n" +
             "• .uriel notify (on|off) — per-player unlock messages.\n" +
             "• .uriel despawn / move / rotate / spawninfo / spawnlist — manage objects you've placed (own plot).\n" +
+            "• .uriel raise (metres) / .uriel lower (metres) — nudge the nearest object you placed up/down so it sits " +
+            "flush with the ground instead of floating or sinking (default 0.25m; Raphael's Raise/Lower buttons send this).\n" +
             "• Build hotkeys — Object Spawning → Building hotkeys lets you bind keys to move / rotate / remove " +
             "the nearest spawned object while a TEMPORARY Build Mode is on (resets off every login).\n" +
             "• Machine API (what Raphael calls): .uriel api version | catalog (page) | unlocked (page) — return " +
@@ -1530,8 +1570,9 @@ public partial class MainPanel
             "• .uriel block / unblock / blocklist — manage the spawn blocklist.\n" +
             "• .uriel grant / revoke / grantall — manage a player's unlocked prefabs.\n" +
             "• .uriel unlocks (player) — inspect a player's unlocked set.\n" +
-            "• .uriel objcfg (obj) max|cost|indestructible|respawn|clear|show — per-object spawn limits for players.\n" +
-            "• .uriel objcfgglobal (field) — the global default spawn limit.   • .uriel objcfglist — list all conditions.\n" +
+            "• .uriel objcfg (obj) max|cost|indestructible|respawn|yoffset|clear|show — per-object spawn limits for players.\n" +
+            "   yoffset (metres, +up/−down) is a flush-to-ground height correction that applies to EVERYONE, admins included.\n" +
+            "• .uriel objcfgglobal (field) — the global default spawn limit / height offset.   • .uriel objcfglist — list all conditions.\n" +
             "• .uriel bossmap — boss→prefab mapping.   • .uriel purgeplot — clear a plot.\n" +
             "• .uriel purgeorphans — server-wide: remove objects whose castle heart is gone.\n" +
             "• .uriel forcedespawn (confirm) / .uriel forcepurgeplot — record-ignoring recovery for untracked " +

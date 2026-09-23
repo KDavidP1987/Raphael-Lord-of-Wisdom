@@ -160,6 +160,25 @@ internal static class ClientChatPatch
                 if (!entity.Has<ChatMessageServerEvent>()) continue;
 
                 var ev = entity.Read<ChatMessageServerEvent>();
+
+                // 0.65.0 RELOG-SPAM FIX: suppress any leaked Eclipse client→server handshake. On a
+                // server that doesn't run Bloodcraft, another Raphael user's RegisterUser frame is
+                // never consumed and gets rebroadcast as ordinary proximity (Local) chat — it would
+                // otherwise surface in our chat window/relay AND (for the sender) as a head bubble.
+                // The "[ECLIPSE]" tag is ONLY ever on client→server frames; server→client structured
+                // frames are "[<subType>]:…" and never contain it — so destroying this can never eat a
+                // legitimate Eclipse stream, even when the Eclipse mod is installed. Runs BEFORE the
+                // sender-id enqueue so a destroyed line can't desync the whisper-picker pairing, and
+                // BEFORE the System-only gate so it also catches the Local/Global echo.
+                {
+                    string echo = ev.MessageText.Value;
+                    if (!string.IsNullOrEmpty(echo) && echo.Contains("[ECLIPSE]"))
+                    {
+                        Plugin.EntityManager.DestroyEntity(entity);
+                        continue;
+                    }
+                }
+
                 // 0.17.0: capture EVERY sender's NetworkId (in arrival order) so the
                 // tabbed window can whisper anyone who's spoken — not just whisperers.
                 // CaptureFormatted pairs the next id with the resolved sender name.

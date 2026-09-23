@@ -380,6 +380,17 @@ public static class VBloodScannerService
             isPrimal = false;
             return true;
         }
+        // 0.65.0: language-proof fallback. On a non-English client, Bloodcraft sends regular
+        // V-Blood names in the server's language (e.g. Polish), which aren't in the English
+        // registry — so the tab used to drop every regular V-Blood while primals (hardcoded
+        // English "Primal X" by Bloodcraft) still matched. Resolve the localized name via the
+        // client's own live localization table. See Resources/VBloodLocalization.cs.
+        if (Resources.VBloodLocalization.TryResolveLocalized(localizedName, out var localizedCanonical))
+        {
+            baseName = localizedCanonical;
+            isPrimal = false;
+            return true;
+        }
         return false;
     }
 

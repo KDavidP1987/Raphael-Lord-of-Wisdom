@@ -291,6 +291,33 @@ public class BoxNameDropdownField : FormField
     protected TMP_Dropdown Dropdown;
     private System.Action _boxListChangedHandler;
 
+    // 0.65.6 LEAK FIX: the static BoxListChanged event rooted every field (and its dropdown wrapper) from every
+    // rebuilt MainPanel until the next box-list reply — forever if none came. Live fields are tracked here and
+    // detached by MainPanel.Reset() via DetachAll() (all construction sites are in MainPanel).
+    private static readonly System.Collections.Generic.List<BoxNameDropdownField> _live = new();
+
+    /// <summary>Idempotent: drop the BoxListChanged subscription and forget this field.</summary>
+    public void Unsubscribe()
+    {
+        if (_boxListChangedHandler != null)
+        {
+            Services.PlayerStateService.BoxListChanged -= _boxListChangedHandler;
+            _boxListChangedHandler = null;
+        }
+        _live.RemoveAll(f => ReferenceEquals(f, this));
+    }
+
+    /// <summary>Detach every live field (called from MainPanel.Reset before the panel is destroyed).</summary>
+    internal static void DetachAll()
+    {
+        var snapshot = _live.ToArray();
+        _live.Clear();
+        foreach (var f in snapshot)
+        {
+            try { f.Unsubscribe(); f.Dropdown = null; } catch { }
+        }
+    }
+
     public BoxNameDropdownField() { }
     public BoxNameDropdownField(string name, string label, string tooltip = null, bool allowEmpty = false)
     {
@@ -320,8 +347,10 @@ public class BoxNameDropdownField : FormField
 
         // Listen for box-list updates so the dropdown stays in sync with
         // server-side changes (.fam ab / .fam db / .fam rb).
+        Unsubscribe(); // re-Build of the same instance must not double-subscribe / double-register
         _boxListChangedHandler = OnBoxListChanged;
         Services.PlayerStateService.BoxListChanged += _boxListChangedHandler;
+        _live.Add(this);
 
         // Kick the server for a fresh box list if we don't have one yet — keeps
         // the form usable on the first open before the user clicks Reload.
@@ -334,11 +363,11 @@ public class BoxNameDropdownField : FormField
 
     private void OnBoxListChanged()
     {
-        if (Dropdown == null) { Services.PlayerStateService.BoxListChanged -= _boxListChangedHandler; return; }
+        if (Dropdown == null) { Unsubscribe(); return; }
         // Defensive: the underlying GameObject may have been destroyed by a
         // panel rebuild while our subscription is still wired. Detach and bail.
-        try { if (Dropdown.gameObject == null) { Services.PlayerStateService.BoxListChanged -= _boxListChangedHandler; Dropdown = null; return; } }
-        catch { Services.PlayerStateService.BoxListChanged -= _boxListChangedHandler; Dropdown = null; return; }
+        try { if (Dropdown.gameObject == null) { Unsubscribe(); Dropdown = null; return; } }
+        catch { Unsubscribe(); Dropdown = null; return; }
 
         // Remember the previously-selected name so the new list keeps the
         // user's selection across a refresh.

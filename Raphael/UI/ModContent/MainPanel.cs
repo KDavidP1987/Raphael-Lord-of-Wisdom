@@ -416,6 +416,10 @@ public partial class MainPanel : ResizeablePanelBase
                 // separate Quick Start / Help pair the other mods get). FaustModHelpTab's content is
                 // appended under the quick start in the FaustQuickStartTab dispatch below.
                 (PanelType.FaustQuickStartTab, "Faust Guide"),
+                // In-built base-game guide: explains vanilla V Rising mechanics (leveling, blood, combat,
+                // castles, V Bloods…) and how each server mod changes them — so Raphael works as a
+                // one-stop reference even for players new to the game. Sits beside the external Game Guide.
+                (PanelType.VRisingBasicsTab, "V Rising Basics"),
                 // 0.12.1: V Rising game guide + community-resource links.
                 (PanelType.GameGuideTab,     "Game Guide"),
                 (PanelType.SettingsTab,      "Settings"),
@@ -514,6 +518,12 @@ public partial class MainPanel : ResizeablePanelBase
     // "only the maximize button works while fullscreen."
     private bool _preFullscreenPinned;
     private Raphael.UI.Framework.UniverseLib.UI.Models.ButtonRef _maximizeBtn;
+    // 0.65.6: small always-visible "Refresh" at the bottom-right of the panel (tooltip footer), so players don't
+    // have to find the Connection tab. Label flips to "Done"/"Failed" briefly after a click (reverted in
+    // TickTabAutoRefresh).
+    private Raphael.UI.Framework.UniverseLib.UI.Models.ButtonRef _footerRefreshBtn;
+    private float _footerRefreshRevertAt = -1f;
+    private const string FooterRefreshLabel = "Refresh";
 
     public bool IsFullscreen => _isFullscreen;
 
@@ -703,11 +713,17 @@ public partial class MainPanel : ResizeablePanelBase
         // multi-sentence description) overflowed the panel's right edge as
         // a single un-wrapped line. The new height holds ~3 lines of 12pt
         // italic text; longer tooltips get ellipsized instead of overflowing.
+        // 0.65.6: forceExpandWidth false (was true) so the new fixed-width Refresh button stays small — a
+        // force-expanding HLG ignores flexibleWidth=0 (see the 0.9.8 note in ConstructPanelContent); the
+        // tooltip label keeps flexibleWidth=1 and still takes all the slack. MiddleLeft centers the button
+        // vertically against the 56px footer.
         var footer = UIFactory.CreateHorizontalGroup(parent, "TooltipFooter",
-            forceExpandWidth: true, forceExpandHeight: false,
+            forceExpandWidth: false, forceExpandHeight: false,
             childControlWidth: true, childControlHeight: true,
             spacing: 4, padding: new Vector4(8, 8, 4, 4));
         UIFactory.SetLayoutElement(footer, minHeight: 56, preferredHeight: 56, flexibleHeight: 0, flexibleWidth: 1);
+        var footerHlg = footer.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+        if (footerHlg != null) footerHlg.childAlignment = TextAnchor.MiddleLeft;
 
         // 0.10.13: dropped italic and bumped font size 12 → 13 for legibility.
         // Friend-test: italic at standard text scale is hard to read.
@@ -722,6 +738,27 @@ public partial class MainPanel : ResizeablePanelBase
         lbl.TextMesh.overflowMode = TextOverflowModes.Ellipsis;
         // Apply muted color so the tooltip text reads as secondary/contextual.
         lbl.TextMesh.color = Theme.MutedBody;
+
+        // 0.65.6: bottom-right "Refresh" — same action as Connection → Refresh Raphael.
+        _footerRefreshBtn = UIFactory.CreateButton(footer, "FooterRefreshBtn", FooterRefreshLabel);
+        UIFactory.SetLayoutElement(_footerRefreshBtn.Component.gameObject,
+            minWidth: Theme.ScaledWidth(64), preferredWidth: Theme.ScaledWidth(68), flexibleWidth: 0,
+            minHeight: Theme.ScaledHeight(24), preferredHeight: Theme.ScaledHeight(24), flexibleHeight: 0);
+        if (_footerRefreshBtn.ButtonText != null)
+        {
+            _footerRefreshBtn.ButtonText.enableWordWrapping = false;
+            _footerRefreshBtn.ButtonText.fontSize = Theme.ScaledUI(12);
+        }
+        TooltipHover.Attach(_footerRefreshBtn.Component.gameObject,
+            "Refresh Raphael: clears chat history and cached UI leftovers and frees memory — the same cleanup a " +
+            "relog does, without leaving the world. Settings and open windows are kept. (Also on the Connection tab.)");
+        _footerRefreshBtn.OnClick += () =>
+        {
+            bool ok = RunRaphaelRefresh();
+            if (_footerRefreshBtn?.ButtonText != null)
+                _footerRefreshBtn.ButtonText.text = ok ? "<color=#90EE90>Done</color>" : "<color=#FF8080>Failed</color>";
+            _footerRefreshRevertAt = UnityEngine.Time.unscaledTime + 2f;
+        };
 
         // Wire the static Sink so the per-frame TooltipHover.TickAll updates
         // this label. The TickAll action itself is registered in Plugin.Load,
@@ -1916,6 +1953,9 @@ public partial class MainPanel : ResizeablePanelBase
                 case PanelType.BeelzModHelpTab:
                     BuildBeelzModHelpTab(page);
                     break;
+                case PanelType.VRisingBasicsTab:
+                    BuildVRisingBasicsTab(page);
+                    break;
                 case PanelType.GameGuideTab:
                     BuildGameGuideTab(page);
                     break;
@@ -2141,9 +2181,28 @@ public partial class MainPanel : ResizeablePanelBase
         AddChatOptionToggle(chatCard, "Replace the game's chat (hide it; use this window)",
             Config.Settings.HideNativeChat,
             v => { Config.Settings.SetHideNativeChat(v); Plugin.UIManager?.ApplyNativeChatVisibility(); });
+        AddChatOptionToggle(chatCard, "Stronger hide if the game chat still flickers (experimental)",
+            Config.Settings.AggressiveNativeChatHide,
+            v => { Config.Settings.SetAggressiveNativeChatHide(v); Plugin.UIManager?.ApplyNativeChatVisibility(); });
         AddChatOptionToggle(chatCard, "On the All tab, send to Global by default (off = Local)",
             Config.Settings.ChatAllTabDefaultGlobal,
             v => Config.Settings.SetChatAllTabDefaultGlobal(v));
+
+        // 0.65.3: idle auto-hide — fade the chat window out after inactivity, like the native chat.
+        // Off by default; the wake triggers below are configurable so it can't blink from Raphael's
+        // own background Bloodcraft pings (System channel is opt-in as a wake source).
+        AddChatOptionToggle(chatCard, "Auto-hide the chat window when idle (fades out; opens on activity)",
+            Config.Settings.ChatAutoHideEnabled,
+            v => Config.Settings.SetChatAutoHideEnabled(v));
+        AddChatSecondsRow(chatCard, "    └ Hide after",
+            () => Config.Settings.ChatAutoHideSeconds,
+            v => Config.Settings.SetChatAutoHideSeconds(v), min: 3, max: 120);
+        AddChatOptionToggle(chatCard, "    └ A new player message wakes it (Global / Local / Clan / Whisper)",
+            Config.Settings.ChatAutoHideWakeOnMessage,
+            v => Config.Settings.SetChatAutoHideWakeOnMessage(v));
+        AddChatOptionToggle(chatCard, "    └ A System line wakes it (server broadcasts + Bloodcraft pings — may blink)",
+            Config.Settings.ChatAutoHideWakeOnSystem,
+            v => Config.Settings.SetChatAutoHideWakeOnSystem(v));
 
         // 0.17.0: chat-only text size — independent of the "Overlay text size"
         // row in Display settings (which previously also resized this window).
@@ -2203,6 +2262,35 @@ public partial class MainPanel : ResizeablePanelBase
         AddChatOptionToggle(chatFmtCard, "Show \"missing class / expertise / legacy — free power\" hints (Class, Weapon, Blood pages + overlays)",
             Config.Settings.ShowMissingElementHints,
             v => Config.Settings.SetShowMissingElementHints(v));
+
+        // ── Extended chat retention (own card) ─────────────────────────────
+        // The standalone window is the only DURABLE chat history (the server drops old lines fast). On
+        // servers whose mods flood System chat, retaining everything has a cost — so this lets the player
+        // turn the durable buffer off entirely, or keep only the channels they care about. All default ON,
+        // so the out-of-box behavior is unchanged. The gate lives in ChatRelayService.ShouldCapture.
+        var retentionCard = AddCard(page, "GameUIChatRetentionCard");
+        AddSectionHeading(retentionCard, "Extended chat retention (performance)");
+        AddBodyText(retentionCard,
+            "This window keeps chat after the game would normally drop it. Retaining a lot of chat — " +
+            "especially on servers whose mods flood SYSTEM messages — has a small cost, so use these to keep " +
+            "only what you want. A channel that's off still shows transiently in the game's own chat; it just " +
+            "isn't retained here. (Takes effect for new messages; already-kept lines stay until they age out.)");
+        AddChatOptionToggle(retentionCard, "Keep an extended chat history (master switch — off = retain nothing)",
+            Config.Settings.ExtendedChatCaptureEnabled,
+            v => Config.Settings.SetExtendedChatCaptureEnabled(v));
+        AddBodyText(retentionCard, "<color=#9FD0FF>Channels to keep in the extended history:</color>");
+        AddChatOptionToggle(retentionCard, "    └ Global",
+            Config.Settings.ExtendedCaptureGlobal,  v => Config.Settings.SetExtendedCaptureGlobal(v));
+        AddChatOptionToggle(retentionCard, "    └ Local",
+            Config.Settings.ExtendedCaptureLocal,   v => Config.Settings.SetExtendedCaptureLocal(v));
+        AddChatOptionToggle(retentionCard, "    └ Clan",
+            Config.Settings.ExtendedCaptureClan,    v => Config.Settings.SetExtendedCaptureClan(v));
+        AddChatOptionToggle(retentionCard, "    └ System / server",
+            Config.Settings.ExtendedCaptureSystem,  v => Config.Settings.SetExtendedCaptureSystem(v));
+        AddChatOptionToggle(retentionCard, "    └ Whispers (includes notes to self)",
+            Config.Settings.ExtendedCaptureWhisper, v => Config.Settings.SetExtendedCaptureWhisper(v));
+        AddChatOptionToggle(retentionCard, "    └ Other / uncategorized",
+            Config.Settings.ExtendedCaptureOther,   v => Config.Settings.SetExtendedCaptureOther(v));
 
         // ── Channels shown in the All tab (own card) ───────────────────────
         // Unchecking a channel hides it from the All tab only — its own dedicated tab still shows it.
@@ -2355,6 +2443,70 @@ public partial class MainPanel : ResizeablePanelBase
             setter(v);
             Plugin.UIManager?.RefreshChatWindowOverlay();
         };
+    }
+
+    // 0.65.3: a labeled whole-seconds slider + typed box (min..max), for the chat auto-hide delay.
+    // Modeled on AddTransparencyRow's slider/box mirroring; applies immediately (no live refresh needed
+    // — the value is read each frame by the auto-hide ticker).
+    private void AddChatSecondsRow(GameObject parent, string label,
+                                   System.Func<float> currentValue,
+                                   System.Action<float> applyValue, int min, int max)
+    {
+        var row = UIFactory.CreateHorizontalGroup(parent, $"ChatSecRow_{label}",
+            forceExpandWidth: true, forceExpandHeight: false,
+            childControlWidth: true, childControlHeight: true,
+            spacing: 6, padding: new Vector4(2, 2, 2, 2));
+        UIFactory.SetLayoutElement(row,
+            minWidth: 360, preferredWidth: 400, flexibleWidth: 1,
+            minHeight: 28, preferredHeight: 30, flexibleHeight: 0);
+
+        var lbl = UIFactory.CreateLabel(row, $"ChatSecLbl_{label}", $"{label}:",
+            TMPro.TextAlignmentOptions.MidlineLeft, color: null, fontSize: Theme.ScaledUI(13));
+        UIFactory.SetLayoutElement(lbl.GameObject,
+            minWidth: Theme.ScaledWidth(150), preferredWidth: Theme.ScaledWidth(170), flexibleWidth: 0,
+            minHeight: 22, preferredHeight: 24, flexibleHeight: 0);
+
+        int start = Mathf.Clamp(Mathf.RoundToInt(currentValue()), min, max);
+
+        var sliderGo = UIFactory.CreateSlider(row, $"ChatSecSlider_{label}", out var slider);
+        UIFactory.SetLayoutElement(sliderGo,
+            minWidth: 100, preferredWidth: 160, flexibleWidth: 1,
+            minHeight: 22, preferredHeight: 24, flexibleHeight: 0);
+        slider.minValue = min; slider.maxValue = max; slider.wholeNumbers = true; slider.value = start;
+
+        var gap = UIFactory.CreateUIObject($"ChatSecGap_{label}", row);
+        UIFactory.SetLayoutElement(gap,
+            minWidth: 12, preferredWidth: 12, flexibleWidth: 0, minHeight: 10, preferredHeight: 10, flexibleHeight: 0);
+
+        var box = UIFactory.CreateInputField(row, $"ChatSecInput_{label}", start.ToString());
+        UIFactory.SetLayoutElement(box.GameObject,
+            minWidth: 44, preferredWidth: 48, flexibleWidth: 0, minHeight: 22, preferredHeight: 24, flexibleHeight: 0);
+        box.Component.contentType = TMPro.TMP_InputField.ContentType.IntegerNumber;
+        box.Component.characterLimit = 3;
+        box.Text = start.ToString();
+
+        var unit = UIFactory.CreateLabel(row, $"ChatSecUnit_{label}", "s",
+            TMPro.TextAlignmentOptions.MidlineLeft, color: null, fontSize: Theme.ScaledUI(12));
+        UIFactory.SetLayoutElement(unit.GameObject,
+            minWidth: Theme.ScaledWidth(14), preferredWidth: Theme.ScaledWidth(16), flexibleWidth: 0,
+            minHeight: 22, preferredHeight: 24, flexibleHeight: 0);
+
+        bool syncing = false;
+        slider.onValueChanged.AddListener((System.Action<float>)(v =>
+        {
+            if (syncing) return; syncing = true;
+            int s = Mathf.Clamp(Mathf.RoundToInt(v), min, max);
+            box.Text = s.ToString(); applyValue(s);
+            syncing = false;
+        }));
+        box.Component.onEndEdit.AddListener((System.Action<string>)(str =>
+        {
+            if (syncing) return; syncing = true;
+            if (!int.TryParse(str, out int s)) s = Mathf.RoundToInt(currentValue());
+            s = Mathf.Clamp(s, min, max);
+            box.Text = s.ToString(); slider.value = s; applyValue(s);
+            syncing = false;
+        }));
     }
 
     private static void AddTabHeading(GameObject page, string text)
@@ -4800,15 +4952,17 @@ public partial class MainPanel : ResizeablePanelBase
             buildContent: c =>
             {
                 AddContextBodyLabel(c, "ExoPrestigeBody",
-                    "Up to <b>100 Exo tiers</b> available once you've maxed leveling-prestige.\n" +
-                    "  • Each Exo prestige resets your XP to 0 (level stays at max).\n" +
-                    "  • Awards <b>500× Primal Stygian Shards</b> per tier (ExoPrestigeReward = 28358550, ExoPrestigeRewardQuantity = 500).\n" +
-                    "  • Unlocks <b>Exoforms</b> — shapeshift between Evolved Vampire and Corrupted Serpent.\n" +
+                    "Up to <b>100 Exo prestige tiers</b> available once you've maxed leveling-prestige.\n" +
+                    "  • Each Exo prestige resets your <b>character level back to 0</b> — you re-level to max " +
+                    "every time (and feel the level-difference penalty again until you do). It's the Exo " +
+                    "<i>prestige</i> tier that climbs and stays; your character level does NOT stay at max.\n" +
+                    "  • Unlocks <b>Exoforms</b> — shapeshift between Evolved Vampire and Corrupted Serpent. " +
+                    "Pick which form with <b>.prestige sf</b> (above); <b>.prestige exoform</b> triggers the " +
+                    "transformation (taunt emote by default).\n" +
                     "    Form duration grows from <b>15s</b> at Exo 1 to roughly <b>180s</b> at Exo 100 " +
                     "    (formula: 15 + (165 ÷ 100) × exoLevel).\n" +
-                    "  • Shard rewards can buy specific V-Blood familiars via <b>.fam echoes &lt;Name&gt;</b> " +
-                    "    (cost scales with V-Blood level + tier; shard bearers cost ~25× baseline).\n\n" +
-                    "Use the <b>.prestige sf</b> form (above) to pick which exoform is active; <b>.prestige exoform</b> triggers the transformation (taunt emote by default).",
+                    "  • Servers usually grant a reward at each Exo tier, but <b>what you get varies by server</b> " +
+                    "— check with your server admin for details.",
                     fontSize: 12);
             });
         AddServerDisclaimer(progressionCard);
@@ -8349,6 +8503,189 @@ public partial class MainPanel : ResizeablePanelBase
     // QuickStartTab and the upcoming mod-mechanics help tab). Surface official
     // homepage + community-maintained resources so new players can find
     // mechanics docs, maps, and the official Discord without leaving the UI.
+    // In-built base-game guide. Explains VANILLA V Rising mechanics for players new to the game, then
+    // summarizes how each server mod layers on top — so Raphael reads as a one-stop reference. Deliberately
+    // does NOT duplicate the per-mod command references (those live in the Bloodcraft / Beelzebub / Uriel /
+    // Faust Help tabs); the "with the mods" notes here point there so the two don't drift. Base-game details
+    // can shift with Stunlock patches and many specifics are server-configurable, so the text hedges numbers
+    // and points players at their server admin / the external Game Guide links for authoritative detail.
+    //
+    // Structure mirrors BuildModHelpTab: AddGuideSection for the always-visible overview, AddCollapsibleHelpDetail
+    // for the deeper "Details" / "With the mods" blocks the reader can expand on demand.
+    private void BuildVRisingBasicsTab(GameObject page)
+    {
+        AddGuideSection(page,
+            "V Rising — how the game works",
+            "New to V Rising? This is a plain-language guide to the base game — what blood, gear level, " +
+            "V Bloods and castles actually do — followed by a summary of how the server mods Raphael " +
+            "supports change the experience. Raphael itself is a UI mod: it does not change the game, it " +
+            "just gives you a nicer interface for it and the mods.\n\n" +
+            "Heads-up: Stunlock patch the game over time and most servers tweak their settings, so treat the " +
+            "numbers below as defaults/typical values. When something seems off for your server, ask your " +
+            "admin or check the official wiki on the Game Guide tab.");
+
+        // ─────────────────────────────────────────────────────────────────
+        AddSectionHeading(page, "Vampire survival");
+        AddGuideSection(page,
+            "Blood, sunlight, and staying alive",
+            "You are a vampire. Two things matter from minute one: blood keeps you powered, and the sun " +
+            "kills you. Daylight burns you fast in the open — travel in shade, under cover, or via the world's " +
+            "shadow paths, and build a roof over your base early. Garlic exposure, holy ground, and silver all " +
+            "hurt vampires too (see The world, below).");
+        AddCollapsibleHelpDetail(page, "Details — Blood types & quality",
+            "• Feeding on a creature gives you its BLOOD TYPE — Warrior, Rogue, Brute, Scholar, Worker, " +
+            "Creature, Draculin, Scholar, and more — each granting a different set of combat bonuses while " +
+            "you carry it.\n" +
+            "• Blood has a QUALITY percentage (0–100%). Higher quality = stronger bonuses, and at high " +
+            "quality you unlock extra bonus tiers for that blood type. Feeding from a higher-quality victim " +
+            "raises your blood; taking hits and time lower it.\n" +
+            "• Your BLOOD POOL is also your resource bar for some abilities and your sustain — it drains in " +
+            "sunlight and over time, so keep topped up by feeding.\n" +
+            "• Match your blood type to your playstyle: e.g. Warrior for melee damage, Rogue for crit/move " +
+            "speed, Brute for sustain, Scholar for spell power. The right blood at high quality is a real " +
+            "power spike, separate from your gear.");
+        AddCollapsibleHelpDetail(page, "With the mods — Blood",
+            "• BLOODCRAFT adds Blood Legacies: each blood type levels up the more you use it, granting " +
+            "permanent stat bonuses on top of vanilla blood bonuses, plus prestige on each legacy. See the " +
+            "Blood Legacy tab and the Bloodcraft Help tab for the full breakdown.");
+
+        // ─────────────────────────────────────────────────────────────────
+        AddSectionHeading(page, "Combat & power");
+        AddGuideSection(page,
+            "Gear Level is your \"level\"",
+            "Vanilla V Rising has NO experience bar or character levels. Your power is your GEAR LEVEL — a " +
+            "single number computed from the tier of your equipped weapon, armor, and the spells/jewels you " +
+            "have slotted. Better gear = higher gear level = you hit harder and take less from same-level " +
+            "enemies.\n\n" +
+            "Every enemy and boss has a level too. Fighting something far above your gear level means your " +
+            "hits are heavily reduced and theirs are amplified — so the loop is: beat content near your " +
+            "level, craft the better gear it unlocks, raise your gear level, move to the next tier.");
+        AddCollapsibleHelpDetail(page, "Details — Weapons, spells & vampire powers",
+            "• WEAPONS: each weapon type (mace, sword, spear, crossbow, slashers, greatsword, pistols, " +
+            "longbow, twinblades, whip, axes, …) has its own feel plus two special attacks. Swapping weapons " +
+            "to suit the fight is normal play.\n" +
+            "• SPELLS come in schools — Blood, Unholy, Chaos, Frost, Illusion, Storm. You slot abilities into " +
+            "your spell slots and an ultimate; JEWELS modify and upgrade individual spells.\n" +
+            "• VAMPIRE POWERS: dodge/travel abilities, the bat form for fast travel (unlocked later), and " +
+            "utility powers all come from progression.\n" +
+            "• Most new abilities, spells, and recipes are unlocked by defeating V Blood bosses (next " +
+            "section) — that's the spine of vanilla progression.");
+        AddCollapsibleHelpDetail(page, "With the mods — Combat & progression",
+            "• BLOODCRAFT bolts a full RPG layer onto vanilla's gear-only power: character XP and levels, " +
+            "Classes, Weapon Expertise (weapons level with use and grant stats), and Prestige. Your effective " +
+            "power becomes gear + level + expertise + legacy + class, not just gear. See the Class, Weapon " +
+            "(Expertise), Levels and Prestige tabs, and the Bloodcraft Help tab.\n" +
+            "• BEELZEBUB lets you capture enemy abilities and equip them in custom loadouts, and unlocks " +
+            "transform forms (Dracula / Morgana). See the Beelzebub Help tab.");
+
+        // ─────────────────────────────────────────────────────────────────
+        AddSectionHeading(page, "Progression — V Bloods & crafting");
+        AddGuideSection(page,
+            "V Bloods: the backbone of progress",
+            "V Bloods are special named bosses scattered across the world, each at a set level. Defeating one " +
+            "lets you consume its powerful blood, which permanently UNLOCKS rewards: new spells, weapon " +
+            "abilities, crafting recipes, structures, and travel powers. You hunt them roughly in level order.\n\n" +
+            "Use the in-game Blood Altar to track and locate the next V Bloods available to you — it's your " +
+            "to-do list for the whole game. Clearing V Bloods is what raises your crafting options and, with " +
+            "it, your gear level.");
+        AddCollapsibleHelpDetail(page, "Details — Crafting, refinement & servants",
+            "• RESOURCES flow through refinement chains: raw materials → refined goods (planks, ingots, " +
+            "scrolls, etc.) at the right station → crafted gear/structures. Higher tiers need stations and " +
+            "recipes unlocked from V Bloods.\n" +
+            "• SERVANTS: later you can convert defeated humans into castle servants, sending them on " +
+            "expeditions for loot/resources. Servant power scales with the blood you converted them with.\n" +
+            "• HORSES can be tamed for fast overland travel; the bat form (late unlock) gives flight between " +
+            "discovered points.\n" +
+            "• Inventory/crafting management is a big time sink in vanilla — which is exactly what some mods " +
+            "streamline (see below).");
+        AddCollapsibleHelpDetail(page, "With the mods — Progression & logistics",
+            "• BLOODCRAFT adds Familiars (defeated enemies can become summonable combat companions, stored " +
+            "in boxes), Professions (gathering/crafting skills that level up), and Daily Quests. See the " +
+            "Familiars / Boxes / All Familiars / Daily Quest tabs and the Bloodcraft Help tab.\n" +
+            "• KINDREDLOGISTICS automates inventory: auto-stashing, pulling from network storage, and sorting " +
+            "— removing much of the manual hauling. See the Kindred Logistics tab.\n" +
+            "• URIEL adds shared storage between players, public prisons, live stair restyling, and spawning " +
+            "decorative/utility objects. See the Uriel Help tab.");
+
+        // ─────────────────────────────────────────────────────────────────
+        AddSectionHeading(page, "Your castle");
+        AddGuideSection(page,
+            "Castle Heart, territory & upkeep",
+            "Your base is built around a CASTLE HEART placed on a territory plot. The Heart claims the " +
+            "surrounding territory, powers your crafting stations and defenses, and must be FUELED with blood " +
+            "essence (gathered from kills / greater blood essence). Let it run dry and your castle enters " +
+            "DECAY — structures degrade and eventually can be lost.\n\n" +
+            "Upgrading the Heart raises your castle level, which increases your servant cap and territory " +
+            "size. Plots are limited, so good early spots get claimed fast on busy servers.");
+        AddCollapsibleHelpDetail(page, "Details — Raiding, decay & offline protection",
+            "• On PvP servers, castles can be raided during set windows; on PvE servers they can't. Which " +
+            "applies, the raid windows, decay rates, and offline-protection rules are all SERVER SETTINGS — " +
+            "ask your admin or check the server's rules.\n" +
+            "• Keep the Heart fueled and your blood-essence stock up, especially before logging off, so you " +
+            "don't return to a decaying castle.\n" +
+            "• Territory and plot availability change as players come and go — a freed plot becomes claimable.");
+        AddCollapsibleHelpDetail(page, "With the mods — Castles & server info",
+            "• FAUST is an information/investigation mod: it surfaces castle ownership, plot " +
+            "size/availability, decay timers, player playtime, V Blood boss status, leaderboards, and a world " +
+            "map — extremely handy for finding open plots or planning. See the Faust Guide tab.\n" +
+            "• KINDREDCOMMANDS gives admins the command tools to manage players, castles, and the server.");
+
+        // ─────────────────────────────────────────────────────────────────
+        AddSectionHeading(page, "The world & its hazards");
+        AddGuideSection(page,
+            "Map, travel & vampire weaknesses",
+            "The world is divided into regions that rise in danger and level as you go outward. Discover " +
+            "WAYGATES to fast-travel between them (you can't carry most resources through waygates by " +
+            "default). World bosses, resource nodes, and points of interest dot each region.\n\n" +
+            "Vampire hazards to respect: SUNLIGHT burns you in the open during the day; GARLIC exposure " +
+            "stacks a debuff indoors in human settlements; HOLY ground and holy enemies deal bonus damage; " +
+            "and SILVER (including silver coins in your inventory) burns you until you have silver resistance. " +
+            "Resistances are improved through gear, consumables, and progression.");
+        AddCollapsibleHelpDetail(page, "Details — Difficulty & PvP vs PvE",
+            "• Servers run at different difficulties (e.g. relaxed → standard → brutal), which scale enemy " +
+            "strength and your durability.\n" +
+            "• PvE servers focus on co-op/solo progression with no castle raiding or player-vs-player combat; " +
+            "PvP servers add player combat and (windowed) raiding. The exact ruleset is server-defined.\n" +
+            "• Clan size, drop rates, blood quality, and many other knobs vary per server — your experience " +
+            "can differ a lot from another server's.");
+
+        // ─────────────────────────────────────────────────────────────────
+        AddSectionHeading(page, "How the mods change the game");
+        AddGuideSection(page,
+            "What each server mod adds",
+            "Raphael is a unified UI for several server-side mods. WHICH of these you actually have depends on " +
+            "your server — Raphael auto-detects them and shows the matching tab groups. Here's the short " +
+            "version of what each one does; open its own Quick Start / Help tab for the full guide.");
+        AddCollapsibleHelpDetail(page, "Bloodcraft — RPG progression",
+            "Turns gear-only vanilla into a full RPG: character XP & levels, Classes, Weapon Expertise, Blood " +
+            "Legacies, Prestige (incl. endgame Exo prestige + Exoform shapeshifts), Familiars, Professions, " +
+            "and Daily Quests. The biggest gameplay change of the set. → Bloodcraft Quick Start / Bloodcraft Help.");
+        AddCollapsibleHelpDetail(page, "Beelzebub — abilities & transforms",
+            "Capture abilities from enemies and slot them into custom loadouts (universal + per-weapon), bind " +
+            "extra abilities to hotkeys, and unlock transform forms (Dracula / Morgana). → Beelzebub Quick " +
+            "Start / Beelzebub Help.");
+        AddCollapsibleHelpDetail(page, "Uriel — sharing, prisons & building",
+            "Share storage chests with other players (with permissions/limits), run public prisons, restyle " +
+            "stairs live, and spawn an unlocked palette of decorative/utility objects. → Uriel Quick Start / " +
+            "Uriel Help.");
+        AddCollapsibleHelpDetail(page, "Faust — server information",
+            "A read-only intel layer: castle/plot info, decay watch, player playtime & frequency, V Blood " +
+            "boss status, kill/playtime leaderboards, and a filterable world map. Great for finding plots, " +
+            "planning hunts, and admin oversight. → Faust Guide.");
+        AddCollapsibleHelpDetail(page, "Kindred suite — logistics & admin",
+            "KindredLogistics automates inventory (auto-stash, network pull, sorting). KindredCommands is an " +
+            "admin/player command toolkit. → Kindred Logistics tab + the Kindred admin/player tabs.");
+
+        AddSpacer(page, 8);
+        AddGuideSection(page,
+            "Want more detail?",
+            "This guide is a primer. For authoritative base-game detail (exact numbers, maps, boss " +
+            "locations) use the official wiki and community links on the Game Guide tab. For each mod's full " +
+            "mechanics and command list, use its dedicated Help tab in this same Settings and Help group. " +
+            "Anything server-specific — drop rates, raid windows, rewards — is best confirmed with your " +
+            "server admin.");
+    }
+
     private void BuildGameGuideTab(GameObject page)
     {
         AddGuideSection(page,
@@ -8624,21 +8961,28 @@ public partial class MainPanel : ResizeablePanelBase
         AddGuideSection(page,
             "Exo Prestige & Exoforms (endgame)",
             "Past the regular experience-prestige cap, Bloodcraft has an Exo " +
-            "prestige tier that grants the most powerful endgame buffs and unlocks " +
-            "shapeshift forms (Exoforms).\n\n" +
+            "prestige tier (up to 100 levels) that unlocks shapeshift forms " +
+            "(Exoforms).\n\n" +
+            "Important: each Exo prestige resets your CHARACTER LEVEL back to 0 — " +
+            "you have to level back up to max every time. Only the Exo prestige " +
+            "tier itself carries over; your character level does not stay at max.\n\n" +
             "Two Exoforms are available — Evolved Vampire and Corrupted Serpent. " +
             "Pick which one is active with .prestige sf <EvolvedVampire|" +
             "CorruptedSerpent>; trigger the transformation with .prestige " +
             "exoform (defaults to a taunt emote trigger). Form duration scales " +
             "with your Exo tier.\n\n" +
-            "Exo prestige also yields reward shards usable for advanced familiar " +
-            "unlocks — .fam echoes <VBloodName> spends shards to unlock V-Blood " +
-            "familiars whose costs scale by tier.");
+            "Servers usually grant a reward at each Exo tier, but the reward " +
+            "varies from server to server — check with your server admin for what " +
+            "yours gives. (Where a server grants shard rewards, .fam echoes " +
+            "<VBloodName> can spend them to unlock V-Blood familiars.)");
         AddCollapsibleHelpDetail(page, "Details — Exo & Exoforms",
             "• Requires <b>maxed Experience prestige</b> + level 90 to start Exo " +
             "tiering. Up to <b>100 Exo tiers</b> available.\n" +
-            "• Each Exo prestige resets your XP to 0 again but awards <b>500× " +
-            "Primal Stygian Shards</b> (PrefabGUID 28358550) per tier.\n" +
+            "• Each Exo prestige <b>resets your character level to 0</b> (re-level to " +
+            "max each time) while the Exo prestige tier itself carries over.\n" +
+            "• Servers usually grant a per-tier reward; the reward varies by server " +
+            "(the Bloodcraft default is <b>500× Primal Stygian Shards</b>, " +
+            "PrefabGUID 28358550, but most servers change this — check with your admin).\n" +
             "• Exoform duration: <b>15s</b> at Exo 1, growing to roughly <b>180s</b> " +
             "at Exo 100 (formula: 15 + (165 ÷ 100) × exoLevel).\n" +
             "• Forms recharge passively; base full-recharge time scales down as " +
@@ -9910,6 +10254,12 @@ public partial class MainPanel : ResizeablePanelBase
 
     private void TickTabAutoRefresh()
     {
+        // 0.65.6: put the footer Refresh label back after its brief "Done" confirmation.
+        if (_footerRefreshRevertAt > 0f && UnityEngine.Time.unscaledTime >= _footerRefreshRevertAt)
+        {
+            _footerRefreshRevertAt = -1f;
+            try { if (_footerRefreshBtn?.ButtonText != null) _footerRefreshBtn.ButtonText.text = FooterRefreshLabel; } catch { }
+        }
         if (!MessageService.IsInitialized) return;
         // Only the panel-is-open path matters; tab tickers shouldn't run
         // while the main panel is hidden.
@@ -9977,6 +10327,14 @@ public partial class MainPanel : ResizeablePanelBase
         UnsubscribeBeelz(); // 0.18: drop BeelzState handlers so they don't leak across rebuilds
         UnsubscribeUriel(); // 0.26: same, for UrielState handlers
         UnsubscribeFaust(); // drop FaustState handlers so they don't leak across rebuilds
+        RunFaustPickerUnsubs(); // 0.65.6: + the Faust picker repop closures (see MainPanel.Faust.cs)
+        BoxNameDropdownField.DetachAll(); // 0.65.6: + the box-name form fields' BoxListChanged handlers
+        if (_allFamSubscribed) // 0.65.6: All Familiars tab (subscribed in BuildAllFamiliarsTab) was never detached
+        {
+            PlayerStateService.BoxContentsChanged -= OnAllFamBoxContentsChanged;
+            VBloodScannerService.ScanStateChanged -= OnAllFamScanStateChanged;
+            _allFamSubscribed = false;
+        }
         if (_deferredAvailabilityRefresh != null)
         {
             Raphael.Behaviors.CoreUpdateBehavior.Actions.Remove(_deferredAvailabilityRefresh);

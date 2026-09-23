@@ -38,6 +38,7 @@ public enum PanelType
     QuickStartTab,          // 0.19: now a GENERAL Raphael getting-started (mod-agnostic)
     BloodcraftQuickStartTab,// 0.19: Bloodcraft-specific getting-started (parallel to the Beelzebub one)
     ModHelpTab,             // 0.13.0: deeper Bloodcraft mechanics reference
+    VRisingBasicsTab,       // in-built base-game guide: vanilla V Rising mechanics + how each mod changes them
     GameGuideTab,           // 0.12.1: V Rising game guide / external links
     VanillaAdminTab,
     AboutTab,

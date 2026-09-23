@@ -25,6 +25,20 @@ public partial class MainPanel
 
     // ---- shared subscription guard for the Faust tabs ----
     private bool _faustSubscribed;
+    // 0.65.6 LEAK FIX: the online-player / castle / boss picker repop closures capture this panel and only
+    // self-detach when their FaustState event fires — on a server where Faust never answers, every rebuilt
+    // MainPanel stayed rooted. Each site registers its unsubscriber here; RunFaustPickerUnsubs() (Reset) drains it.
+    private readonly System.Collections.Generic.List<Action> _faustPickerUnsubs = new();
+
+    private void RunFaustPickerUnsubs()
+    {
+        var snapshot = _faustPickerUnsubs.ToArray();
+        _faustPickerUnsubs.Clear();
+        foreach (var u in snapshot)
+        {
+            try { u(); } catch (Exception ex) { LogUtils.LogDebug($"[Faust] picker unsubscribe threw: {ex.Message}"); }
+        }
+    }
 
     // Live UI handles (refreshed on FaustState change events).
     private TextMeshProUGUI _faustSettingsReadout;     // Settings tab — connection / state line
@@ -294,6 +308,7 @@ public partial class MainPanel
             SetFaustDropdownOptions(dd, FaustPlayerPickerOptions(ids, disp), 0);
         };
         FaustState.PositionsChanged += repop;
+        _faustPickerUnsubs.Add(() => FaustState.PositionsChanged -= repop);
 
         // Auto-fill once if the feature isn't fully off. (Don't gate on the "admin" token — admins CAN use
         // admin-gated features yet the handshake still reports `admin`, so gating on it wrongly left admins with an
@@ -351,6 +366,7 @@ public partial class MainPanel
             SetFaustDropdownOptions(dd, FaustCastlePickerOptions(ids), 0);
         };
         FaustState.AllPlotsChanged += repop;
+        _faustPickerUnsubs.Add(() => FaustState.AllPlotsChanged -= repop);
 
         // Auto-fill once if the feature isn't fully off (don't gate on the "admin" token — admins can use it; the
         // inline Load button + the All Plots tab are the manual fallback for non-admins).
@@ -4573,6 +4589,7 @@ public partial class MainPanel
             SetFaustDropdownOptions(bpick, FaustBossPickerOptions(bnames, bguids), 0);
         };
         FaustState.BossesChanged += brepop;
+        _faustPickerUnsubs.Add(() => FaustState.BossesChanged -= brepop);
         _faustBossInput = AddFaustLabeledInput(lookCard, "FaustBossQ", "…or type name / GUID", "e.g. Solarus the Immaculate");
         var lrow = MakeFaustRow(lookCard, "FaustBossLookupBtns");
         AddFaustButton(lrow, "FaustBossLookup", "Look up boss",

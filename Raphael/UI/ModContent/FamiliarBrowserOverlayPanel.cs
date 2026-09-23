@@ -960,6 +960,13 @@ public class FamiliarBrowserOverlayPanel : ResizeablePanelBase
             VBloodScannerService.ScanStateChanged      -= OnScanStateChanged;
             _vbCollectionSubscribed = false;
         }
+        // 0.65.6: the V Blood summon-status subscription (made lazily on first summon click) was never detached,
+        // so every overlay rebuild left the old instance rooted by VBloodSummonService.StatusChanged.
+        if (_vbSummonStatusSubscribed)
+        {
+            Services.VBloodSummonService.StatusChanged -= OnVBSummonStatus;
+            _vbSummonStatusSubscribed = false;
+        }
         // Always remove the auto-pull ticker so it doesn't keep firing after
         // panel destruction. Idempotent — Remove on a non-registered handler
         // is a no-op.

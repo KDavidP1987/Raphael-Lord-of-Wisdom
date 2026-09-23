@@ -15,7 +15,8 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
 - **One panel for your server's mods** — left-rail tab groups for Bloodcraft, Kindred, Beelzebub, Uriel, and Faust; each shows only when detected.
 - **Commands as forms** — player pickers, dropdowns, and number fields instead of typing `.lvl set <Player> <Level>` into chat.
 - **Live HUD overlays** — XP, familiar, weapon/blood, professions, quests, shift-spell cooldown, and more. Each is draggable, resizable, and individually toggleable.
-- **Standalone chat window** — tabbed per-channel chat (Global / Local / Clan / Whispers / System), whisper anyone online, custom colors. Needs no server mods.
+- **Standalone chat window** — tabbed per-channel chat (Global / Local / Clan / Whispers / System), whisper anyone online, custom colors, and per-channel history controls (keep conversation, drop noisy System floods). Needs no server mods.
+- **In-built game guide** — a "V Rising Basics" tab explaining the base game (blood, Gear Level, V Bloods, castles, hazards) and how each mod changes it, so new players have a one-stop primer.
 - **Admin tooling** — surfaced wherever the backing mod provides it: Kindred admin, Beelzebub ability shaping, Faust server analytics, Uriel sharing/spawning.
 
 <details>
@@ -27,11 +28,12 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
   - **Kindred** — Logistics (+ admin), Commands, Admin: Players / Server / World.
   - **Beelzebub** — Bestiary, Loadout (universal + per-weapon + per-form ability sets), Hotkeys, Transforms, Settings, admin Config / Players.
   - **Faust** — Castle Info, Open/All Plots, Decay Watch, Castle Resources, Player Info, Clans, Player Positions, Server Stats, **Boss Status**, **Leaderboards**, **World Map**, admin Control / Oversight.
-  - **Settings & Help** — Quick Start, Mod Help, Game Guide, Settings, About.
+  - **Settings & Help** — Quick Start, per-mod Help guides, **V Rising Basics** (in-built base-game guide), Game Guide (external links), Settings, About.
 - **Secondary overlays** (toggle from the footer) — XP, Familiar, Familiar Browser, Daily Quest, Professions, Shift Spell, a Combined info overlay, Quick Actions, a Familiar Quick Spawn overlay, and a Faust Boss Tracker. Each is independently draggable/resizable with its own transparency; visibility persists across sessions.
 - **Freeze actions while the UI is open** (opt-in) — stop moving/attacking/casting and block menu hotkeys while you click around the panel.
 - **"Last server response" panel** — replies to read-data commands (`.wep get`, `.class l`, …) show in-UI, not just in chat.
 - **Live data** via Bloodcraft's signed broadcast protocol, with chat-regex fallback for replies it doesn't cover.
+- **Refresh button** (panel footer, bottom-right; also Settings → Connection) — clears chat history and stale UI caches without touching settings. Use it if the game feels slower after a long session.
 - **Quality of life** — hover tooltips on every control, auto-resizing panel, scrollable tabs + left rail, a two-zone color theme, a 50–400% text-size slider, and opt-in keyboard hotkeys.
 
 </details>
@@ -105,8 +107,8 @@ Settings don't transfer — Raphael writes a new config, so overlay positions, c
 | **KindredCommands** (server) | v2.5.8 | Admin/player commands → Kindred |
 | **KindredLogistics** (server) | v1.6.0 | Logistics toggles → Kindred |
 | **Beelzebub** (server, optional) | API 22 | Abilities / transforms → Beelzebub |
-| **Faust** (server, optional) | 0.16.x (API 18) | Server investigation & analytics → Faust |
-| **Uriel** (server, optional) | v0.19.0 | Storage / prisons / stairs / spawning → Uriel |
+| **Faust** (server, optional) | 0.16.4 (API 19) | Server investigation & analytics → Faust |
+| **Uriel** (server, optional) | v0.20.0 | Storage / prisons / stairs / spawning → Uriel |
 | **Eclipse** (client) | v1.3.13 | ⚠ Compatibility needs re-testing — disable while running Raphael |
 
 Newer Bloodcraft builds generally still work — the chat-command grammar is stable. If a tab does nothing on click, the server likely renamed a command.
@@ -126,16 +128,66 @@ Newer Bloodcraft builds generally still work — the chat-command grammar is sta
 <details>
 <summary><b>Screenshots</b></summary>
 
-*Captured on v0.13.0; the day-to-day look still applies.*
+*Captured on v0.65.6. Click a group to expand it.*
 
-![Class tab](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.13.0%20Screenshots/Raphael_Screenshot_v0.13.0-IMG4.png)
-*Class tab — active class card with synergies and the live `.class lst` data.*
+<details>
+<summary><b>Main panel &amp; settings</b></summary>
 
-![Weapon Expertise tab](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.13.0%20Screenshots/Raphael_Screenshot_v0.13.0-IMG7.png)
-*Weapon Expertise — current expertise, class synergies, and the set-bonus-stat form.*
+![Main panel](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-MainUI.png)
+*Main panel: tab groups on the left rail, overlay toggles in the footer, and the small **Refresh** button bottom-right.*
 
-![In-castle overlays](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.13.0%20Screenshots/Raphael_Screenshot_v0.13.0-IMG12.png)
-*Overlays running alongside the V Rising HUD — XP / weapon / blood / familiar readouts streaming live.*
+![Quick Start](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-MainUI-Settings-QuickStart.png)
+*Quick Start: a one-minute tour shown on first open.*
+
+![Settings](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-MainUI-Settings-Settings.png)
+*Settings: text-size sliders, launcher size, and per-overlay transparency.*
+
+</details>
+
+<details>
+<summary><b>Overlays &amp; chat window</b></summary>
+
+![Overlays in game](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-UI-Overlays-Settings.png)
+*Overlays in play: XP / class / weapon / legacy, professions, daily quest, and the Familiar Browser, next to HUD settings.*
+
+![Tabbed chat window](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-MainUI-Settings-GameChatUI.png)
+*Standalone tabbed chat window (All / Global / Local / Clan / System / Whispers) and its settings. Works on any server.*
+
+</details>
+
+<details>
+<summary><b>Bloodcraft</b></summary>
+
+![Familiar overlays](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-BloodCraft-FamiliarManagement.png)
+*Familiar overlays: active familiar stats and the Familiar Browser box list.*
+
+![V-Bloods tab](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-Bosses.png)
+*V-Bloods: captured-familiar collection with filters and one-click Summon.*
+
+![Class tab](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-Bloodcraft_Classes.png)
+*Class tab.*
+
+![Weapon Expertise tab](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-Bloodcraft_WeaponExp.png)
+*Weapon Expertise tab.*
+
+![Blood Legacy tab](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-Bloodcraft_BloodLegacy.png)
+*Blood Legacy tab.*
+
+![Levels tab](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-Bloodcraft_Leveling.png)
+*Levels tab.*
+
+![Prestige tab](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-Bloodcraft_Prestige.png)
+*Prestige tab.*
+
+</details>
+
+<details>
+<summary><b>Kindred</b></summary>
+
+![Kindred Logistics tab](https://raw.githubusercontent.com/KDavidP1987/Raphael-Lord-of-Wisdom/main/docs/screenshots/v0.65.6%20Screenshots/Raphael-v0.65.6-KindredCommands.png)
+*KindredLogistics: personal toggles and item/chest finders as buttons.*
+
+</details>
 
 </details>
 

@@ -199,15 +199,26 @@ public class FamiliarQuickSpawnOverlayPanel : ResizeablePanelBase
             string label = isActive ? $"● {name}" : name;
 
             var btn = UIFactory.CreateButton(_slotContainer, $"QSSlot_{name}", label);
+            // Scale the button HEIGHT with the overlay font multiplier (not just the font):
+            // at large overlay scales a fixed 26px row can't fit the bigger glyphs, so the
+            // line was being dropped entirely. ScaledOverlayHeight grows the row in lockstep.
             UIFactory.SetLayoutElement(btn.GameObject,
                 minWidth: 140, preferredWidth: 220, flexibleWidth: 1,
-                minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
+                minHeight: Theme.ScaledOverlayHeight(24), preferredHeight: Theme.ScaledOverlayHeight(26), flexibleHeight: 0);
             var t = btn.Component.GetComponentInChildren<TextMeshProUGUI>();
             if (t != null)
             {
                 t.alignment = Theme.OverlayMidlineAlignment();
-                t.fontSize = Theme.ScaledOverlay(12);
                 t.enableWordWrapping = false;
+                // Auto-shrink so a long familiar name (or a large overlay font scale) shrinks to
+                // stay readable instead of vanishing: with a fixed font + Ellipsis, text that
+                // couldn't fit the button was dropped to nothing. fontSizeMax keeps the intended
+                // 12pt look; the 7pt floor lets it shrink to fit; Ellipsis only truncates with
+                // "…" when even the floor won't fit. (enableAutoSizing makes TMP ignore fontSize,
+                // so we drive the size via the min/max pair.)
+                t.enableAutoSizing = true;
+                t.fontSizeMax = Theme.ScaledOverlay(12);
+                t.fontSizeMin = 7f;
                 t.overflowMode = TextOverflowModes.Ellipsis;
                 if (isActive) t.fontStyle = FontStyles.Bold;
             }

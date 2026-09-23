@@ -222,6 +222,39 @@ public static partial class MessageService
         SendMessage(text);
     }
 
+    /// <summary>
+    /// 0.65.0: send a protocol handshake as a WHISPER TO SELF rather than Local proximity chat.
+    /// A real Bloodcraft/Eclipse server consumes the frame purely by its text content
+    /// (Contains("[ECLIPSE]") + MAC) and destroys the entity before rebroadcast, so this behaves
+    /// identically there. But on a server that does NOT run Bloodcraft, nothing consumes it — and a
+    /// Local message would then be proximity-broadcast to nearby players (raw handshake in their
+    /// chat AND a floating bubble over the sender's head; the "Eclipse relog spam" bug). A whisper
+    /// addressed to yourself is never proximity-broadcast, so the leak can't reach bystanders.
+    /// ReceiverEntity = our own NetworkId (same self-target the Local path already used).
+    /// </summary>
+    public static void SendRawSelfWhisper(string text)
+    {
+        if (!_isInitialized || string.IsNullOrEmpty(text)) return;
+        try
+        {
+            var chatMessageEvent = new ChatMessageEvent
+            {
+                MessageText    = text,
+                MessageType    = ChatMessageType.Whisper,
+                ReceiverEntity = _localUser.Read<NetworkId>(),
+            };
+
+            Entity networkEntity = EntityManager.CreateEntity(NetworkEventComponents);
+            networkEntity.Write(new FromCharacter { Character = _localCharacter, User = _localUser });
+            networkEntity.Write(NetworkEventType);
+            networkEntity.Write(chatMessageEvent);
+        }
+        catch (Exception ex)
+        {
+            LogUtils.LogError($"MessageService.SendRawSelfWhisper failed: {ex}");
+        }
+    }
+
     private static void SendMessage(string text)
     {
         try

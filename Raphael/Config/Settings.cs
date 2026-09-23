@@ -716,6 +716,12 @@ public class Settings
     public static bool ChatShowTimestamps => (ConfigEntries[nameof(ChatShowTimestamps)] as ConfigEntry<bool>)?.Value ?? true;
     public static bool ChatShowChannelTags => (ConfigEntries[nameof(ChatShowChannelTags)] as ConfigEntry<bool>)?.Value ?? true;
     public static bool HideNativeChat => (ConfigEntries[nameof(HideNativeChat)] as ConfigEntry<bool>)?.Value ?? false;
+    // 0.65.1: experimental stronger native-chat hide. Zeroes the ENTIRE chat window's alpha via a
+    // root CanvasGroup every frame (not just the message-list ContentCanvasGroup), so the element
+    // that still flickered through on some PCs is covered too. Alpha-only (never .interactable), so
+    // it keeps the same freeze-safety as the normal hide. OFF by default; opt in if you still see
+    // the native chat flicker behind Raphael's chat.
+    public static bool AggressiveNativeChatHide => (ConfigEntries[nameof(AggressiveNativeChatHide)] as ConfigEntry<bool>)?.Value ?? false;
     // 0.17.0: on the All tab, send to Global (true) or Local (false) by default.
     public static bool ChatAllTabDefaultGlobal => (ConfigEntries[nameof(ChatAllTabDefaultGlobal)] as ConfigEntry<bool>)?.Value ?? false;
     // 0.17.0: chat-window text size, INDEPENDENT of OverlayTextScale. The chat
@@ -734,6 +740,26 @@ public class Settings
     // 0.17.0: auto-scroll the chat log to keep the newest message in view as lines arrive.
     public static bool ChatAutoScroll => (ConfigEntries[nameof(ChatAutoScroll)] as ConfigEntry<bool>)?.Value ?? true;
     public static void SetChatAutoScroll(bool v) => SetBool(nameof(ChatAutoScroll), v);
+
+    // 0.65.3: auto-hide the standalone chat window when it's been idle, like the game's native chat.
+    // OFF by default (opt-in). Which activity brings it back is configurable so it can't "blink" from
+    // Raphael's own regular Bloodcraft pings (System channel): by default player chat + hovering the
+    // window + opening chat wake it, System-channel lines do NOT. The fade is driven by a CanvasGroup
+    // on the window root — it never flips the persisted ShowChatWindowOverlay visibility (it's a fade,
+    // not a close).
+    public static bool ChatAutoHideEnabled => (ConfigEntries[nameof(ChatAutoHideEnabled)] as ConfigEntry<bool>)?.Value ?? false;
+    public static void SetChatAutoHideEnabled(bool v) => SetBool(nameof(ChatAutoHideEnabled), v);
+    // Idle seconds before it fades out. Clamped to a sane range so the ticker can't be starved or spam.
+    public static float ChatAutoHideSeconds =>
+        UnityEngine.Mathf.Clamp(GetFloat(nameof(ChatAutoHideSeconds), 12f), 3f, 120f);
+    public static void SetChatAutoHideSeconds(float v) =>
+        SetFloat(nameof(ChatAutoHideSeconds), UnityEngine.Mathf.Clamp(v, 3f, 120f));
+    // Wake toggles. Message (non-System player chat) default ON; System (BC pings / broadcasts) default
+    // OFF — that's the anti-blink default. With both OFF, only hovering the window / opening chat wakes it.
+    public static bool ChatAutoHideWakeOnMessage => (ConfigEntries[nameof(ChatAutoHideWakeOnMessage)] as ConfigEntry<bool>)?.Value ?? true;
+    public static void SetChatAutoHideWakeOnMessage(bool v) => SetBool(nameof(ChatAutoHideWakeOnMessage), v);
+    public static bool ChatAutoHideWakeOnSystem => (ConfigEntries[nameof(ChatAutoHideWakeOnSystem)] as ConfigEntry<bool>)?.Value ?? false;
+    public static void SetChatAutoHideWakeOnSystem(bool v) => SetBool(nameof(ChatAutoHideWakeOnSystem), v);
 
     // Chat scrolling aids (0.50 r11). Clickable ▲/▼ arrows on the scrollbar (default ON). Keyboard scrolling is
     // OPT-IN so it can't steal gameplay keys: PageUp/PageDown (default ON — rarely bound) and Up/Down arrows
@@ -837,6 +863,27 @@ public class Settings
     // secondary window can mirror a running scratchpad of self-notes without all the whisper traffic.
     public static bool SecondaryChatShowNotesToSelf => (ConfigEntries[nameof(SecondaryChatShowNotesToSelf)] as ConfigEntry<bool>)?.Value ?? false;
     public static void SetSecondaryChatShowNotesToSelf(bool v) => SetBool(nameof(SecondaryChatShowNotesToSelf), v);
+    // Extended chat retention (performance). The standalone tabbed window is the only DURABLE chat history —
+    // the SERVER drops old lines after a short window (see ChatRelayService), so retaining them is the whole
+    // point of the feature. On servers whose mods emit a heavy SYSTEM-message stream that can add up, so this
+    // master switch turns the durable capture off entirely, and the per-channel switches let you keep the
+    // channels you care about (Global/Clan/Whisper) while dropping a noisy one (System). All default ON, so
+    // out-of-box behavior is unchanged. A channel that isn't captured simply won't appear in the tabbed /
+    // secondary windows; the game's own native chat still shows it transiently as usual.
+    public static bool ExtendedChatCaptureEnabled => (ConfigEntries[nameof(ExtendedChatCaptureEnabled)] as ConfigEntry<bool>)?.Value ?? true;
+    public static void SetExtendedChatCaptureEnabled(bool v) => SetBool(nameof(ExtendedChatCaptureEnabled), v);
+    public static bool ExtendedCaptureGlobal  => (ConfigEntries[nameof(ExtendedCaptureGlobal)]  as ConfigEntry<bool>)?.Value ?? true;
+    public static void SetExtendedCaptureGlobal(bool v)  => SetBool(nameof(ExtendedCaptureGlobal), v);
+    public static bool ExtendedCaptureLocal   => (ConfigEntries[nameof(ExtendedCaptureLocal)]   as ConfigEntry<bool>)?.Value ?? true;
+    public static void SetExtendedCaptureLocal(bool v)   => SetBool(nameof(ExtendedCaptureLocal), v);
+    public static bool ExtendedCaptureClan    => (ConfigEntries[nameof(ExtendedCaptureClan)]    as ConfigEntry<bool>)?.Value ?? true;
+    public static void SetExtendedCaptureClan(bool v)    => SetBool(nameof(ExtendedCaptureClan), v);
+    public static bool ExtendedCaptureSystem  => (ConfigEntries[nameof(ExtendedCaptureSystem)]  as ConfigEntry<bool>)?.Value ?? true;
+    public static void SetExtendedCaptureSystem(bool v)  => SetBool(nameof(ExtendedCaptureSystem), v);
+    public static bool ExtendedCaptureWhisper => (ConfigEntries[nameof(ExtendedCaptureWhisper)] as ConfigEntry<bool>)?.Value ?? true;
+    public static void SetExtendedCaptureWhisper(bool v) => SetBool(nameof(ExtendedCaptureWhisper), v);
+    public static bool ExtendedCaptureOther   => (ConfigEntries[nameof(ExtendedCaptureOther)]   as ConfigEntry<bool>)?.Value ?? true;
+    public static void SetExtendedCaptureOther(bool v)   => SetBool(nameof(ExtendedCaptureOther), v);
     // 0.17.3: switch chat tabs with <Modifier>+1..6 while the chat window is open and
     // you're NOT typing in it. Modifier is Shift / Ctrl / Alt / None. Tab order:
     // 1=All, 2=Global, 3=Local, 4=Clan, 5=System, 6=Whispers.
@@ -1155,6 +1202,7 @@ public class Settings
     public static void SetChatShowTimestamps(bool v) => SetBool(nameof(ChatShowTimestamps), v);
     public static void SetChatShowChannelTags(bool v) => SetBool(nameof(ChatShowChannelTags), v);
     public static void SetHideNativeChat(bool v) => SetBool(nameof(HideNativeChat), v);
+    public static void SetAggressiveNativeChatHide(bool v) => SetBool(nameof(AggressiveNativeChatHide), v);
     public static void SetChatAllTabDefaultGlobal(bool v) => SetBool(nameof(ChatAllTabDefaultGlobal), v);
     public static void SetOverlaysBehindGameMenus(bool v) => SetBool(nameof(OverlaysBehindGameMenus), v);
     public static void SetSuppressGameInputWhileUIOpen(bool v) => SetBool(nameof(SuppressGameInputWhileUIOpen), v);
@@ -1542,10 +1590,15 @@ public class Settings
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatShowTimestamps),          true,  "Show the [HH:mm] timestamp on each line in the tabbed chat window.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatShowChannelTags),         true,  "Show the channel label ([G]/[L]/[Clan]/[Sys]/[W]) on each line in the tabbed chat window.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(HideNativeChat),              false, "Replace the game's default chat with the tabbed chat window: hide the native chat (invisible + non-interactive) while the tabbed window is open. Default off. The native chat returns when the tabbed window is closed.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(AggressiveNativeChatHide),    false, "EXPERIMENTAL. If the game's native chat still FLICKERS through behind Raphael's chat, turn this on: it hides the ENTIRE native chat window (not just the message list) every frame, which covers the element that flickers. Alpha-only, so it keeps the same freeze-safety as the normal hide. Only takes effect while 'Hide native chat' is also on. Default off — enable only if you see the flicker.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatAllTabDefaultGlobal),     false, "On the tabbed chat's All tab, send typed messages to Global (true) or Local (false) by default. Default Local.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatTextScale),               1.0f,  "Font size multiplier for the tabbed chat window ONLY — independent of 'Overlay text size'. (Small=0.85, Standard=1.0, Large=1.2, X-Large=1.5.) Lets you enlarge chat text without enlarging the XP / Familiar / etc. overlays. Changes apply immediately.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatNewestAtBottom),          true,  "Tabbed chat: show the newest message at the BOTTOM (true, like the game's own chat) or at the TOP (false).");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatAutoScroll),              true,  "Tabbed chat: automatically scroll to keep the newest message in view as new lines arrive (to the bottom or top per the 'newest at bottom' setting). Turn off to scroll back through history freely without being snapped to the newest line.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatAutoHideEnabled),         false, "Tabbed chat: fade the chat window out when it's been idle (like the game's native chat), and fade it back on activity. Default OFF. The fade is visual only — it never closes the window or changes its saved visibility. What counts as activity is configurable (below) so it won't blink from Raphael's own background Bloodcraft pings.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatAutoHideSeconds),         12f,   "Tabbed chat: seconds of inactivity before the chat window fades out when auto-hide is on (3–120). Default 12.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatAutoHideWakeOnMessage),   true,  "Tabbed chat (auto-hide on): a new PLAYER chat message (Global / Local / Clan / Whisper) fades the window back in. Default ON. Hovering the window or opening chat always wakes it regardless.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatAutoHideWakeOnSystem),    false, "Tabbed chat (auto-hide on): SYSTEM-channel lines (server broadcasts AND Raphael's regular Bloodcraft handshake pings) fade the window back in. Default OFF — leaving this off is what prevents the window from blinking in and out on a chatty/pinging server. Turn on only if you want every system line to surface the window.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatScrollArrowButtons),      true,  "Tabbed chat: show clickable ▲/▼ scroll arrows at the top and bottom of the chat scrollbar. Each click nudges the history up/down a few lines — handy when the scrollbar gets tiny on a big buffer. Default on. Set via Game UI → chat → Scrolling.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatScrollPageKeys),          true,  "Tabbed chat: let PageUp / PageDown scroll the chat history (a page at a time) while the chat window is open. Default on (these keys rarely clash with gameplay). Set via Game UI → chat → Scrolling.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatScrollArrowKeys),         false, "Tabbed chat: let the Up / Down arrow keys scroll the chat history while the chat window is open. Default OFF because the arrow keys are commonly used for gameplay — turn on only if you don't bind them in-game. Set via Game UI → chat → Scrolling.");
@@ -1581,6 +1634,13 @@ public class Settings
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(SecondaryChatShowSystem),       true,  "Secondary chat window: show SYSTEM / server messages. Default ON.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(SecondaryChatShowWhisper),      false, "Secondary chat window: show WHISPERS.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(SecondaryChatShowNotesToSelf),  false, "Secondary chat window: show NOTES TO SELF (whispers to your own character) — independent of the Whisper toggle.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ExtendedChatCaptureEnabled),    true,  "Tabbed chat: keep a DURABLE history of chat (the server drops old lines quickly; this is what lets the standalone window retain them). Turn OFF to stop retaining chat entirely — lowest overhead. The per-channel switches below let you keep only the channels you want. Default ON.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ExtendedCaptureGlobal),         true,  "Tabbed chat: retain GLOBAL messages in the durable history. Off = Global is not kept (it still shows transiently in the game's native chat).");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ExtendedCaptureLocal),          true,  "Tabbed chat: retain LOCAL / region messages in the durable history.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ExtendedCaptureClan),           true,  "Tabbed chat: retain CLAN messages in the durable history.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ExtendedCaptureSystem),         true,  "Tabbed chat: retain SYSTEM / server messages in the durable history. Turn this OFF if a server mod floods system chat and you only want to keep player conversation. Default ON.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ExtendedCaptureWhisper),        true,  "Tabbed chat: retain WHISPERS (including notes to self) in the durable history.");
+        InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ExtendedCaptureOther),          true,  "Tabbed chat: retain OTHER / uncategorized messages in the durable history.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatTabHotkeysEnabled),        true,  "Tabbed chat: switch tabs with hotkeys (a modifier + number 1-6) while the chat window is open and you are NOT typing in it. Tab order: 1=All, 2=Global, 3=Local, 4=Clan, 5=System, 6=Whispers.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ChatTabHotkeyModifier),        "Alt",   "Tabbed chat: modifier held with number keys 1-6 to switch tabs. One of: Shift, Ctrl, Alt, None. Default Alt (so Alt+1..6) — Shift+number is the game's consumable bar and Ctrl pops the action wheel, so Alt is the safest free default. Change it here if Alt also conflicts for you.");
         InitConfigEntry(OVERLAY_SETTINGS_GROUP, nameof(ShiftSpellOverlayShowDiagnostics), false, "Show the small italic 'pf/cg/si/end/srv' debug line under the Shift overlay's SHIFT label. Off by default; flip on if you need to debug why the cooldown isn't updating.");

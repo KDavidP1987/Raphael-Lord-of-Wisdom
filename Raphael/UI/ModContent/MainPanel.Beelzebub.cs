@@ -144,6 +144,7 @@ public partial class MainPanel
     private TextMeshProUGUI _connBeelzReadout;        // Connection tab — Beelzebub state line
     private TextMeshProUGUI _connUrielReadout;        // Connection tab — Uriel state line (0.26)
     private TextMeshProUGUI _connFaustReadout;        // Connection tab — Faust state line (0.50)
+    private TextMeshProUGUI _connRefreshReadout;      // Connection tab — "Refresh Raphael" result line (0.65.6)
 
     // Hotkey-bind state.
     private string _beelzHotkeyName = "";
@@ -4334,7 +4335,36 @@ public partial class MainPanel
             "Restart Faust detection from scratch — re-anchors the handshake loop and re-probes (.faust api version). Use after a server switch if the Faust group didn't appear. (Most servers don't run Faust.)",
             () => { Services.Faust.FaustProtocolService.Reset(); Services.Faust.FaustClient.RequestVersion(); RefreshConnectionReadout(); }, 170);
 
+        // --- Refresh Raphael (0.65.6) ---
+        // Players reported the game slowing over a long session until a relog. This clears the same
+        // session caches a relog would (chat scrollback first) without leaving the world.
+        var rf = AddCard(page, "ConnRefreshCard");
+        AddSectionHeading(rf, "Refresh Raphael");
+        AddBodyText(rf,
+            "Game feeling sluggish after a long session? This clears Raphael's session caches " +
+            "(including chat history) and frees memory — the same cleanup a relog does, without leaving " +
+            "the world. Your settings, open windows, and server connections are kept.");
+        _connRefreshReadout = AddInfoLabel(rf, "ConnRefreshState", "", FontStyles.Normal, Theme.ScaledUI(12));
+        _connRefreshReadout.overflowMode = TextOverflowModes.Overflow;
+        var rfRow = MakeBeelzRow(rf, "ConnRefreshRow");
+        AddBeelzPlainButton(rfRow, "ConnRefreshBtn", "Refresh Raphael",
+            "Clear chat history + session caches and free memory. Does not change any settings.",
+            () => RunRaphaelRefresh(), 170);
+
         RefreshConnectionReadout();
+    }
+
+    /// <summary>0.65.6: shared by the Connection-tab button and the footer "Refresh" button. Runs
+    /// BCHubUIManager.SoftRefresh and writes the result to the Connection-tab readout. Returns true on success.</summary>
+    private bool RunRaphaelRefresh()
+    {
+        string msg; bool ok;
+        var ui = Plugin.UIManager;
+        if (ui == null) { msg = "<color=#FF8080>Refresh unavailable</color> — UI not ready."; ok = false; }
+        else try { msg = $"<color=#90EE90>Done</color> ({DateTime.Now:HH:mm}) — {ui.SoftRefresh()}"; ok = true; }
+        catch (Exception ex) { msg = "<color=#FF8080>Refresh failed</color> — see the BepInEx log."; ok = false; LogUtils.LogError($"[Refresh] {ex}"); }
+        if (_connRefreshReadout != null) _connRefreshReadout.text = msg;
+        return ok;
     }
 
     private void RefreshConnectionReadout()

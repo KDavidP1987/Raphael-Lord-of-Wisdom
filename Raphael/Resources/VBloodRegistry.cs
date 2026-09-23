@@ -110,6 +110,12 @@ public static class VBloodRegistry
             // which is wrong but rare; we'd add a disambiguation rule then.
             map[stem] = name;
         }
+        // 0.65.0: Bloodcraft's primal-name override spells this one "Primal Poloma", but the
+        // registry (and the game) call the base V-Blood "Polora the Feywalker" — so "Primal
+        // Polora" classifies fine while "Primal Poloma" fell through and the primal was dropped.
+        // Map the Bloodcraft spelling back to the canonical name. (Independent of localization —
+        // this is an English-vs-English mismatch in Bloodcraft's own hardcoded primal table.)
+        map["Poloma"] = "Polora the Feywalker";
         return map;
     }
 

@@ -102,6 +102,27 @@ internal static class ChatRelayService
         return list;
     }
 
+    // Per-channel durable-capture gate. The tabbed / secondary windows are the only durable chat history
+    // (the server drops old lines), and on system-message-heavy servers retaining everything has a cost, so
+    // the player can disable the durable buffer entirely or per channel (Config → Game UI → Extended chat
+    // retention). Returns false → the line is NOT stored and no LineCaptured fires; the native game chat
+    // still shows it transiently. IMPORTANT: callers must run the sender-id pairing that feeds the whisper
+    // picker BEFORE consulting this gate, so disabling a channel never desyncs the picker. Existing buffered
+    // lines are untouched — the gate only affects messages captured from here on.
+    internal static bool ShouldCapture(Channel channel)
+    {
+        if (!Config.Settings.ExtendedChatCaptureEnabled) return false;
+        return channel switch
+        {
+            Channel.Global  => Config.Settings.ExtendedCaptureGlobal,
+            Channel.Local   => Config.Settings.ExtendedCaptureLocal,
+            Channel.Clan    => Config.Settings.ExtendedCaptureClan,
+            Channel.System  => Config.Settings.ExtendedCaptureSystem,
+            Channel.Whisper => Config.Settings.ExtendedCaptureWhisper,
+            _               => Config.Settings.ExtendedCaptureOther,
+        };
+    }
+
     internal static Channel MapChannel(ServerChatMessageType t) => t switch
     {
         ServerChatMessageType.Global      => Channel.Global,
@@ -140,6 +161,30 @@ internal static class ChatRelayService
                 if (last.Channel == channel && last.Sender == sender && last.Text == text
                     && (DateTime.Now - last.Received).TotalSeconds < 1.0)
                     return;
+
+                // 0.65.4 LONG-MESSAGE FLOOD FIX: a very long message (a Raphael sender hitting the
+                // character cap) arrived duplicated MANY times on receivers — "it spammed poor Strie"
+                // (Howl). Whatever the source (the native formatter re-running well after the 1s guard
+                // above, a server rebroadcast, or multiple inbound entities), the copies are byte-for-byte
+                // identical, and nobody ever retypes an 80+-char message verbatim — so an identical
+                // (channel/sender/text) long line already in recent history is always a duplicate of ONE
+                // message, never a real re-send. Drop it wherever it sits in the buffer (the guard above
+                // only catches a re-run that stayed the very LAST line; interleaved messages defeat it).
+                // Bounded by a recent-line count + a time window so a genuinely-repeated long announcement
+                // much later can still appear.
+                const int LongLineChars = 80;
+                if (text.Length >= LongLineChars)
+                {
+                    int scanFrom = Math.Max(0, _buffer.Count - 400);
+                    for (int i = _buffer.Count - 1; i >= scanFrom; i--)
+                    {
+                        var b = _buffer[i];
+                        // Buffer is chronological — once we pass the flood window, older lines can't match a re-run.
+                        if ((DateTime.Now - b.Received).TotalSeconds > 60.0) break;
+                        if (b.Channel == channel && b.Sender == sender && b.Text == text)
+                            return;
+                    }
+                }
             }
 
             // Pair the sender's NetworkId (enqueued in arrival order by
@@ -154,6 +199,11 @@ internal static class ChatRelayService
                 if (hasId && !string.IsNullOrEmpty(sender)) _playerIds[sender] = id;
                 if (channel == Channel.Whisper && !string.IsNullOrEmpty(sender)) partner = sender;
             }
+
+            // Durable-capture gate — placed AFTER the id-pairing above (which must run regardless to keep the
+            // whisper picker aligned with ClientChatPatch's enqueue). If this channel isn't being retained,
+            // don't store the line or fire LineCaptured.
+            if (!ShouldCapture(channel)) return;
 
             var line = new ChatLine(channel, sender, text, DateTime.Now, partner);
             _buffer.Add(line);
@@ -178,6 +228,9 @@ internal static class ChatRelayService
         try
         {
             if (string.IsNullOrEmpty(text)) return;
+            // Honor the same durable-capture gate as inbound chat: if this channel isn't being retained, don't
+            // echo our own sent message into the durable history either (keeps the window consistent).
+            if (!ShouldCapture(channel)) return;
             var sender = LocalPlayerName();
             // NO dedup here: this fires exactly once per message YOU send (via
             // SubmitText), so sending the same text twice on purpose ("lol", "lol")
@@ -226,6 +279,11 @@ internal static class ChatRelayService
         catch { /* best-effort; echo just shows without a name if unresolved */ }
         return _localName ?? string.Empty;
     }
+
+    /// <summary>0.65.6: in-session "Refresh Raphael" — drop the scrollback only. Unlike <see cref="Clear"/>
+    /// (server switch), keeps the seen-player whisper targets and the sender-id queue so the whisper picker
+    /// and the id↔name pairing stay intact mid-session.</summary>
+    internal static void ClearHistory() => _buffer.Clear();
 
     internal static void Clear()
     {

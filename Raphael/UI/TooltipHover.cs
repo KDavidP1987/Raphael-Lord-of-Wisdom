@@ -54,6 +54,22 @@ public static class TooltipHover
 
     public static int BindingCount => _bindings.Count;
 
+    // 0.65.6 LEAK FIX: stale bindings were only pruned inside the hit-test loop, which runs only
+    // while the MainPanel is open AND stops at the first hovered control. Overlays that rebuild
+    // their rows on every state broadcast (Familiar Quick Spawn, Beelz action bar / transforms)
+    // attach a fresh tooltip per row each time, so with the panel closed the list grew all session.
+    // Now swept on a slow cadence regardless of panel state (and on "Refresh Raphael").
+    private const float PruneIntervalSeconds = 10f;
+    private static float _lastPruneAt;
+
+    /// <summary>Drop bindings whose control has been destroyed. Returns how many were removed.</summary>
+    public static int PruneDestroyed()
+    {
+        int before = _bindings.Count;
+        _bindings.RemoveAll(b => b.Rt == null);
+        return before - _bindings.Count;
+    }
+
     /// <summary>Attach a tooltip to a UI GameObject. No-op if target lacks a RectTransform.</summary>
     public static void Attach(GameObject target, string text)
     {
@@ -77,6 +93,13 @@ public static class TooltipHover
     /// <summary>Per-frame: walks bindings, updates Sink to the topmost hovered tooltip text.</summary>
     public static void TickAll()
     {
+        float nowPrune = Time.realtimeSinceStartup;
+        if (nowPrune - _lastPruneAt >= PruneIntervalSeconds)
+        {
+            _lastPruneAt = nowPrune;
+            try { PruneDestroyed(); } catch { }
+        }
+
         if (Sink == null) return;
 
         // PERF: the Sink lives in the MainPanel footer, so the hover hit-test is only

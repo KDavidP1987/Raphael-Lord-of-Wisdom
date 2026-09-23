@@ -1,5 +1,213 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.65.6 — Long-session slowdown fixed, plus a "Refresh Raphael" button
+
+- **Fixed: the game got slower the longer you played, until you logged out and back in.** Two causes:
+  - **Chat window.** Every incoming message rebuilt the whole retained history (up to 2,000 lines) and redrew
+    it immediately — even with the chat window closed — so each message cost a little more as the session went
+    on. The tabbed and view-only chat windows now format only the lines that can actually be shown, merge bursts
+    of messages into one redraw (at most every 0.15 s), and skip redrawing while closed. What you see is
+    unchanged. A redraw that fails is retried once, then waits for the next message instead of retrying forever.
+  - **Tooltips.** Overlays that rebuild their buttons on every server update (Familiar Quick Spawn, the
+    Beelzebub action bar and transforms) left a stale tooltip entry behind each time. These were only cleaned up
+    while the main panel was open, so the list grew all session. They're now swept every 10 seconds.
+- **New: "Refresh Raphael" button** — a small **Refresh** at the bottom-right of the main panel (always visible;
+  flashes "Done"), plus a fuller version on the Connection tab that shows what it cleared. Clears chat history
+  and stale tooltips and starts a Unity unused-asset cleanup — the same cleanup a relog does, without leaving
+  the world. Settings, open windows, server connections and whisper targets are kept.
+- **Fixed: chat could still blank out from a flood of messages containing `<`.** The "blank chat" guard from
+  0.65.1 counted everything after a stray `<` (e.g. `<3`) as invisible, so a flood of such messages could push
+  the chat past TextMeshPro's size limit again. Only known formatting tags are skipped now; everything else
+  counts.
+- **Memory leaks fixed** (not tied to session length, but real):
+  - Rebuilding the main panel (settings/scale changes) left the old panel in memory, held by the All Familiars
+    tab, the Faust player/castle/boss pickers, and the box-name form dropdowns. All are now detached on rebuild.
+  - Rebuilding the Familiar Browser overlay left the old one subscribed to V Blood summon status.
+  - Faust world map: each **Reload image** leaked the old map texture, and each **Capture map from game** leaked
+    a full-size copy (~64 MB for a 4K map). Both are now freed.
+  - A familiar-system check scheduled shortly after login could get stuck re-sending `.fam boxes` every frame if
+    you relogged within ~8 seconds of connecting.
+- **Docs:** fresh v0.65.6 screenshots on the store page (grouped into collapsible sections), and the compatibility table now lists Faust 0.16.4 (API 19) and Uriel v0.20.0.
+
+## 0.65.5 — Chat length cap lowered to stop breaking non-Raphael players, plus Uriel v0.20.0 support
+
+- **Fixed: a very long chat message could flood chat and freeze the chat box for players who don't run
+  Raphael.** Testers found that a message of roughly 480 characters or more made the server re-broadcast the
+  line over and over — one send turning into a screenful of repeats — and, worse, non-Raphael players nearby
+  couldn't open their chat window at all until they teleported to reload it. Messages of 479 characters and
+  under were always clean. Raphael now caps chat input at **470 characters** (down from 500), which keeps you
+  under the threshold with margin so nothing you type can break the chat of vampires around you. Normal-length
+  messages are completely unaffected. *(Thanks to Howl for the careful character-by-character testing that
+  pinned the threshold.)*
+
+- **New: support for Uriel v0.20.0's flush-to-ground placement.** Uriel's latest update lets you correct
+  objects that float above or sink into the ground. Raphael now surfaces it:
+  - **Raise nearest / Lower nearest** buttons on the Object Spawning tab nudge the object you placed nearest
+    you up or down by 0.25m per click (`.uriel raise` / `.uriel lower`) — no more objects hovering or buried.
+  - Admins get a **Height offset** field under Uriel → Admin → Spawn conditions to set a permanent per-object
+    (or global-default) height correction in metres (`.uriel objcfg <obj> yoffset <metres>`). Unlike the other
+    spawn conditions, this is a placement fix and applies to everyone, admins included.
+  - The in-app Uriel guide pages now document all three new commands.
+
+  (Uriel v0.20.0 also blocks a batch of problem objects — warps, portals, mine gates, an item-farming pickup
+  exploit — and removes empty world containers like chests, shelves, cabinets and drawers from spawning to cut
+  server lag. Those are enforced server-side by Uriel itself, so they just quietly stop appearing in the
+  catalog; no Raphael setting is involved.)
+
+## 0.65.4 — Chat fixes: typed text re-centers after long pastes, and long messages stop flooding
+
+- **Fixed: the tabbed chat input stopped centering your text once you'd pasted a long message.** The
+  centered-while-single-line behavior added in 0.65.3 decided single-vs-multi-line from the input's pixel
+  height. After the field had grown to several lines (e.g. pasting a long message), TextMeshPro reports the
+  *same* one-line text as slightly taller than it did before, so the field stayed just over the threshold and
+  never dropped back to centered. Raphael now uses the actual wrapped line count instead of a height guess, so
+  it re-centers reliably as soon as your message is back to a single line. *(Thanks to Kruczarz.)*
+
+- **Fixed: a very long message could show up duplicated/spammed in chat, from a single send.** When a Raphael
+  player sent a message that hit the character cap, receivers running Raphael could see the same message
+  repeated many times over — one send, a screenful of copies. The tabbed chat window now recognizes an
+  identical long line already in recent history as a duplicate of that one message (nobody retypes an 80+
+  character message word-for-word) and drops the extra copies, regardless of what produced them. Short
+  messages are untouched, so genuinely repeating "lol" twice still shows both. *(Thanks to Howl and Strie for
+  the report.)*
+
+## 0.65.3 — Chat polish: no more random italics, centered typing, optional idle auto-hide
+
+- **Fixed: a chat tab could randomly switch to italics and stay that way.** All visible chat lines share a
+  single text component, so if one message left a rich-text tag *open* — e.g. a system/server message
+  containing `<i>` with no matching `</i>` — that italic (or bold/color/size) carried forward into every
+  line after it, with no way to turn it off short of a relog. Raphael now closes any tag a message leaves
+  dangling, so each line is self-contained and formatting can't leak between messages. *(Thanks to Howl for
+  spotting it — two back-to-back system messages was the trigger.)*
+
+- **Changed: text you type in the tabbed chat is now vertically centered.** The message input centered the
+  text on a single line (like a messaging app) instead of pinning it to the top; it switches to top-aligned
+  only once your message wraps onto multiple lines, so long messages still show every line. *(Thanks to
+  Kruczarz.)*
+
+- **New: optional auto-hide for the tabbed chat window (off by default).** Turn it on under Game UI → chat
+  and the window fades out after a configurable idle delay (3–120s, default 12) and fades back in on
+  activity — like the game's native chat. Which activity wakes it is configurable so it won't blink on a
+  busy server: a new **player** message (Global/Local/Clan/Whisper) wakes it by default, while **System**
+  lines (server broadcasts and Raphael's own regular Bloodcraft pings) do **not** unless you opt in. Hovering
+  the window or opening chat always wakes it. It's a visual fade only — it never closes the window or changes
+  its saved visibility. *(Requested by Kruczarz.)*
+
+## 0.65.2 — Fixed the last localized familiars that still showed wrong HP/quests
+
+- **Fixed: some familiars *still* showed HP as 0 and garbled quests on non-English clients — but only
+  certain familiars, and only some of the time.** 0.65.1 fixed the general non-English case, but a follow-up
+  report (Kruczarz, Polish client) found ~15 specific familiars that stayed broken while others were fine.
+  Root cause: the 0.65.1 re-alignment locks onto the two quest "is this a V-Blood?" flags as landmarks, but
+  it only recognized the capitalized forms `True`/`False`. Bloodcraft actually sends a **lowercase `false`
+  for any non-kill quest** (gather, craft, etc.) and as the default. So if your current quest happened to be
+  a gather-type quest, the landmark went unrecognized and the re-alignment gave up — falling back to the old,
+  wrong reading. Because the re-alignment only runs when the familiar's localized name contains a comma, this
+  only hit familiars whose name has a comma in your language (e.g. Polish "Domina, Tancerka Ostrzy"), which is
+  why it looked familiar-specific and why swapping familiars or waiting for the quest to rotate "fixed" it.
+  Raphael now recognizes the flag in either casing, so these familiars display correct HP/PP/SP and quests
+  regardless of your active quest type. *(Thanks to Kruczarz for the detailed Polish-client repro, and to
+  Luxanna for confirming the English/other-client case was clean.)*
+
+## 0.65.1 — Fixed quests and familiar stats on non-English clients
+
+- **Fixed: daily/weekly quests showed only numbers, and the summoned familiar's HP/PP/SP read 0 — on
+  localized (non-English) clients.** These looked like two separate bugs but had a single root cause. The
+  live data Bloodcraft streams to Raphael is a comma-separated list of fields, and Bloodcraft drops the
+  **familiar name** and **quest target name** into that list without escaping them. In your own game
+  language some of those names *contain a comma* — Polish, for example, writes Alpha the White Wolf as
+  "Alfa, Biały Wilk" and a gather target as "Klejnot krwi, poziom 1". Each stray comma shoved every
+  following field one slot over, so the familiar's stat numbers landed where the name should be (reading as
+  **0**) and the quest target landed on a numeric slot (reading as **bare numbers**). English names have no
+  commas, which is why English players never saw it. Raphael now detects the shift and re-aligns the fields
+  before reading them, so quests show their real target and familiars show real HP/PP/SP regardless of your
+  client language. Clients that were already fine are untouched. *(Thanks to Kruczarz for the Polish-client
+  report and screenshots, and to Chronost for confirming English was unaffected.)*
+
+  The re-alignment is **language-agnostic** — it works off the data's field structure, not any
+  per-language name list — so it covers every localized client whose names contain a comma (Polish, Latin
+  American Spanish, German, Russian, Turkish, …), not just Polish. Languages that use a full-width comma
+  (e.g. Chinese/Japanese) never triggered the bug and are likewise unaffected.
+
+- **Fixed: 9 more V-Bloods now appear on the V-Blood tab on non-English clients.** The language-proof
+  V-Blood name table added in 0.65.0 covered 55 regular V-Bloods; an audit found 9 more (General Elena the
+  Hollow, Willfred the Village Elder, Sir Erwin the Gallant Cavalier, Gaius the Cursed Champion, Stavros the
+  Carver, Dantos the Forgebinder, Lucile the Venom Alchemist, Jakira the Shadow Huntress, Megara the Serpent
+  Queen) that classified fine in English but dropped from the tab in other languages. All 64 entries were
+  cross-verified through the game's name→prefab→localization-key chain.
+
+- **Fixed (harder): a chat channel could still go blank after heavy use.** 0.65.0 already stopped feeding
+  the whole 2000-line history to the chat text box, but it capped by *line count* (300). On a busy server
+  with long proximity lines, 300 lines still pushed TextMeshPro past its ~16,000-glyph mesh ceiling, so a
+  flooded tab (the **Local** tab first) went blank again until you swapped tabs. The cap is now by **visible
+  glyph budget** instead of line count, so long lines can't sneak the mesh over the limit. Full history is
+  still retained for scrollback and Copy. *(Thanks to Howl.)*
+
+- **New: a "Refresh" button on the tabbed chat window.** Forces the current tab to redraw from the retained
+  history on demand — the same effect as swapping tabs and back, without the round-trip — for the rare case a
+  channel ever shows stale or empty. *(Requested by Howl.)*
+
+- **New (experimental): "Stronger hide if the game chat still flickers" chat option.** 0.65.0 zeroed the
+  native chat's message-list alpha every frame, which reduced but didn't fully stop the native chat flickering
+  through on some PCs — the game's chat has more than one visible layer, and the one that flickers isn't the
+  message list. This opt-in toggle (Game UI settings, **off by default**) hides the **entire** native chat
+  window every frame instead. It's alpha-only, so it keeps the same input/freeze-safety as the normal hide.
+  Off by default because the flicker is frame-timing-dependent and most players never see it; enable it only if
+  you do. *(Thanks to Howl — this one needs in-game confirmation, so it's opt-in for now.)*
+
+## 0.65.0 — In-built game guide + extended-chat controls, plus a batch of user-reported bug fixes
+
+- **New "V Rising Basics" guide tab (Settings and Help).** An in-built, plain-language guide to the *base*
+  game — vampire survival & blood, Gear Level as your "level", combat/spells, V Bloods, crafting, castles &
+  territory, and world hazards — followed by a **"How the mods change the game"** section. Each base section
+  has a collapsible *"With the mods"* note that points to the relevant per-mod Help tab, so Raphael reads as a
+  one-stop reference for new players without duplicating the deep per-mod command references. Sits beside the
+  existing external-links **Game Guide** tab.
+- **Extended chat retention is now controllable (performance).** The standalone tabbed/secondary chat windows
+  keep a durable history because the server drops old lines quickly — but on servers whose mods flood **System**
+  chat, retaining everything can add up. New **Extended chat retention** card (Game UI settings) adds a master
+  on/off plus **per-channel** toggles (Global / Local / Clan / System / Whispers / Other). Turn off a channel to
+  stop retaining it (it still shows transiently in the game's native chat). **All default ON**, so existing
+  behavior is unchanged. The capture gate runs *after* the whisper-picker sender-ID pairing, so disabling a
+  channel never desyncs the whisper picker. *(Note: "notes to self" are part of the Whispers channel.)*
+- **Fixed: Exo prestige guide text was misleading about levels.** The description said your "level stays at
+  max", which several players read as their *character* level — but each Exo prestige resets your character
+  level to 0 (you re-level to max; only the Exo *prestige tier* carries over). Reworded in both the Prestige
+  tab's progression card and the Bloodcraft Help tab to make this explicit. Also **removed the server-specific
+  500× Primal Stygian Shard reward from the descriptions** (most servers change it, which was confusing) —
+  the text now says rewards vary per server, check your admin. The "Default settings — Exo" reference still
+  lists the Bloodcraft default, but framed as a default most servers override. *(Thanks to Kyoma, Chronost,
+  Count Snackula, and Xavarie for the report + corrections.)*
+- **Fixed: familiar Quick Spawn overlay buttons could lose their text.** With a larger overlay font scale the
+  text outgrew the fixed-height slot buttons and was dropped entirely. The button height now scales with the
+  overlay font, and the label auto-shrinks (down to a readable floor) to fit — so long familiar names stay
+  visible instead of vanishing.
+- **Fixed: chat could stop showing new messages after prolonged use.** On busy servers the chat (the **All**
+  tab first) would eventually go blank — messages were still there (Copy chat still returned them) but the box
+  rendered empty until you relogged. A single text element can only draw so many characters before its mesh
+  overflows and renders nothing; we were feeding it the entire history. The rendered window is now capped to the
+  newest lines while the full history is kept for scrollback and Copy. *(Thanks to Howl and Chronost.)*
+- **Fixed: the game's native chat flickered behind the Raphael chat.** Even with native chat hidden, it could
+  flicker through — worst while you had the chat bar open to type — because the game's own fade kept fighting our
+  hide. We now re-assert the hide every frame, so it stays down. *(Frame-timing-dependent, which is why some PCs
+  saw it and others didn't. Thanks to Howl.)*
+- **Fixed: casting could break after opening then closing the UI with the on-screen button.** If you opened and
+  closed the Raphael UI with its floating button and didn't left-click *attack* in between, spells — and power/
+  emote-wheel selections — silently did nothing until you swapped weapon and swung. A guard meant to swallow a
+  stuck auto-attack after closing a panel was over-reaching and blocking *all* casting; it now cancels only the
+  stray attack and leaves everything else working. *(Thanks to Mardina.)*
+- **Fixed: regular V-Bloods were missing from the V-Blood familiar tab on non-English clients.** The tab only
+  showed Primal V-Bloods because it recognized bosses by their **English** names; on a localized client (e.g.
+  Polish) the regular V-Bloods came through in that language and weren't matched. It now resolves V-Blood names
+  in your **own game language**, so regular V-Bloods show up regardless of client language. Also fixed one
+  Primal ("Primal Polora") that was mislabeled and dropped even in English. *(Thanks to Kruczarz.)*
+- **Fixed: an Eclipse handshake could spam public chat when a Raphael user relogged.** On servers **without**
+  Bloodcraft, Raphael's background registration message wasn't being consumed and got broadcast as normal
+  proximity chat — so nearby players (even those without Raphael) saw a raw `[ECLIPSE]…` line and a floating
+  text over the relogging player's head, repeated a few times. The handshake is now sent so it can never surface
+  to bystanders, it's skipped entirely when you've set Bloodcraft to *Off*, and any stray copy is filtered from
+  Raphael's chat. *(Thanks to Howl.)*
+
 ## 0.64.0 — Live “Players now” map view + redesigned heat palettes
 
 - **See where online players are right now, on the map.** Faust → Player Positions → the map area now has a
