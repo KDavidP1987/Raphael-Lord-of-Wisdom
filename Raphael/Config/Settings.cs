@@ -199,7 +199,8 @@ public class Settings
     public static bool UseHorizontalContentLayout =>
         (ConfigEntries[nameof(UseHorizontalContentLayout)] as ConfigEntry<bool>)?.Value ?? true;
     public static bool ClearServerMessages =>
-        (ConfigEntries[nameof(ClearServerMessages)] as ConfigEntry<bool>)?.Value ?? false;
+        (ConfigEntries[nameof(ClearServerMessages)] as ConfigEntry<bool>)?.Value ?? true;   // 0.67.2: fallback matches the registered default
+    public static void SetClearServerMessages(bool v) => SetBool(nameof(ClearServerMessages), v);
 
     // 0.9.2 (introduced): when on, the XP overlay + Prestige info display
     // rendered a horizontal progress bar alongside the % text.
@@ -1274,6 +1275,10 @@ public class Settings
     public static void SetBeelzebubAvailability(ModAvailability v)  => SetAvailability(nameof(BeelzebubAvailability), v);
     public static void SetUrielAvailability(ModAvailability v)      => SetAvailability(nameof(UrielAvailability), v);
     public static void SetFaustAvailability(ModAvailability v)      => SetAvailability(nameof(FaustAvailability), v);
+    // Nyarlathotep: admin-run chaos/event sibling server mod most servers lack.
+    // Auto = present iff the `.nyar api version` handshake ACKs ready=1.
+    public static ModAvailability NyarAvailability       => ReadAvailability(nameof(NyarAvailability));
+    public static void SetNyarAvailability(ModAvailability v)       => SetAvailability(nameof(NyarAvailability), v);
 
     // 0.18: Beelzebub diagnostic detail (default off). When ON: the loadout tables show
     // each ability's ID (PrefabGUID) + raw prefab name, and Raphael writes a verbose wire
@@ -1296,6 +1301,26 @@ public class Settings
     // implied while the global DiagnosticMode is active (see FaustDiag).
     public static bool FaustDiagnostics => (ConfigEntries.TryGetValue(nameof(FaustDiagnostics), out var ef) && ef is ConfigEntry<bool> bf) && bf.Value;
     public static void SetFaustDiagnostics(bool v) => SetBool(nameof(FaustDiagnostics), v);
+
+    // Nyarlathotep diagnostic detail (default off): verbose [Nyar][diag] wire trace in LogOutput.log.
+    // Toggled from Nyarlathotep → Settings; also implied while the global DiagnosticMode is active (NyarDiag).
+    public static bool NyarDiagnostics => (ConfigEntries.TryGetValue(nameof(NyarDiagnostics), out var en) && en is ConfigEntry<bool> bn) && bn.Value;
+    public static void SetNyarDiagnostics(bool v) => SetBool(nameof(NyarDiagnostics), v);
+
+    // 0.67.2: show a mod's machine-readable protocol lines ([BEELZ:*] / [URIEL:*] / [FAUST:*] / [NYAR:*]) in chat
+    // instead of removing them after Raphael reads them (default off). Raphael still parses every line. Replies to a
+    // `.<mod> …` command the player sent themselves pass through for a few seconds even while this is off
+    // (see OutboundLedger). Toggled from Settings and Help → Chat & Diagnostics.
+    private static bool GetBoolOr(string key, bool fallback)
+        => ConfigEntries.TryGetValue(key, out var e) && e is ConfigEntry<bool> b ? b.Value : fallback;
+    public static bool BeelzShowProtocolInChat => GetBoolOr(nameof(BeelzShowProtocolInChat), false);
+    public static bool UrielShowProtocolInChat => GetBoolOr(nameof(UrielShowProtocolInChat), false);
+    public static bool FaustShowProtocolInChat => GetBoolOr(nameof(FaustShowProtocolInChat), false);
+    public static bool NyarShowProtocolInChat  => GetBoolOr(nameof(NyarShowProtocolInChat),  false);
+    public static void SetBeelzShowProtocolInChat(bool v) => SetBool(nameof(BeelzShowProtocolInChat), v);
+    public static void SetUrielShowProtocolInChat(bool v) => SetBool(nameof(UrielShowProtocolInChat), v);
+    public static void SetFaustShowProtocolInChat(bool v) => SetBool(nameof(FaustShowProtocolInChat), v);
+    public static void SetNyarShowProtocolInChat(bool v)  => SetBool(nameof(NyarShowProtocolInChat),  v);
 
     // Faust decay/duration display granularity (Castle Info + All Plots decay timers). 0=Auto (the two
     // largest non-zero units, so a weeks-long timer never renders as a huge hour count), 1=Hours+minutes
@@ -1498,7 +1523,7 @@ public class Settings
 
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(ClearServerMessages),         true,  "Clear server and command messages from chat.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(SuppressFamiliarActionChatter), false, "Suppress the chat confirmation lines that Bloodcraft prints when you switch boxes / bind / unbind / move / smartbind familiars. The UI still updates normally (box list, contents, and overlays read from separate pipes). Off by default; toggle in Display settings.");
-        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(SuppressCommandFrameworkErrors), true,  "Hide command-framework (VCF) error chatter from chat — the '[error]', '[denied]', and 'parameter conversion error' lines that appear when a command Raphael sends (or an admin button clicked by a non-admin) isn't usable on this server. These are never Raphael's own data, so they're noise — especially on servers that only have Beelzebub / Kindred (no Bloodcraft). On by default; turn it off in Settings → Chat noise if you want to see why a command you typed yourself failed.");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(SuppressCommandFrameworkErrors), true,  "Hide command-framework (VCF) error chatter from chat — the '[error]', '[denied]', and 'parameter conversion error' lines that appear when a command Raphael sends (or an admin button clicked by a non-admin) isn't usable on this server. These are never Raphael's own data, so they're noise — especially on servers that only have Beelzebub / Kindred (no Bloodcraft). On by default. Since 0.67.2 this only hides errors caused by Raphael's own background queries — errors for commands you send yourself always show. Settings and Help → Chat & Diagnostics.");
         InitConfigEntry(UI_SETTINGS_GROUP,      nameof(ShowProgressBars),            false, "Show experience progress and prestige progress as horizontal bars alongside the % numbers. Affects the XP overlay (XP%) and the Prestige info box (level/max). Off by default; toggle in Display settings.");
         InitConfigEntry(UI_SETTINGS_GROUP,      nameof(ShowOverlayBonusStats),       false, "Show the chosen bonus-stat names AND their current numeric values for your weapon expertise and blood legacy on the XP overlay. Auto-fetches .wep get + .bl get every 10s while the overlay is visible. Off by default for a minimal overlay; toggle in Display settings.");
         InitConfigEntry(UI_SETTINGS_GROUP,      nameof(ShowOverlayStatAcronyms),     false, "Abbreviate bonus-stat names on the overlays (Eclipse-style: PhysicalPower -> PhysPwr, SpellCriticalStrikeChance -> SpellCritCh, etc.) so each stat stays on one line and the wrapped sub-row can't overlap the bar/row around it at large text. Off = full names. Toggle in Display settings.");
@@ -1701,6 +1726,11 @@ public class Settings
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(UrielDiagnostics),            false,  "Uriel diagnostic details (default off). ON: Raphael writes a verbose [Uriel][diag] wire trace (commands sent + raw [URIEL:*] replies) to the BepInEx LogOutput.log so testers/admins can report exactly which Uriel commands fired and what came back. Toggle it from the Uriel → Settings tab; also implied while the global DiagnosticMode is active.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(FaustAvailability),           "Auto", "Whether the server has the Faust mod (investigation/information: castle/plot/player/server queries). Auto = present iff the server answered our `.faust api version` handshake. On = always assume present. Off = always disable the FAUST tab group. Most servers don't have Faust, so Auto stays disabled there.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(FaustDiagnostics),            false,  "Faust diagnostic details (default off). ON: Raphael writes a verbose [Faust][diag] wire trace (commands sent + raw [FAUST:*] replies) to the BepInEx LogOutput.log so testers/admins can report exactly which Faust queries fired and what came back. Toggle it from the Faust → Settings tab; also implied while the global DiagnosticMode is active.");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarAvailability),            "Auto", "Whether the server has the Nyarlathotep mod (admin-run world events: waves, empowered NPCs, boss adds, defended zones, sieges, stats). Auto = present iff the server answered our `.nyar api version` handshake. On = always assume present. Off = always disable the NYARLATHOTEP tab group.");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarDiagnostics),             false,  "Nyarlathotep diagnostic details (default off). ON: Raphael writes a verbose [Nyar][diag] wire trace (commands sent + raw [NYAR:*] replies) to the BepInEx LogOutput.log. Toggle it from the Nyarlathotep → Settings tab; also implied while the global Diagnostic mode is on.");
+        foreach (var (key, mod) in new[] { (nameof(BeelzShowProtocolInChat), "Beelzebub"), (nameof(UrielShowProtocolInChat), "Uriel"),
+                                           (nameof(FaustShowProtocolInChat), "Faust"),     (nameof(NyarShowProtocolInChat),  "Nyarlathotep") })
+            InitConfigEntry(GENERAL_SETTINGS_GROUP, key, false, $"Show {mod}'s machine-readable protocol lines in chat instead of removing them after Raphael reads them (default off; Raphael still parses them). Replies to a command you sent to {mod} yourself show for a few seconds even when this is off. Settings and Help → Chat & Diagnostics.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(FaustDurationStyle),          0,      "How Faust writes long durations (castle decay timers in the Castle Info / All Plots tabs). 0 = Auto (the two largest non-zero units, e.g. '3w 2d' or '6h 30m' — no mental math); 1 = Hours & minutes (legacy, e.g. '734h 30m'); 2 = Days, hours, minutes; 3 = Weeks, days, hours, minutes. Cycle it from the Faust → Settings tab.");
 
         // 0.15.0: opt-in keyboard hotkeys for the floating Raphael / OV button

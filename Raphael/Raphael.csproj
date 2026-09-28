@@ -15,7 +15,7 @@
     <RootNamespace>Raphael</RootNamespace>
     <Authors>kdpen</Authors>
     <Description>Unified client UI for V Rising server mods — Bloodcraft, Beelzebub, Uriel, Faust, KindredCommands, KindredLogistics — plus a standalone chat window. Surfaces their commands, stats &amp; reporting as buttons, forms &amp; overlays. (Formerly BloodCraftHub.)</Description>
-    <Version>0.65.6</Version>
+    <Version>0.67.3</Version>
     <PackageId>$(Authors).$(AssemblyName)</PackageId>
     <PackageProjectUrl>https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom</PackageProjectUrl>
 

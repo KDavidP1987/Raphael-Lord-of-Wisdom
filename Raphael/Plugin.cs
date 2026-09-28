@@ -199,6 +199,10 @@ public class Plugin : BasePlugin
         // after a few silent probes. Mirrors the Uriel tick above.
         CoreUpdateBehavior.Actions.Add(Services.Faust.FaustProtocolService.Tick);
 
+        // Nyarlathotep detection/handshake driver + push-stream re-read debounce + 1s countdown tick.
+        // Same back-off as Faust/Uriel; gives up silently on servers without the mod.
+        CoreUpdateBehavior.Actions.Add(Services.Nyar.NyarProtocolService.Tick);
+
         // 0.54: boss-tracker overlay auto-refresh (opt-in, ~5s). No-op unless the overlay is open and the
         // FaustBossTrackerAutoRefresh setting is on; self-throttles + respects Faust presence/support.
         CoreUpdateBehavior.Actions.Add(UI.ModContent.FaustBossTrackerOverlayPanel.AutoRefreshTick);
@@ -289,6 +293,9 @@ public class Plugin : BasePlugin
         {
             h.CreateClassProcessor(typeof(Patches.ClientChatPatch)).Patch();
             Log.LogInfo("[compat] Chat-system patches APPLIED (inbound parsing + tabbed chat window).");
+            // 0.67.2: attribute vanilla-typed commands to the player. Fail-soft (see ChatSendPatch).
+            try { h.CreateClassProcessor(typeof(Patches.ChatSendPatch)).Patch(); }
+            catch (System.Exception ex) { Log.LogWarning($"[compat] Vanilla chat-send hook skipped: {ex.Message}"); }
         }
         else
             Log.LogWarning("[compat] Chat-system patches SKIPPED — tabbed chat + command-reply parsing are DISABLED. Diagnostic; expected to be ON for normal use.");

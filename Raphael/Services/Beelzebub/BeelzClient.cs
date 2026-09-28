@@ -132,6 +132,8 @@ internal static class BeelzClient
     // Beelz v0.100 / api22: structured admin read of a broadcast message pool (replaces parsing the
     // human-text `admin broadcast-msg <pool> list` reply).
     public static void RequestBroadcastMsgs(string pool) => Send($".beelz api broadcast-msgs {pool}");
+    // Beelz v0.135 / api32: incompatibility lock groups ([BEELZ:lock] … [BEELZ:end] cmd=locks). Not adminOnly.
+    public static void RequestLocks() => Send(".beelz api locks");
 
     /// <summary>Initial state snapshot after a successful handshake (handoff §0.5.2 Hydrate).</summary>
     public static void HydrateCore()

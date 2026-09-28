@@ -61,7 +61,11 @@ internal sealed record BeelzShaping(
     float? Cooldown, float? Range, int? Charges, float? ChargeTime, float? Aoe,
     float? ProjSpeed, float? Duration, float? HealMult, float? ForceTimeout,
     int? SummonCap, float? SummonTimeout, int? SummonUnits, float? FreeMoveSecs,
-    string InterruptOnHit, string Interruptible, string FreeMove, string CastSpeed)
+    string InterruptOnHit, string Interruptible, string FreeMove, string CastSpeed,
+    // Beelz v0.134/api31 tuning overrides — emitted on api info / info-guid only (NOT catalog-ability),
+    // so catalog rows always hold null here.
+    int? MaxStacks = null, int? ProjCount = null, float? Knockback = null, float? Lifetime = null,
+    float? CastTime = null)
 {
     public static readonly BeelzShaping None = new(
         null, null, null, null, null, null, null, null, null,
@@ -72,6 +76,7 @@ internal sealed record BeelzShaping(
         Cooldown.HasValue || Range.HasValue || Charges.HasValue || ChargeTime.HasValue || Aoe.HasValue ||
         ProjSpeed.HasValue || Duration.HasValue || HealMult.HasValue || ForceTimeout.HasValue ||
         SummonCap.HasValue || SummonTimeout.HasValue || SummonUnits.HasValue || FreeMoveSecs.HasValue ||
+        MaxStacks.HasValue || ProjCount.HasValue || Knockback.HasValue || Lifetime.HasValue || CastTime.HasValue ||
         IsSet(InterruptOnHit) || IsSet(Interruptible) || IsSet(FreeMove) || IsSet(CastSpeed);
 
     private static bool IsSet(string s)
@@ -91,10 +96,49 @@ internal sealed record BeelzAbilityInfo(
     // here so a tooltip opened via api info shows "Use:"/tier/VBlood without a full catalog scan.
     string Condition = "", IReadOnlyList<string> ConditionMods = null, string ConditionSource = "",
     string ReviewStatus = "", string ReviewTag = "",
-    int? SourceLevel = null, string SourceTier = "", bool IsVBlood = false)
+    int? SourceLevel = null, string SourceTier = "", bool IsVBlood = false,
+    // Beelz v0.132/api29: form/weapon BLOCK lists (the "!" blacklists). On api29+ Forms holds ONLY the
+    // allowed forms; before that it could hold inverted blocks, so don't badge from it on older servers.
+    IReadOnlyList<string> FormBlocks = null, IReadOnlyList<string> WeaponBlocks = null,
+    // Beelz v0.133/api30 per-hit damage: effective server mode, the factor a cast would snapshot now,
+    // per-hit attribution health (reliable|unreliable|unknown), per-ability summon power.
+    string DamageMode = "", float? DamageScaleEff = null, string Attribution = "", float? SummonPower = null,
+    // Beelz v0.134/api31: "charges" = the ability uses charges, so cooldown rules are skipped for it.
+    string CooldownMode = "")
 {
-    // Force-cast cooldown is scaled (handoff §8): cooldown_seconds × cooldown_scale, floor 1s.
-    public float EffectiveCooldownSeconds => Math.Max(1f, CooldownSeconds * (CooldownScale <= 0f ? 1f : CooldownScale));
+    public bool UsesCharges => CooldownMode.Equals("charges", StringComparison.OrdinalIgnoreCase);
+
+    // api31+ (Beelz v0.134) runtime precedence: cooldown_override if set, else the SHIPPED cooldown_seconds
+    // × cooldown_scale, then the server floor Grant_MinimumCooldownSeconds (when api config has been read).
+    // Older servers: cooldown_seconds × cooldown_scale (handoff §8). Floor 1s either way for the ring.
+    public float EffectiveCooldownSeconds
+    {
+        get
+        {
+            float scale = CooldownScale <= 0f ? 1f : CooldownScale;
+            if (!BeelzState.SupportsRuntimeCooldowns) return Math.Max(1f, CooldownSeconds * scale);
+            float cd = Shaping?.Cooldown ?? CooldownSeconds * scale;
+            float floor = BeelzState.ConfigFloat("Grant_MinimumCooldownSeconds");
+            if (floor > 0f && cd < floor) cd = floor;
+            return Math.Max(1f, cd);
+        }
+    }
+}
+
+// api locks / [BEELZ:lock] (Beelz v0.135/api32) — one admin-defined incompatibility group: at most Max of
+// its Members may be on one player's live bar + hotkeys at once. A member is an ability GUID or "cat:<Category>".
+internal sealed record BeelzLockGroup(string Name, int Max, IReadOnlyList<string> Members)
+{
+    public bool Covers(string abilityGuid, string category)
+    {
+        foreach (var m in Members)
+        {
+            if (m.StartsWith("cat:", StringComparison.OrdinalIgnoreCase))
+            { if (!string.IsNullOrEmpty(category) && m.Substring(4).Equals(category, StringComparison.OrdinalIgnoreCase)) return true; }
+            else if (!string.IsNullOrEmpty(abilityGuid) && m == abilityGuid) return true;
+        }
+        return false;
+    }
 }
 
 // api progress / [BEELZ:progress]
@@ -252,6 +296,76 @@ internal static class BeelzState
     /// player's saved grants — the real cure for a bar stuck on a creature kit (a plain `.beelz refresh`
     /// can't clear a deeply-cached slot). When false, Raphael's "Unstick bar" uses the gentler revert→refresh.</summary>
     public static bool SupportsAuthoritativeBarReset => PluginVersionAtLeast(0, 120, 0);
+    /// <summary>api29 (Beelz v0.132): api info `forms=` lists ONLY allowed forms + `form_blocks=`/`weapon_blocks=`.</summary>
+    public static bool SupportsFormBlocks => ApiVersion >= 29;
+    /// <summary>api30 (Beelz v0.133): per-hit damage tokens (damage_mode/damage_scale_eff/attribution/summon_power).</summary>
+    public static bool SupportsDamageMeta => ApiVersion >= 30;
+    /// <summary>api31 (Beelz v0.134): runtime cooldown precedence + maxstacks/projcount/knockback/lifetime/casttime
+    /// overrides + cooldown_mode on api info.</summary>
+    public static bool SupportsRuntimeCooldowns => ApiVersion >= 31;
+    /// <summary>api32 (Beelz v0.135): `api locks` + `type=ability-locked` event (incompatibility locks).</summary>
+    public static bool SupportsLocks => ApiVersion >= 32;
+    /// <summary>Beelz v0.132 admin `ability-inspect` + v0.135 admin `lock`/`reseed` chat commands (no wire).</summary>
+    public static bool SupportsAbilityInspect => PluginVersionAtLeast(0, 132, 0);
+    public static bool SupportsReseed         => PluginVersionAtLeast(0, 135, 0);
+
+    /// <summary>A numeric `api config` value by key (0 when absent/unparseable — i.e. api config not read yet).</summary>
+    public static float ConfigFloat(string key)
+    {
+        foreach (var e in Config)
+            if (e.Key.Equals(key, StringComparison.OrdinalIgnoreCase)
+                && float.TryParse(e.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var f))
+                return f;
+        return 0f;
+    }
+
+    // ---- incompatibility locks (Beelz v0.135/api32) ----
+    public static IReadOnlyList<BeelzLockGroup> Locks { get; private set; } = Array.Empty<BeelzLockGroup>();
+    public static bool LocksLoaded { get; private set; }
+    // ability guid -> lock group name, from `ability-locked locked=1` events (the server kept it OFF the bar).
+    private static readonly Dictionary<string, string> _lockedNow = new(StringComparer.Ordinal);
+    public static bool IsLockedNow(string abilityGuid, out string group)
+    {
+        group = "";
+        return !string.IsNullOrEmpty(abilityGuid) && _lockedNow.TryGetValue(abilityGuid, out group);
+    }
+
+    /// <summary>The lock group that would keep this ability off the player's bar: one covering it whose
+    /// member count ALREADY on the bar + hotkeys (excluding this ability) has reached max. "" when none.
+    /// Live suppression reported by the server (ability-locked events) wins over this estimate.</summary>
+    public static string LockConflict(string abilityGuid, string category)
+    {
+        if (!SupportsLocks) return "";
+        if (IsLockedNow(abilityGuid, out var g)) return g;
+        if (Locks.Count == 0) return "";
+        var onBar = new Dictionary<string, string>(StringComparer.Ordinal);   // guid -> category
+        void Add(string guid) { if (!string.IsNullOrEmpty(guid) && guid != "0" && guid != abilityGuid) onBar[guid] = CategoryOf(guid); }
+        // Only what's LIVE: the universal bucket + the current weapon's bucket, and the current form's loadout.
+        foreach (var s in Slots)
+            if (s.Bucket.Equals("any", StringComparison.OrdinalIgnoreCase) || s.Bucket.Equals(CurrentWeapon, StringComparison.OrdinalIgnoreCase))
+                Add(s.AbilityGuid);
+        foreach (var s in FormSlots)
+            if (!string.IsNullOrEmpty(CurrentForm) && s.Form.Equals(CurrentForm, StringComparison.OrdinalIgnoreCase))
+                Add(s.AbilityGuid);
+        foreach (var h in Hotkeys) Add(h.AbilityGuid);
+        foreach (var grp in Locks)
+        {
+            if (grp.Max <= 0 || !grp.Covers(abilityGuid, category)) continue;
+            int n = 0;
+            foreach (var kv in onBar) if (grp.Covers(kv.Key, kv.Value)) n++;
+            if (n >= grp.Max) return grp.Name;
+        }
+        return "";
+    }
+
+    /// <summary>Best-known category (`cat=`) for an ability guid — api info, else the capture list.</summary>
+    public static string CategoryOf(string abilityGuid)
+    {
+        if (string.IsNullOrEmpty(abilityGuid)) return "";
+        if (_abilityInfo.TryGetValue(abilityGuid, out var i) && !string.IsNullOrEmpty(i.Category)) return i.Category;
+        foreach (var c in Captures) if (c.AbilityGuid == abilityGuid) return c.Category ?? "";
+        return "";
+    }
 
     /// <summary>Parse the dotted PluginVersion ("0.120.0") and test it is >= major.minor.patch. Lenient:
     /// returns false on an empty / unparseable version so callers degrade to the older code path.</summary>
@@ -314,6 +428,7 @@ internal static class BeelzState
     public static event Action TformKitChanged;       // a tform-kit read committed
     public static event Action TformBindsChanged;     // a tform-binds read committed
     public static event Action BroadcastMsgsChanged;  // a broadcast-msgs read committed
+    public static event Action LocksChanged;          // api locks committed, or an ability-locked event (api32)
 
     // ---- mutators (called only by BeelzProtocolService) ----
     internal static void SetVersion(int api, string plugin, bool ready)
@@ -452,6 +567,18 @@ internal static class BeelzState
         Fire(BroadcastMsgsChanged);
     }
 
+    internal static void SetLocks(IReadOnlyList<BeelzLockGroup> groups)
+    {
+        Locks = groups ?? Array.Empty<BeelzLockGroup>(); LocksLoaded = true;
+        Fire(LocksChanged);
+    }
+    internal static void SetAbilityLocked(string abilityGuid, string group, bool locked)
+    {
+        if (string.IsNullOrEmpty(abilityGuid)) return;
+        if (locked) _lockedNow[abilityGuid] = group ?? ""; else _lockedNow.Remove(abilityGuid);
+        Fire(LocksChanged);
+    }
+
     /// <summary>0.18.1: clear ALL cached Beelzebub state. Called on logout (via
     /// BeelzProtocolService.Reset from the ClientBootstrapSystem.OnDestroy teardown hook) so a relog
     /// into a DIFFERENT server starts clean. Without this, presence + catalog + captures + slots
@@ -477,6 +604,7 @@ internal static class BeelzState
         _catalogAll.Clear(); CatalogAllLoaded = false; CatalogAllEnabledCount = 0; CatalogAllComplete = false; CatalogAllCacheInfo = "";
         _tformKit.Clear(); _tformBinds.Clear(); _tformPhases.Clear(); _broadcastMsgs.Clear();
         _unitNameByGuid.Clear();
+        Locks = Array.Empty<BeelzLockGroup>(); LocksLoaded = false; _lockedNow.Clear();
     }
 
     private static void Fire(Action evt)

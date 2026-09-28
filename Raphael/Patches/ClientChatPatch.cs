@@ -49,6 +49,43 @@ internal static class ClientChatPatch
         catch { return false; }
     }
 
+    // 0.67.2: every protocol line is still parsed; this only decides whether it ALSO stays in chat. Shown when the
+    // player turned on "Show protocol lines in chat" for that mod, or for a short window after the player sent that
+    // mod a command themselves (so a typed `.nyar api status` shows its reply). Push-stream tags are only ever shown
+    // by the toggle — they aren't replies to anything the player sent, and attribution must not let a live event
+    // stream spill into chat.
+    private static bool ShouldShowProtocolLine(OutboundLedger.Mod mod, string text)
+    {
+        bool toggle = mod switch
+        {
+            OutboundLedger.Mod.Beelz => Config.Settings.BeelzShowProtocolInChat,
+            OutboundLedger.Mod.Uriel => Config.Settings.UrielShowProtocolInChat,
+            OutboundLedger.Mod.Faust => Config.Settings.FaustShowProtocolInChat,
+            OutboundLedger.Mod.Nyar  => Config.Settings.NyarShowProtocolInChat,
+            _ => false,
+        };
+        if (toggle) return true;
+        if (!OutboundLedger.UserSentToModRecently(mod, OutboundLedger.UserProtocolWindowSeconds)) return false;
+        return !IsPushTag(mod, ProtocolTag(text));
+    }
+
+    // "[NYAR:ev] type=…" → "ev". Empty when malformed.
+    private static string ProtocolTag(string text)
+    {
+        int colon = text.IndexOf(':');
+        int close = text.IndexOf(']');
+        return colon >= 0 && close > colon ? text.Substring(colon + 1, close - colon - 1) : "";
+    }
+
+    // Unsolicited push-stream tags (per each mod's contract). Faust/Uriel have none: their unsolicited lines come from
+    // Raphael's own background reads.
+    private static bool IsPushTag(OutboundLedger.Mod mod, string tag) => mod switch
+    {
+        OutboundLedger.Mod.Nyar  => tag == "ev",
+        OutboundLedger.Mod.Beelz => tag == "event",
+        _ => false,
+    };
+
     [HarmonyPatch(typeof(ClientChatSystem), nameof(ClientChatSystem.OnUpdate))]
     [HarmonyPrefix]
     // Run before Eclipse-main's same-target prefix (which is Priority.Normal).
@@ -203,7 +240,8 @@ internal static class ClientChatPatch
                 {
                     try { Services.Beelzebub.BeelzProtocolService.HandleLine(text); }
                     catch (Exception ex) { LogUtils.LogDebug($"Beelz HandleLine: {ex.Message}"); }
-                    Plugin.EntityManager.DestroyEntity(entity);
+                    if (!ShouldShowProtocolLine(OutboundLedger.Mod.Beelz, text))
+                        Plugin.EntityManager.DestroyEntity(entity);
                     continue;
                 }
 
@@ -217,7 +255,8 @@ internal static class ClientChatPatch
                 {
                     try { Services.Uriel.UrielProtocolService.HandleLine(text); }
                     catch (Exception ex) { LogUtils.LogDebug($"Uriel HandleLine: {ex.Message}"); }
-                    Plugin.EntityManager.DestroyEntity(entity);
+                    if (!ShouldShowProtocolLine(OutboundLedger.Mod.Uriel, text))
+                        Plugin.EntityManager.DestroyEntity(entity);
                     continue;
                 }
 
@@ -231,7 +270,20 @@ internal static class ClientChatPatch
                 {
                     try { Services.Faust.FaustProtocolService.HandleLine(text); }
                     catch (Exception ex) { LogUtils.LogDebug($"Faust HandleLine: {ex.Message}"); }
-                    Plugin.EntityManager.DestroyEntity(entity);
+                    if (!ShouldShowProtocolLine(OutboundLedger.Mod.Faust, text))
+                        Plugin.EntityManager.DestroyEntity(entity);
+                    continue;
+                }
+
+                // Nyarlathotep structured protocol — same pattern as the Faust branch above. Every [NYAR:*]
+                // line (`.nyar api …` replies + the `api sub on` push stream) is routed and destroyed; the
+                // human `.nyar …` replies are NOT [NYAR:*] and fall through to chat untouched.
+                if (text.StartsWith("[NYAR:", StringComparison.Ordinal))
+                {
+                    try { Services.Nyar.NyarProtocolService.HandleLine(text); }
+                    catch (Exception ex) { LogUtils.LogDebug($"Nyar HandleLine: {ex.Message}"); }
+                    if (!ShouldShowProtocolLine(OutboundLedger.Mod.Nyar, text))
+                        Plugin.EntityManager.DestroyEntity(entity);
                     continue;
                 }
 

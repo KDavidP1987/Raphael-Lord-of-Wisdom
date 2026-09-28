@@ -2,22 +2,23 @@
 
 A **client-side** V Rising UI that turns the chat commands of popular **server-side** mods into buttons, forms, and on-screen overlays. Each mod's tabs appear only when that mod is detected on your server — so it works whether your server runs one, several, or none.
 
-**Works with:** Bloodcraft · Beelzebub · Uriel · Faust · KindredCommands · KindredLogistics — plus a standalone tabbed chat window that works on **any** server.
+**Works with:** Bloodcraft · Beelzebub · Uriel · Faust · Nyarlathotep · KindredCommands · KindredLogistics — plus a standalone tabbed chat window that works on **any** server.
 
 > 🟣 **Formerly BloodCraftHub** — same mod, renamed. Switching over? See **[Migrating from BloodCraftHub](#migrating-from-bloodcrafthub)** and **don't run both at once.**
 >
-> ⚠️ **Pre-1.0 beta.** It's daily-driven on a live server, but you may hit rough edges. The fastest way to get a fix is the **[Shadow Realm Discord](https://discord.gg/usC9QgBrXK)**.
+> ⚠️ **Pre-1.0 beta.** It's daily-driven on a live server, but you may hit rough edges. The fastest way to get a fix is the **[Shadow Realm Discord](https://discord.gg/c4YU2HbHFA)**.
 
 ---
 
 ## What you get
 
-- **One panel for your server's mods** — left-rail tab groups for Bloodcraft, Kindred, Beelzebub, Uriel, and Faust; each shows only when detected.
+- **One panel for your server's mods** — left-rail tab groups for Bloodcraft, Kindred, Beelzebub, Uriel, Faust, and Nyarlathotep; each shows only when detected.
 - **Commands as forms** — player pickers, dropdowns, and number fields instead of typing `.lvl set <Player> <Level>` into chat.
 - **Live HUD overlays** — XP, familiar, weapon/blood, professions, quests, shift-spell cooldown, and more. Each is draggable, resizable, and individually toggleable.
 - **Standalone chat window** — tabbed per-channel chat (Global / Local / Clan / Whispers / System), whisper anyone online, custom colors, and per-channel history controls (keep conversation, drop noisy System floods). Needs no server mods.
+- **Chat & Diagnostics in one place** — choose what Raphael hides from chat and what it logs, for itself and every server mod. Presets: Quiet, Normal, Show everything. Replies to commands you send always show.
 - **In-built game guide** — a "V Rising Basics" tab explaining the base game (blood, Gear Level, V Bloods, castles, hazards) and how each mod changes it, so new players have a one-stop primer.
-- **Admin tooling** — surfaced wherever the backing mod provides it: Kindred admin, Beelzebub ability shaping, Faust server analytics, Uriel sharing/spawning.
+- **Admin tooling** — surfaced wherever the backing mod provides it: Kindred admin, Beelzebub ability shaping and lock groups, Faust server analytics, Uriel sharing/spawning, Nyarlathotep event control.
 
 <details>
 <summary><b>Full feature list</b></summary>
@@ -28,11 +29,13 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
   - **Kindred** — Logistics (+ admin), Commands, Admin: Players / Server / World.
   - **Beelzebub** — Bestiary, Loadout (universal + per-weapon + per-form ability sets), Hotkeys, Transforms, Settings, admin Config / Players.
   - **Faust** — Castle Info, Open/All Plots, Decay Watch, Castle Resources, Player Info, Clans, Player Positions, Server Stats, **Boss Status**, **Leaderboards**, **World Map**, admin Control / Oversight.
-  - **Settings & Help** — Quick Start, per-mod Help guides, **V Rising Basics** (in-built base-game guide), Game Guide (external links), Settings, About.
+  - **Nyarlathotep** — Live Events (wave countdowns), Leaderboards, My Stats, Settings, admin Events / Zones / Announce / Kill Switch.
+  - **Settings & Help** — Quick Start, per-mod Help guides, **V Rising Basics** (in-built base-game guide), Game Guide (external links), Settings, **Chat & Diagnostics**, About.
 - **Secondary overlays** (toggle from the footer) — XP, Familiar, Familiar Browser, Daily Quest, Professions, Shift Spell, a Combined info overlay, Quick Actions, a Familiar Quick Spawn overlay, and a Faust Boss Tracker. Each is independently draggable/resizable with its own transparency; visibility persists across sessions.
 - **Freeze actions while the UI is open** (opt-in) — stop moving/attacking/casting and block menu hotkeys while you click around the panel.
 - **"Last server response" panel** — replies to read-data commands (`.wep get`, `.class l`, …) show in-UI, not just in chat.
 - **Live data** via Bloodcraft's signed broadcast protocol, with chat-regex fallback for replies it doesn't cover.
+- **Fast opening** — the panel opens right away; tabs fill in without freezing the game.
 - **Refresh button** (panel footer, bottom-right; also Settings → Connection) — clears chat history and stale UI caches without touching settings. Use it if the game feels slower after a long session.
 - **Quality of life** — hover tooltips on every control, auto-resizing panel, scrollable tabs + left rail, a two-zone color theme, a 50–400% text-size slider, and opt-in keyboard hotkeys.
 
@@ -106,9 +109,10 @@ Settings don't transfer — Raphael writes a new config, so overlay positions, c
 | **Bloodcraft** (server) | v1.13.21 | Primary integration |
 | **KindredCommands** (server) | v2.5.8 | Admin/player commands → Kindred |
 | **KindredLogistics** (server) | v1.6.0 | Logistics toggles → Kindred |
-| **Beelzebub** (server, optional) | API 22 | Abilities / transforms → Beelzebub |
+| **Beelzebub** (server, optional) | v0.135 (API 32) | Abilities / transforms → Beelzebub |
 | **Faust** (server, optional) | 0.16.4 (API 19) | Server investigation & analytics → Faust |
 | **Uriel** (server, optional) | v0.20.0 | Storage / prisons / stairs / spawning → Uriel |
+| **Nyarlathotep** (server, optional) | v0.5.2 (API 4) | World events / leaderboards → Nyarlathotep |
 | **Eclipse** (client) | v1.3.13 | ⚠ Compatibility needs re-testing — disable while running Raphael |
 
 Newer Bloodcraft builds generally still work — the chat-command grammar is stable. If a tab does nothing on click, the server likely renamed a command.
@@ -195,7 +199,7 @@ Newer Bloodcraft builds generally still work — the chat-command grammar is sta
 
 ## Support & credits
 
-- **Bug reports / feature ideas:** [Shadow Realm Discord](https://discord.gg/usC9QgBrXK) (fastest) or [GitHub issues](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/issues). A `BepInEx/LogOutput.log` snippet or clear repro helps a lot.
+- **Bug reports / feature ideas:** [Shadow Realm Discord](https://discord.gg/c4YU2HbHFA) (fastest) or [GitHub issues](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/issues). A `BepInEx/LogOutput.log` snippet or clear repro helps a lot.
 - **Upstream mods** Raphael wraps — please show them love too: **Bloodcraft** by zfolmt, **KindredCommands / KindredLogistics** by odjit. Raphael's UI framework derives from **BloodCraftUI** (panthernet) and the signed protocol from **Eclipse** (zfolmt).
 - **Built on** the V Rising server *The Shadow Realm* (Brutal PvE). Support development: [PayPal](https://www.paypal.com/paypalme/KrisPenland).
 - **Special thanks** to the testers who shaped Raphael through countless reports: Moonie, Bradley, Xavarie, Exotic Mystique, Shiyrva, Imperivm Draconis.

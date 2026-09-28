@@ -4,9 +4,48 @@
 [CHANGELOG.md](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/blob/main/CHANGELOG.md).
 Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
-**Current: v0.65.6** (pre-1.0 beta).
+**Current: v0.67.3** (pre-1.0 beta).
 
 ---
+
+## 0.67.3 — Chat window spacing
+
+- Chat messages no longer overlap the tab buttons at the top of the chat window.
+
+## 0.67.2 — Chat & Diagnostics
+
+- Replies and errors for commands you send always show in chat now (e.g. "command not found"). Only Raphael's own
+  background traffic is hidden.
+- New **Settings and Help → Chat & Diagnostics** tab: one place for what Raphael hides from chat and what it logs, for
+  Raphael, Bloodcraft, Beelzebub, Uriel, Faust and Nyarlathotep. Presets: Quiet, Normal, Show everything.
+- Each server mod can now show its machine-readable lines in chat, useful when testing.
+
+## 0.67.1 — Faster opening
+
+- The main panel now opens right away. Tabs show "Loading..." and fill in without freezing the game.
+- Mod groups that are still connecting show "(connecting...)" instead of "(unavailable)".
+- A mod connecting mid-session only refreshes its own tabs, not the whole panel.
+- The world map image loads when you first view a map, and a smaller cached copy makes later loads faster.
+
+## 0.67.0 — Nyarlathotep support
+
+- **New:** Nyarlathotep tabs (shown only on servers running it). Players: live events with wave countdowns,
+  leaderboards with Share, and your own stats with hide/show.
+- **Admin:** event control (start/stop/enable/disable/reload, field editor, test spawn), defended zones,
+  announcements, and the kill switch.
+- Beelzebub, Uriel and Faust tabs now carry a small beta banner with a **Give feedback** link to The Shadow
+  Realm Discord.
+
+## 0.66.0 — Beelzebub v0.132–v0.135 support
+
+- **New:** incompatibility locks. Abilities that can't share your bar right now get a **[Locked]** badge. Admins
+  get a lock editor.
+- **New:** cooldowns shown on ability cards now match what the server applies. Charge-based abilities show
+  "Uses charges".
+- **New:** ability cards show where an ability can be used ("Usable in … except …", "Not with …") and its
+  current damage multiplier.
+- **Admin:** new tuning fields (max stacks, projectile count, knockback, lifetime, cast time), an Inspect
+  button, and Reseed ability rules.
 
 ## 0.65.6 — Long-session slowdown fixed, plus a Refresh button
 

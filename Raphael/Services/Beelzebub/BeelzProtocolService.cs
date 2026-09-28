@@ -64,7 +64,7 @@ internal static class BeelzProtocolService
     private const float REFETCH_DEBOUNCE_SECONDS = 0.75f;
     private static float _lastRefetchAt;
     private static bool _needList, _needSlots, _needTransforms, _needActive,
-                        _needProgress, _needHotkeys, _needConfig, _needBestiary;
+                        _needProgress, _needHotkeys, _needConfig, _needBestiary, _needLocks;
     private static bool _needBarRefresh;   // 0.19: a grant landed → nudge `.beelz refresh` (debounced) if the setting's on
 
     // On-demand `api info` enrichment — fetches the real DESCRIPTION + cooldown-seconds that
@@ -204,6 +204,7 @@ internal static class BeelzProtocolService
     private static readonly List<BeelzTformAbility>  _accTformKit   = new();
     private static readonly List<BeelzTformBind>     _accTformBinds = new();
     private static readonly List<BeelzBroadcastMsg>  _accBroadcastMsgs = new();
+    private static readonly List<BeelzLockGroup>     _accLocks = new();   // Beelz v0.135 / api32
 
     // ---- chunked-line reassembly (Beelz v0.76 / ApiVersion 15) ----
     // `api info`, `api info-guid`, and `catalog-ability` outgrew VCF's 512-byte reply cap and are
@@ -322,7 +323,7 @@ internal static class BeelzProtocolService
 
         _lastRefetchAt = 0f;
         _needList = _needSlots = _needTransforms = _needActive =
-            _needProgress = _needHotkeys = _needConfig = _needBestiary = _needBarRefresh = false;
+            _needProgress = _needHotkeys = _needConfig = _needBestiary = _needBarRefresh = _needLocks = false;
 
         _infoQueue.Clear();
         _infoSeen.Clear();
@@ -343,6 +344,7 @@ internal static class BeelzProtocolService
         _accTformKit.Clear();
         _accTformBinds.Clear();
         _accBroadcastMsgs.Clear();
+        _accLocks.Clear();
 
         _accCaptures.Clear();
         _accSlots.Clear();
@@ -410,6 +412,11 @@ internal static class BeelzProtocolService
             case "broadcast-msg":
                 _accBroadcastMsgs.Add(new BeelzBroadcastMsg(line.GetInt("idx"), line.GetCleanText("text")));
                 break;
+            // Beelz v0.135 / api32 incompatibility lock group. g=/m= are SafeToken-encoded (spaces→_), so
+            // GetText restores the name; members are guids or cat:<Category> (no spaces to restore).
+            case "lock":
+                _accLocks.Add(new BeelzLockGroup(line.GetText("g"), line.GetInt("max", 1), line.GetList("m")));
+                break;
 
             // single-line results -> apply immediately
             case "active":        BeelzState.SetActive(ReadActive(line)); break;
@@ -450,6 +457,7 @@ internal static class BeelzProtocolService
             FireAvailability();
             BeelzClient.Subscribe();
             BeelzClient.HydrateCore();
+            if (BeelzState.SupportsLocks) BeelzClient.RequestLocks();   // api32: badge lock-suppressed abilities
             TryWarmCatalogFromCache();   // instant catalog from a prior scan (same plugin version), no re-scan
         }
     }
@@ -548,6 +556,8 @@ internal static class BeelzProtocolService
                 BeelzState.SetTformBinds(line.Get("unit"), _accTformBinds.ToArray(), line.GetInt("phases", 0)); _accTformBinds.Clear(); break;
             case "broadcast-msgs":
                 BeelzState.SetBroadcastMsgs(line.Get("pool"), _accBroadcastMsgs.ToArray()); _accBroadcastMsgs.Clear(); break;
+            case "locks":
+                BeelzState.SetLocks(_accLocks.ToArray()); _accLocks.Clear(); break;
             default:
                 LogUtils.LogDiagnostic($"[Beelz] end for unhandled cmd '{cmd}'."); break;
         }
@@ -654,7 +664,13 @@ internal static class BeelzProtocolService
             case "transform-phase-shift":
                 _needActive = _needTransforms = true; break;
             case "config-changed":
-                _needConfig = true; break;
+                _needConfig = true; _needLocks = BeelzState.SupportsLocks; break;
+            // Beelz v0.135 / api32: a bar resolve kept an ability OFF the live bar (locked=1) or let it back
+            // (locked=0); src=cast when `.beelz cast` refused it. Only changes are sent. Track the live set
+            // for badges and re-read the groups (the handoff's "after ability-locked events").
+            case "ability-locked":
+                BeelzState.SetAbilityLocked(line.Get("a"), line.GetText("group"), line.GetBool("locked"));
+                _needLocks = true; break;
             case "cast":
                 FireAbilityCast(line.Get("a")); break;
             case "summon":
@@ -667,7 +683,7 @@ internal static class BeelzProtocolService
 
     private static bool HasPendingRefetch()
         => _needList || _needSlots || _needTransforms || _needActive
-        || _needProgress || _needHotkeys || _needConfig || _needBestiary || _needBarRefresh;
+        || _needProgress || _needHotkeys || _needConfig || _needBestiary || _needBarRefresh || _needLocks;
 
     private static void FlushRefetch()
     {
@@ -680,6 +696,7 @@ internal static class BeelzProtocolService
         if (_needHotkeys)    { BeelzClient.RequestHotkeys();    _needHotkeys = false; }
         if (_needConfig)     { BeelzClient.RequestConfig();     _needConfig = false; }
         if (_needBestiary)   { BeelzClient.RequestBestiary();   _needBestiary = false; }
+        if (_needLocks)      { BeelzClient.RequestLocks();      _needLocks = false; }
         // 0.19: one debounced bar re-apply after grants landed this window (Settings-gated, silent).
         if (_needBarRefresh)
         {
@@ -794,7 +811,10 @@ internal static class BeelzProtocolService
         l.GetFloatOpt("duration_override"), l.GetFloatOpt("heal_mult"), l.GetFloatOpt("force_timeout_override"),
         l.GetIntOpt("summon_cap_override"), l.GetFloatOpt("summon_timeout_override"), l.GetIntOpt("summon_units_override"),
         l.GetFloatOpt("free_move_secs"),
-        l.Get("interrupt_on_hit"), l.Get("interruptible"), l.Get("free_move"), l.Get("cast_speed"));
+        l.Get("interrupt_on_hit"), l.Get("interruptible"), l.Get("free_move"), l.Get("cast_speed"),
+        // api31 (Beelz v0.134) — api info only; absent on catalog rows → null.
+        l.GetIntOpt("maxstacks_override"), l.GetIntOpt("projcount_override"), l.GetFloatOpt("knockback_override"),
+        l.GetFloatOpt("lifetime_override"), l.GetFloatOpt("casttime_override"));
 
     // Beelzebub emits weapons=/forms= as "any" when unrestricted; normalize that to an
     // empty list so callers can treat Count>0 as "restricted".
@@ -816,7 +836,19 @@ internal static class BeelzProtocolService
         // api24/25/26 informational tokens — same parse rules as ReadCatalogAbility (api info carries them too).
         l.GetClean("condition"), ReadConditionMods(l), DashClean(l.Get("condition_source")),
         l.Get("review_status"), l.GetClean("review_tag"),
-        l.GetIntOpt("source_level"), l.GetClean("source_tier"), l.GetBool("is_vblood"));
+        l.GetIntOpt("source_level"), l.GetClean("source_tier"), l.GetBool("is_vblood"),
+        // api29 block lists · api30 per-hit damage · api31 cooldown mode (all additive; absent on old servers).
+        ReadDashList(l, "form_blocks"), ReadDashList(l, "weapon_blocks"),
+        DashClean(l.Get("damage_mode")), l.GetFloatOpt("damage_scale_eff"), DashClean(l.Get("attribution")),
+        l.GetFloatOpt("summon_power"), DashClean(l.Get("cooldown_mode")));
+
+    // Comma list with the "-" none-sentinel (form_blocks= / weapon_blocks=, api29).
+    private static IReadOnlyList<string> ReadDashList(BeelzLine l, string key)
+    {
+        var v = l.Get(key);
+        if (string.IsNullOrEmpty(v) || v == "-") return System.Array.Empty<string>();
+        return v.Split(new[] { ',' }, System.StringSplitOptions.RemoveEmptyEntries);
+    }
 
     private static void FireAvailability()
     {

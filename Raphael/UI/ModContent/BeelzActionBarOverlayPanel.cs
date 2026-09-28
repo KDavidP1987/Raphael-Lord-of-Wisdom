@@ -267,7 +267,12 @@ public class BeelzActionBarOverlayPanel : ResizeablePanelBase
                 if (!string.IsNullOrEmpty(info.Label)) title = info.Label;
                 else if (!string.IsNullOrEmpty(info.AbilityName)) title = BeelzNames.Ability(info.AbilityName);
                 if (!string.IsNullOrEmpty(info.Desc)) desc = $"\n{info.Desc}";
+                if (BeelzState.SupportsRuntimeCooldowns && info.UsesCharges) desc += "\nUses charges";
+                else if (BeelzState.SupportsRuntimeCooldowns) desc += $"\nCooldown {info.EffectiveCooldownSeconds:0.#}s";
             }
+            // api32: `.beelz cast` refuses an ability an incompatibility lock is keeping off the bar.
+            if (BeelzState.IsLockedNow(abilGuid, out var lockGroup))
+                desc += $"\n<color=#FF8080>Locked by '{lockGroup}' — the server will refuse this cast until the lock clears.</color>";
             return $"{title} — click to force-cast (.beelz cast {castName}).{desc}" +
                    "\nThe ring shows an estimated cooldown (client-side; the server enforces the real one).";
         });

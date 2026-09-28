@@ -34,9 +34,16 @@ public static class TooltipHover
                                       // WITHOUT rebuilding the list. Wins over Text when set.
         public Camera Cam;        // cached canvas camera (null for Screen Space Overlay)
         public bool CamResolved;  // whether Cam has been looked up yet
+        public bool Priority;     // 0.67.1: panel chrome (footers) — hit-tested before everything else
     }
 
     private static readonly List<Binding> _bindings = new();
+
+    // 0.67.1: MainPanel builds tab pages lazily now, so page controls register AFTER the footer chrome. The
+    // hit-test prefers the most recent binding and ignores scroll masks, so a page control scrolled under
+    // the footer would steal its hover. MainPanel wraps its chrome construction in PriorityScope, and
+    // priority bindings are tested first — the same precedence the footer had when pages were built first.
+    public static bool PriorityScope;
 
     /// <summary>Shared display target. <see cref="ModContent.MainPanel"/> sets this on construction.</summary>
     public static TextMeshProUGUI Sink;
@@ -76,7 +83,7 @@ public static class TooltipHover
         if (target == null || string.IsNullOrEmpty(text)) return;
         var rt = target.GetComponent<RectTransform>();
         if (rt == null) return;
-        _bindings.Add(new Binding { Rt = rt, Text = text });
+        _bindings.Add(new Binding { Rt = rt, Text = text, Priority = PriorityScope });
     }
 
     /// <summary>Attach a DYNAMIC tooltip — the provider is evaluated when the control is
@@ -87,7 +94,7 @@ public static class TooltipHover
         if (target == null || textFunc == null) return;
         var rt = target.GetComponent<RectTransform>();
         if (rt == null) return;
-        _bindings.Add(new Binding { Rt = rt, TextFunc = textFunc });
+        _bindings.Add(new Binding { Rt = rt, TextFunc = textFunc, Priority = PriorityScope });
     }
 
     /// <summary>Per-frame: walks bindings, updates Sink to the topmost hovered tooltip text.</summary>
@@ -117,11 +124,14 @@ public static class TooltipHover
 
         Vector2 mouse = Input.mousePosition;
         string hit = null;
+        bool found = false;
 
-        // Reverse iteration: removal of stale (destroyed) bindings is O(1)-cheap, AND
-        // the most-recently-registered (typically deepest/child) binding has the highest
-        // index so it's visited FIRST — meaning the first hit is the one that should
-        // win, so we can stop scanning there.
+        // Two passes: priority (panel chrome) bindings first, then everything else.
+        // Within a pass, reverse iteration: removal of stale (destroyed) bindings is
+        // O(1)-cheap, AND the most-recently-registered (typically deepest/child) binding
+        // has the highest index so it's visited FIRST — meaning the first hit is the one
+        // that should win, so we can stop scanning there.
+        for (int pass = 0; pass < 2 && !found; pass++)
         for (int i = _bindings.Count - 1; i >= 0; i--)
         {
             var b = _bindings[i];
@@ -130,6 +140,7 @@ public static class TooltipHover
                 _bindings.RemoveAt(i);
                 continue;
             }
+            if (b.Priority != (pass == 0)) continue;
             if (!b.Rt.gameObject.activeInHierarchy) continue;
 
             // Resolve (and cache) the canvas camera once per binding. GetComponentInParent
@@ -151,6 +162,7 @@ public static class TooltipHover
                 // call per tick — cheap). Falls back to the static text.
                 if (b.TextFunc != null) { try { hit = b.TextFunc(); } catch { hit = null; } }
                 hit ??= b.Text;
+                found = true;
                 break; // first hit in reverse order == most-recently-registered winner
             }
         }

@@ -296,6 +296,9 @@ public class BoxNameDropdownField : FormField
     // detached by MainPanel.Reset() via DetachAll() (all construction sites are in MainPanel).
     private static readonly System.Collections.Generic.List<BoxNameDropdownField> _live = new();
 
+    /// <summary>0.67.1: live-field count, logged by MainPanel's prewarm summary as a leak check.</summary>
+    internal static int LiveCount => _live.Count;
+
     /// <summary>Idempotent: drop the BoxListChanged subscription and forget this field.</summary>
     public void Unsubscribe()
     {
@@ -351,6 +354,9 @@ public class BoxNameDropdownField : FormField
         _boxListChangedHandler = OnBoxListChanged;
         Services.PlayerStateService.BoxListChanged += _boxListChangedHandler;
         _live.Add(this);
+        // 0.67.1: MainPanel rebuilds single tab pages now — tie this subscription to the page being built so
+        // retiring that page detaches it (DetachAll on Reset stays as the panel-wide safety drain).
+        PageBuildContext.Register(Unsubscribe);
 
         // Kick the server for a fresh box list if we don't have one yet — keeps
         // the form usable on the first open before the user clicks Reload.

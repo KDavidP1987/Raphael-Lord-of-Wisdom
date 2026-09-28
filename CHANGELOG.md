@@ -1,5 +1,114 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.67.3 — Chat window spacing
+
+- Chat window: message text no longer touches the tab buttons. Tab row bottom padding 2 -> 6 px (row 24 -> 30),
+  log top margin 4 -> 6 px.
+
+## 0.67.2 — Chat & Diagnostics tab; your command replies always show
+
+Replies to Nyarlathotep commands looked "suppressed". Two causes: VCF error / "command not found" lines were hidden
+whenever `SuppressCommandFrameworkErrors` was on (default), including errors for commands the player typed (`.nyar help`,
+typos, admin-only commands); and every `[NYAR:*]` / `[FAUST:*]` / `[BEELZ:*]` / `[URIEL:*]` line was always removed,
+even replies to `.nyar api …` typed by hand.
+
+- **Attribution** (`Services/OutboundLedger.cs`): Raphael now records whether the latest command came from its own
+  background queries (`EnqueueMessageSilent`) or from the player (buttons, Raphael chat, and the game's chat box via a
+  new fail-soft hook on `ChatHelper.SendChatMessageOfType`, `Patches/ChatSendPatch.cs`). Cleared on logout.
+- **VCF errors:** hidden only when a background command went out in the last 5 s and the player sent nothing in that
+  time. If the game-chat hook can't install, hiding is off for the session.
+- **Protocol lines:** still parsed; new per-mod "Show protocol lines in chat" settings (`BeelzShowProtocolInChat`,
+  `UrielShowProtocolInChat`, `FaustShowProtocolInChat`, `NyarShowProtocolInChat`). Replies to a command the player
+  sent to that mod pass through for 10 s even when off; push lines (`[NYAR:ev]`, `[BEELZ:event]`) never do.
+- **New tab: Settings and Help → Chat & Diagnostics.** Presets (Quiet / Normal / Show everything, with a "Current"
+  label), Raphael & Bloodcraft rows (background errors, background replies, chat copies of parsed replies (first UI
+  for `ClearServerMessages`), familiar chatter, Diagnostic mode), and per-mod rows (show protocol lines, wire trace).
+  The Settings tab's "Chat noise" card now links here. Per-mod Settings tabs keep their toggles; both stay in sync.
+- Nyarlathotep Guide: "Not seeing a reply?" section.
+
+## 0.67.1 — Main panel opens instantly
+
+Opening Raphael could freeze the game for 2-10 s: every tab (~60 pages, ~1,300 tooltips) was built in one
+frame, the 6080x6080 `worldmap.png` was decoded during that build, and each mod handshake rebuilt the whole panel.
+
+- **Lazy pages:** the panel opens with its tab strip and a "Loading <tab>..." placeholder; the clicked tab builds
+  next frame, other tabs build one per frame only while the panel is open (pauses after a slow page). Log shows
+  shell ms, per-page ms and a prewarm summary. A tab that throws shows an error page and retries on next click.
+- **Per-mod invalidation:** a mod connecting, disconnecting or giving up now rebuilds only that mod's tabs
+  (relog/server switch invalidates all mod groups) instead of the whole panel.
+- **"(connecting...)"** group headers while a mod's handshake is still running; "(unavailable)" only after it gives up.
+- **World map:** decoded only when a map is drawn, one frame after "Loading map image..." shows. A <=2048px copy
+  is cached to `worldmap.cache.png` (keyed on source size + time); falls back to the full image on any error.
+- Per-page teardown for Faust pickers and box-name dropdowns; footer/last-response tooltips keep priority over
+  late-built pages; late pages get the panel colour pass; prestige one-shot ticker is now removed on reset.
+
+
+## 0.67.0 — Nyarlathotep integration (contract api 1/2)
+
+New **Nyarlathotep** tab group for the admin-run world-event server mod (waves, empowered NPCs, boss adds,
+defended zones, sieges, stats), built to Nyarlathotep's `docs/RAPHAEL_INTEGRATION_CONTRACT.md` (api 1/2).
+The group stays hidden (Auto) until a server answers `.nyar api version` with `ready=1`. Checked in game against
+Nyarlathotep 0.5.2 (api 4).
+
+- **Services/Nyar/** (new): `NyarWireParser`, `NyarClient`, `NyarState`, `NyarProtocolService`, `NyarDiag`.
+  Handshake mirrors Faust/Uriel (4s settle, 12 probes, give-up). On detection with api ≥2: `api sub on`
+  (re-sent every handshake — server subscriptions are memory-only), then status + me, and for admins events +
+  zones. `events`/`zones` auto-page; `[NYAR:ev]` push lines trigger debounced re-reads; a 1s countdown tick
+  runs while events or the kill switch are live. `[NYAR:err]` codes map to friendly messages.
+- **Wiring:** `[NYAR:` branch in `ClientChatPatch` (routed + destroyed), `Reset()` on logout, `Tick`
+  registered in `Plugin`, `NyarAvailability` (Auto/On/Off) + `NyarDiagnostics` settings, rail diagnostic
+  panel (Re-check / Force-enable), Connection-tab card with Re-detect.
+- **Player tabs:** Live Events (per-event card, wave/next-wave/time-left countdowns), Leaderboards
+  (6 stats × today/week/all, paging, own row highlighted, Share my line), My Stats (three windows +
+  Hide me / Show me), Settings (diagnostics + read-only server switches).
+- **Admin tabs** (inline admin gate): Events (definition list with Start/Stop/Enable/Disable/Edit, Reload
+  from disk, `event set` field editor, test spawn), Zones (add at your position, list, two-click remove),
+  Announce (text + digest; five announcement switches read-only), Kill Switch (purge → confirm with
+  cooldown readout; stats reset → confirm).
+- **Guide:** "Nyarlathotep Guide" in Settings and Help.
+- Pillar/stats switches show an in-tab note rather than hiding tabs. Zone map pins (contract §6) not done yet.
+
+Also in 0.67.0:
+
+- **Beta feedback banner** on every Beelzebub, Uriel and Faust tab: one slim line ("<mod> is in beta. Found a bug
+  or have an idea?…") plus a **Give feedback** button that opens The Shadow Realm Discord (permanent invite
+  `discord.gg/c4YU2HbHFA`). Added via `MaybeAddBetaFeedbackBanner` beside the Eclipse stand-down banner hook.
+
+## 0.66.0 — Beelzebub v0.132–v0.135 support (ApiVersion 29–32)
+
+Every item below only turns on when the connected Beelzebub server reports that API version. On older servers
+Raphael behaves as it did before.
+
+- **Incompatibility locks (API 32 / Beelz v0.135).**
+  - Raphael reads the server's lock groups (`api locks`) on connect, and again after `ability-locked` events and
+    config changes.
+  - In the loadout and hotkey lists, an ability gets a red **[Locked]** badge when its lock group is already full
+    on your live bar (universal slots + current weapon + current form + hotkeys). Its tooltip explains why. When
+    the server itself reports an ability as locked, that report takes precedence over Raphael's estimate.
+  - The action-bar overlay warns when the server will refuse a force-cast of a locked ability.
+  - New admin card **Incompatibility locks**: lists the groups, with Add / extend, Set max, Remove member,
+    Delete group (two-click confirm) and Check player.
+- **Runtime cooldowns + new tuning knobs (API 31 / Beelz v0.134).**
+  - Displayed cooldowns (tooltips, copy text, the action-bar ring) now follow the server's order: the override if
+    set, otherwise the shipped cooldown × scale, then the server's `Grant_MinimumCooldownSeconds` minimum. The
+    minimum only applies once `api config` has been read.
+  - Abilities that use charges show "Uses charges" instead of a cooldown.
+  - The admin ability table and shaping dropdown gain **Max stacks**, **Projectile count**, **Knockback ×**,
+    **Lifetime** and **Cast time ×**. The shaping dropdown also gains leap height and power window. The table
+    scan doesn't report the new values, so they show blank there; **Load current settings** shows the live values.
+- **Per-hit damage (API 30 / Beelz v0.133).**
+  - Player tooltips show the damage multiplier a cast would get right now, but only when the server's damage
+    mode is Scale.
+  - The admin **Load current settings** readout shows damage mode, damage factor and summon power, and flags
+    unreliable hit attribution in orange.
+- **Form/weapon blocks (API 29 / Beelz v0.132).** Tooltips now read "Usable in: X except Y" and "Not with: …".
+  On older servers they use the catalog's allow/`!`-block tokens instead of `api info`'s `forms=` (which could
+  show a blocked form as allowed).
+- **Admin chat commands:**
+  - **Inspect** button (`admin ability-inspect`) on the shaping card.
+  - New **Reseed ability rules** card: Preview / Merge / Replace. Merge and Replace need a two-click confirm.
+  - Short guide section covering the lock, reseed and inspect commands.
+
 ## 0.65.6 — Long-session slowdown fixed, plus a "Refresh Raphael" button
 
 - **Fixed: the game got slower the longer you played, until you logged out and back in.** Two causes:

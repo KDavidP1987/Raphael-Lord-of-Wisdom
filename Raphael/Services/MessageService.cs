@@ -115,6 +115,7 @@ public static partial class MessageService
             LogUtils.LogWarning($"EnqueueMessage('{text}') ignored — character/user not bound yet.");
             return;
         }
+        OutboundLedger.RecordUser(text, "button");   // 0.67.2: player-initiated → its replies/errors stay visible
         NoteOutboundForIntercept(text);
         SendMessage(text);
     }
@@ -155,6 +156,7 @@ public static partial class MessageService
         // running the prefix classifier), so the Chat Logging BchAuto
         // toggle controls visibility. Same partial-class field — no prefix.
         _nextCommandIsBchAuto = true;
+        OutboundLedger.RecordBackground(text);   // 0.67.2: Raphael-fired → its VCF errors may be hidden
         NoteOutboundForIntercept(text);
         // Defensive reset: NoteOutboundForIntercept clears the flag after
         // arming, but if the command didn't match any arming branch we
@@ -191,6 +193,7 @@ public static partial class MessageService
         _localUser      = Entity.Null;
         OutputMessages.Clear();
         _isInitialized  = false;
+        OutboundLedger.Reset();   // 0.67.2: no attribution carries across logout / reconnect
     }
 
     /// <summary>
@@ -288,6 +291,7 @@ public static partial class MessageService
     public static void SendChat(string text, ChatMessageType type)
     {
         if (!_isInitialized || string.IsNullOrEmpty(text)) return;
+        OutboundLedger.RecordUser(text, "Raphael chat");   // 0.67.2: no-op unless it's a dot-command
         try
         {
             var chatMessageEvent = new ChatMessageEvent

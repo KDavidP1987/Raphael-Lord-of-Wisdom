@@ -182,6 +182,7 @@ public partial class MainPanel : ResizeablePanelBase
     private int  _prestigeExoMaxLevel;
     private bool _prestigeExoReceived;
     private bool _prestigeExoFetchScheduled;
+    private System.Action _prestigeExoTicker;
     private bool _prestigeSubscribed;
 
     // In-UI Prestige info display (parsed from `.prestige get` reply).
@@ -373,6 +374,26 @@ public partial class MainPanel : ResizeablePanelBase
         },
         new TabGroupDef
         {
+            // Client UI for the server-side Nyarlathotep mod (admin-run world events: waves, empowered NPCs,
+            // boss adds, defended zones, sieges + per-player stats). Gated on the `.nyar api version`
+            // handshake (IsTabGroupAvailable("Nyarlathotep")). Players get the event board, leaderboards
+            // and their own stats; admin tabs are inline-gated (the server enforces permissions).
+            Title = "Nyarlathotep",
+            StartExpanded = false,
+            Tabs = new[]
+            {
+                (PanelType.NyarEventsTab,          "Live Events"),
+                (PanelType.NyarLeaderboardsTab,    "Leaderboards"),
+                (PanelType.NyarMyStatsTab,         "My Stats"),
+                (PanelType.NyarSettingsTab,        "Settings"),
+                (PanelType.NyarAdminEventsTab,     "Admin: Events"),
+                (PanelType.NyarAdminZonesTab,      "Admin: Zones"),
+                (PanelType.NyarAdminAnnounceTab,   "Admin: Announce"),
+                (PanelType.NyarAdminKillSwitchTab, "Admin: Kill Switch"),
+            },
+        },
+        new TabGroupDef
+        {
             // 0.17: standalone client-side UI enhancements that work on ANY
             // server, with no Bloodcraft/Kindred dependency. Always available
             // (see IsTabGroupAvailable) so it shows even on vanilla servers.
@@ -416,6 +437,8 @@ public partial class MainPanel : ResizeablePanelBase
                 // separate Quick Start / Help pair the other mods get). FaustModHelpTab's content is
                 // appended under the quick start in the FaustQuickStartTab dispatch below.
                 (PanelType.FaustQuickStartTab, "Faust Guide"),
+                // Nyarlathotep is mostly admin-run, so one merged guide tab like Faust's.
+                (PanelType.NyarGuideTab,       "Nyarlathotep Guide"),
                 // In-built base-game guide: explains vanilla V Rising mechanics (leveling, blood, combat,
                 // castles, V Bloods…) and how each server mod changes them — so Raphael works as a
                 // one-stop reference even for players new to the game. Sits beside the external Game Guide.
@@ -423,6 +446,8 @@ public partial class MainPanel : ResizeablePanelBase
                 // 0.12.1: V Rising game guide + community-resource links.
                 (PanelType.GameGuideTab,     "Game Guide"),
                 (PanelType.SettingsTab,      "Settings"),
+                // 0.67.2: every chat-visibility + diagnostics control in one place (presets + per-mod rows).
+                (PanelType.ChatDiagTab,      "Chat & Diagnostics"),
                 // 0.19: always-reachable connection/detection status + re-detect for both server mods.
                 // Lives here (not inside a mod's own group) so you can re-detect even when that group
                 // is hidden because the mod wasn't detected.
@@ -495,12 +520,16 @@ public partial class MainPanel : ResizeablePanelBase
     {
         if (!active && _isFullscreen)
             SetFullscreen(false);
+        // 0.67.1: reopening onto a page that was invalidated (mod detection changed / relog) or never built
+        // must not flash the stale page — show "Loading…" and rebuild it next frame via the pending slot.
+        if (active && !_disposed && !IsTabBuilt(ActiveTab))
+            ArmPendingTab(ActiveTab);
         base.SetActive(active);
         // PERF: Beelzebub tabs skip their state-change rebuilds while the panel is hidden
         // (so a heavily-collected server's api-info enrichment can't thrash the UI off-
         // screen). When the panel reopens, resync whatever Beelz tab is active so it
         // reflects state that arrived while it was closed.
-        if (active) RefreshBeelzTabOnShow(ActiveTab);
+        if (active && IsTabBuilt(ActiveTab)) RefreshBeelzTabOnShow(ActiveTab);
     }
 
     // 0.9.7: fullscreen toggle state. Snapshot of pre-fullscreen Rect data so
@@ -681,19 +710,50 @@ public partial class MainPanel : ResizeablePanelBase
             spacing: 4, padding: new Vector4(6, 6, 6, 6));
         UIFactory.SetLayoutElement(body, flexibleHeight: 1, flexibleWidth: 1);
 
-        BuildTabStrip(body);
-        BuildContentArea(body);
-        BuildLastResponsePanel(ContentRoot);
-        BuildOverlayFooter(ContentRoot);
-        BuildTooltipFooter(ContentRoot);
-        // B4: a clearer, branded title (default was the raw PanelId "MainPanel"). Bold + accent so it
-        // stands out; the title bar is also the drag handle.
-        SetTitle("<b><color=#C41E3A>Raphael</color> Main Panel</b>");   // vampiric blood-red accent
+        // 0.67.1: the shell (rail + footers + title bar button) registers its tooltips as PRIORITY so the
+        // lazily-built pages, which now register later, can't steal the footer's hover (see TooltipHover).
+        var shellSw = System.Diagnostics.Stopwatch.StartNew();
+        TooltipHover.PriorityScope = true;
+        try
+        {
+            BuildTabStrip(body);
+            BuildContentArea(body);
+            BuildLastResponsePanel(ContentRoot);
+            BuildOverlayFooter(ContentRoot);
+            BuildTooltipFooter(ContentRoot);
+            // B4: a clearer, branded title (default was the raw PanelId "MainPanel"). Bold + accent so it
+            // stands out; the title bar is also the drag handle.
+            SetTitle("<b><color=#C41E3A>Raphael</color> Main Panel</b>");   // vampiric blood-red accent
 
-        // 0.9.7: maximize/restore button in the title bar, left of "—".
-        BuildMaximizeButton();
+            // 0.9.7: maximize/restore button in the title bar, left of "—".
+            BuildMaximizeButton();
+        }
+        finally { TooltipHover.PriorityScope = false; }
 
-        ShowTab(InitialTabForFirstShow());
+        // 0.67.1: group-wide state subscriptions used to be wired as a side effect of building the mod tabs.
+        // With lazy pages, wire them with the shell so Beelzebub's reply caching (broadcast pools / kits) and
+        // the Connection readout stay live before any mod tab is opened. Every handler null-checks its page
+        // fields (audited), so an unbuilt page is simply skipped.
+        EnsureBeelzSubscribed();
+        EnsureUrielSubscribed();
+        EnsureFaustSubscribed();
+        EnsureNyarSubscribed();
+        if (!_mapImageSubscribed)
+        {
+            FaustMapBackdrop.ImageLoaded += OnFaustMapImageLoaded;
+            _mapImageSubscribed = true;
+        }
+
+        // 0.67.1: frame 1 is shell-only — the first page is built next frame behind a "Loading…" placeholder,
+        // then the rest are prewarmed one per frame while the panel is open.
+        ShowTabDeferred(InitialTabForFirstShow());
+        if (_prewarmTicker == null)
+        {
+            _prewarmTicker = TickLazyPages;
+            Raphael.Behaviors.CoreUpdateBehavior.Actions.Add(_prewarmTicker);
+        }
+        shellSw.Stop();
+        LogUtils.LogInfo($"MainPanel: shell built in {shellSw.Elapsed.TotalMilliseconds:0} ms (tab pages build on demand).");
 
         // 0.9.6: per-frame ticker that auto-refreshes the wep / blood-legacy
         // stat-values on a 10s cadence while their tab is the active page.
@@ -949,6 +1009,9 @@ public partial class MainPanel : ResizeablePanelBase
             // so a late ACK that misses the single deferred refresh still reconciles the group header.
             Services.Faust.FaustProtocolService.AvailabilityChanged += OnBloodcraftAvailabilityChanged;
             Services.Faust.FaustState.PresenceChanged += OnBloodcraftAvailabilityChanged;
+            // Nyarlathotep: same dual subscription.
+            Services.Nyar.NyarProtocolService.AvailabilityChanged += OnBloodcraftAvailabilityChanged;
+            Services.Nyar.NyarState.PresenceChanged += OnBloodcraftAvailabilityChanged;
             _availabilitySubscribed = true;
         }
 
@@ -1053,7 +1116,7 @@ public partial class MainPanel : ResizeablePanelBase
                 ? "Bloodcraft handshake didn't complete — click to see why and force-enable the tabs anyway."
                 : (available
                     ? $"Show / hide the {group.Title} tab list."
-                    : $"{group.Title} is marked unavailable on this server (no backing mod detected). Adjust via .cfg: BloodcraftAvailability / KindredAvailability = On to force-enable."));
+                    : $"{group.Title} isn't available yet: Raphael is still connecting to it, or it wasn't detected on this server. Adjust via .cfg: BloodcraftAvailability / KindredAvailability = On to force-enable."));
 
         // Outer container for everything inside the group (sub-tabs OR diagnostic).
         var content = UIFactory.CreateVerticalGroup(parent, $"GroupContent_{group.Title}",
@@ -1113,7 +1176,9 @@ public partial class MainPanel : ResizeablePanelBase
                     t.fontSize = Theme.ScaledUI(13);
                 }
                 var captured = tab;
-                b.OnClick = () => ShowTab(captured);
+                // 0.67.1: deferred — shows "Loading…" this frame and builds the page next frame if it
+                // isn't built yet, so a click never freezes the UI mid-press.
+                b.OnClick = () => ShowTabDeferred(captured);
                 _tabButtons[tab] = b;
                 // 0.15.0: apply initial per-tab dimming based on the system
                 // availability detected from ProgressToClient broadcasts.
@@ -1131,6 +1196,8 @@ public partial class MainPanel : ResizeablePanelBase
             BuildUrielDiagnosticPanel(content);
         else if (group.Title == "Faust")
             BuildFaustDiagnosticPanel(content);
+        else if (group.Title == "Nyarlathotep")
+            BuildNyarDiagnosticPanel(content);
 
         // Apply initial visibility — diagnostic OR sub-tab list, never both.
         ApplyModGroupVisibility(group.Title, diagnostic);
@@ -1152,6 +1219,7 @@ public partial class MainPanel : ResizeablePanelBase
                           : groupTitle == "Beelzebub"  ? _beelzDiagnosticGo
                           : groupTitle == "Uriel"      ? _urielDiagnosticGo
                           : groupTitle == "Faust"      ? _faustDiagnosticGo
+                          : groupTitle == "Nyarlathotep" ? _nyarDiagnosticGo
                           : null;
         if (diagGo != null) diagGo.SetActive(diagnostic);
     }
@@ -1518,6 +1586,14 @@ public partial class MainPanel : ResizeablePanelBase
                     // server confirms Faust; recover via the inline Re-check or Connection → Re-detect.
                     _ => Services.Faust.FaustProtocolService.IsPresent,
                 };
+            case "Nyarlathotep":
+                return Settings.NyarAvailability switch
+                {
+                    Settings.ModAvailability.On  => true,
+                    Settings.ModAvailability.Off => false,
+                    // "hidden until confirmed" — same model as Faust/Uriel.
+                    _ => Services.Nyar.NyarProtocolService.IsPresent,
+                };
             case "Game UI":
                 return true; // standalone client-side enhancements; no server probe
             default:
@@ -1571,10 +1647,20 @@ public partial class MainPanel : ResizeablePanelBase
             && !Services.Faust.FaustProtocolService.IsPresent;
     }
 
+    /// <summary>Nyarlathotep analogue: in Auto mode, the `.nyar api version` handshake gave up without a
+    /// ready ACK. Shows the inline "not detected — enable / re-check" panel under the Nyarlathotep rail.</summary>
+    private static bool IsNyarDiagnosticState(string title)
+    {
+        if (title != "Nyarlathotep") return false;
+        if (Settings.NyarAvailability != Settings.ModAvailability.Auto) return false;
+        return Services.Nyar.NyarProtocolService.DetectionGaveUp
+            && !Services.Nyar.NyarProtocolService.IsPresent;
+    }
+
     /// <summary>Any mod group can show an inline diagnostic when its Auto-mode handshake fails.</summary>
     private static bool IsModDiagnosticState(string title)
         => IsBloodcraftDiagnosticState(title) || IsBeelzDiagnosticState(title) || IsUrielDiagnosticState(title)
-        || IsFaustDiagnosticState(title);
+        || IsFaustDiagnosticState(title) || IsNyarDiagnosticState(title);
 
     /// <summary>0.15.0: map each Bloodcraft tab to the Bloodcraft system that
     /// backs it. Returns null when the tab isn't tied to a single system
@@ -1641,8 +1727,43 @@ public partial class MainPanel : ResizeablePanelBase
     private static string FormatGroupHeader(string title, bool expanded, bool available = true)
     {
         var t = title.ToUpper();
-        if (!available) return $"–  {t}  (unavailable)";
+        // 0.67.1: a mod whose handshake is still in flight reads "(connecting…)" rather than "(unavailable)",
+        // so the rail shows Raphael is still working instead of looking broken. "(unavailable)" only after
+        // detection gives up (or the group is forced Off).
+        if (!available) return IsTabGroupProbing(title) ? $"–  {t}  (connecting…)" : $"–  {t}  (unavailable)";
         return expanded ? $"▼  {t}" : $"▶  {t}";
+    }
+
+    /// <summary>0.67.1: true while a mod group's Auto-mode handshake is still in progress (not confirmed, not
+    /// given up). Drives the "(connecting…)" header state. Always false for non-mod groups and forced On/Off.</summary>
+    private static bool IsTabGroupProbing(string title)
+    {
+        switch (title)
+        {
+            case "Bloodcraft":
+                return Settings.BloodcraftAvailability == Settings.ModAvailability.Auto
+                    && !Services.EclipseProtocolService.StandDownForEclipse()
+                    && !Services.EclipseProtocolService.UserRegistered
+                    && !Services.EclipseProtocolService.RegistrationGaveUp;
+            case "Beelzebub":
+                return Settings.BeelzebubAvailability == Settings.ModAvailability.Auto
+                    && !Services.Beelzebub.BeelzProtocolService.IsPresent
+                    && !Services.Beelzebub.BeelzProtocolService.DetectionGaveUp;
+            case "Uriel":
+                return Settings.UrielAvailability == Settings.ModAvailability.Auto
+                    && !Services.Uriel.UrielProtocolService.IsPresent
+                    && !Services.Uriel.UrielProtocolService.DetectionGaveUp;
+            case "Faust":
+                return Settings.FaustAvailability == Settings.ModAvailability.Auto
+                    && !Services.Faust.FaustProtocolService.IsPresent
+                    && !Services.Faust.FaustProtocolService.DetectionGaveUp;
+            case "Nyarlathotep":
+                return Settings.NyarAvailability == Settings.ModAvailability.Auto
+                    && !Services.Nyar.NyarProtocolService.IsPresent
+                    && !Services.Nyar.NyarProtocolService.DetectionGaveUp;
+            default:
+                return false;
+        }
     }
 
     // 0.12.1: AvailabilityChanged subscriber. Defers to the next CoreUpdateBehavior
@@ -1828,6 +1949,50 @@ public partial class MainPanel : ResizeablePanelBase
     // Tab content area (right side) - dispatches per-tab builders
     // -----------------------------------------------------------------------
 
+    // 0.67: Beelzebub, Uriel and Faust are in beta and had downloads but no feedback. One slim line at the top
+    // of each of their tabs asks for issues / ideas and links The Shadow Realm Discord (permanent invite).
+    private const string SHADOW_REALM_INVITE = "https://discord.gg/c4YU2HbHFA";
+    private static readonly string[] BetaFeedbackGroups = { "Beelzebub", "Uriel", "Faust" };
+
+    private void MaybeAddBetaFeedbackBanner(GameObject page, PanelType tab)
+    {
+        string mod = null;
+        foreach (var g in TabGroups)
+        {
+            if (System.Array.IndexOf(BetaFeedbackGroups, g.Title) < 0) continue;
+            foreach (var (t, _) in g.Tabs) if (t == tab) { mod = g.Title; break; }
+            if (mod != null) break;
+        }
+        if (mod == null) return;
+
+        var row = UIFactory.CreateHorizontalGroup(page, "BetaFeedbackBanner",
+            forceExpandWidth: true, forceExpandHeight: false,
+            childControlWidth: true, childControlHeight: true,
+            spacing: 6, padding: new Vector4(2, 2, 6, 4), bgColor: Theme.CardBackground);
+        UIFactory.SetLayoutElement(row, minWidth: 360, preferredWidth: 400, flexibleWidth: 1,
+            minHeight: Theme.ScaledHeight(24), preferredHeight: Theme.ScaledHeight(26), flexibleHeight: 0);
+
+        var lbl = UIFactory.CreateLabel(row, "BetaFeedbackText",
+            $"<color=#E6B85C><b>{mod} is in beta.</b></color> <color={Theme.MutedBodyHex}>Found a bug or have an idea? Tell us on The Shadow Realm Discord.</color>",
+            TextAlignmentOptions.MidlineLeft, color: null, fontSize: Theme.ScaledUI(11));
+        UIFactory.SetLayoutElement(lbl.GameObject, minWidth: 240, preferredWidth: 320, flexibleWidth: 1,
+            minHeight: Theme.ScaledHeight(20), preferredHeight: Theme.ScaledHeight(22), flexibleHeight: 0);
+        lbl.TextMesh.enableWordWrapping = false;
+        lbl.TextMesh.overflowMode = TextOverflowModes.Ellipsis;
+
+        var btn = UIFactory.CreateButton(row, "BetaFeedbackBtn", "Give feedback");
+        UIFactory.SetLayoutElement(btn.GameObject, minWidth: Theme.ScaledWidth(104), preferredWidth: Theme.ScaledWidth(110), flexibleWidth: 0,
+            minHeight: Theme.ScaledHeight(20), preferredHeight: Theme.ScaledHeight(22), flexibleHeight: 0);
+        var bt = btn.Component.GetComponentInChildren<TextMeshProUGUI>();
+        if (bt != null) { bt.fontSize = Theme.ScaledUI(11); bt.enableWordWrapping = false; bt.overflowMode = TextOverflowModes.Overflow; }
+        btn.OnClick = () =>
+        {
+            try { UnityEngine.Application.OpenURL(SHADOW_REALM_INVITE); }
+            catch (System.Exception ex) { LogUtils.LogWarning($"OpenURL('{SHADOW_REALM_INVITE}') threw: {ex.Message}"); }
+        };
+        TooltipHover.Attach(btn.GameObject, $"Open The Shadow Realm Discord ({SHADOW_REALM_INVITE}) in your browser. Post {mod} issues or suggestions in the Raphael channel.");
+    }
+
     // 0.17.1: when Raphael is standing down from the passive Bloodcraft layer because
     // Eclipse is installed (see EclipseProtocolService.StandDownForEclipse), put a
     // clear notice at the top of each affected Bloodcraft-data tab — what's off,
@@ -1876,229 +2041,253 @@ public partial class MainPanel : ResizeablePanelBase
             minWidth: 380, preferredWidth: 420, flexibleWidth: 1,
             minHeight: 280, preferredHeight: 320, flexibleHeight: 1);
 
-        foreach (var (tab, label) in AllTabs())
+        // 0.67.1 PERF: pages are no longer built here. Building all ~60 tab pages in one frame froze the game
+        // for seconds on first open (and again on every whole-panel rebuild). The shell now holds only the
+        // container + a "Loading…" placeholder; each page is built on demand / prewarmed one per frame by
+        // EnsureTabBuilt → BuildTabPage (see the "Lazy tab pages" section near ShowTab).
+        _tabContentRoot = content;
+        BuildPlaceholderPage(content);
+    }
+
+    // 0.67.1: builds ONE tab page — exactly what BuildContentArea used to do per tab inside its loop. Registers
+    // the page in _tabContent/_tabInnerContent (inactive); EnsureTabBuilt owns ordering, teardown and failure.
+    private GameObject BuildTabPage(PanelType tab, string label)
+    {
+        var pageWrapper = CreateTabPage(_tabContentRoot, out var page);
+        _buildingWrapper = pageWrapper;   // 0.67.1: lets EnsureTabBuilt destroy a half-built page if a builder throws
+        AddTabHeading(page, label);
+        MaybeAddEclipseStandDownBanner(page, tab); // 0.17.1: command-console-mode notice
+        MaybeAddBetaFeedbackBanner(page, tab);     // 0.67: beta feedback ask on Beelzebub / Uriel / Faust tabs
+
+        switch (tab)
         {
-            var pageWrapper = CreateTabPage(content, out var page);
-            AddTabHeading(page, label);
-            MaybeAddEclipseStandDownBanner(page, tab); // 0.17.1: command-console-mode notice
-
-            switch (tab)
-            {
-                case PanelType.FamiliarsTab:
-                    BuildFamiliarsTab(page);
-                    break;
-                case PanelType.BoxesTab:
-                    BuildBoxesTab(page);
-                    break;
-                case PanelType.VBloodsTab:
-                    BuildVBloodsTab(page);
-                    break;
-                case PanelType.AllFamiliarsTab:
-                    BuildAllFamiliarsTab(page);
-                    break;
-                case PanelType.ClassTab:
-                    BuildClassTab(page);
-                    break;
-                case PanelType.ExpertiseTab:
-                    BuildExpertiseTab(page);
-                    break;
-                case PanelType.BloodLegacyTab:
-                    BuildBloodLegacyTab(page);
-                    break;
-                case PanelType.UnarmedShiftTab:
-                    BuildUnarmedShiftTab(page);
-                    break;
-                case PanelType.PrestigeTab:
-                    BuildPrestigeTab(page);
-                    break;
-                case PanelType.LevelsTab:
-                    BuildLevelsTab(page);
-                    break;
-                case PanelType.AdminTab:
-                    BuildAdminTab(page);
-                    break;
-                case PanelType.KindredLogisticsTab:
-                    BuildKindredLogisticsTab(page);
-                    break;
-                case PanelType.KindredLogisticsAdminTab:
-                    BuildKindredLogisticsAdminTab(page);
-                    break;
-                case PanelType.DailyQuestTab:
-                    BuildDailyQuestTab(page);
-                    break;
-                case PanelType.KindredCommandsPlayerTab:
-                    BuildKindredCommandsPlayerTab(page);
-                    break;
-                case PanelType.KindredAdminPlayersTab:
-                    BuildKindredAdminPlayersTab(page);
-                    break;
-                case PanelType.KindredAdminServerTab:
-                    BuildKindredAdminServerTab(page);
-                    break;
-                case PanelType.KindredAdminWorldTab:
-                    BuildKindredAdminWorldTab(page);
-                    break;
-                case PanelType.QuickStartTab:
-                    BuildQuickStartTab(page);
-                    break;
-                case PanelType.BloodcraftQuickStartTab:
-                    BuildBloodcraftQuickStartTab(page);
-                    break;
-                case PanelType.ModHelpTab:
-                    BuildModHelpTab(page);
-                    break;
-                case PanelType.BeelzQuickStartTab:
-                    BuildBeelzQuickStartTab(page);
-                    break;
-                case PanelType.BeelzModHelpTab:
-                    BuildBeelzModHelpTab(page);
-                    break;
-                case PanelType.VRisingBasicsTab:
-                    BuildVRisingBasicsTab(page);
-                    break;
-                case PanelType.GameGuideTab:
-                    BuildGameGuideTab(page);
-                    break;
-                case PanelType.SettingsTab:
-                    BuildSettingsTab(page);
-                    break;
-                case PanelType.ConnectionTab:
-                    BuildConnectionTab(page);
-                    break;
-                case PanelType.AboutTab:
-                    BuildAboutTab(page);
-                    break;
-                case PanelType.VanillaAdminTab:
-                    BuildVanillaAdminTab(page);
-                    break;
-                case PanelType.GameUITab:
-                    BuildGameUITab(page);
-                    break;
-                case PanelType.BeelzBestiaryTab:
-                    BuildBeelzBestiaryTab(page);
-                    break;
-                case PanelType.BeelzLoadoutTab:
-                    BuildBeelzLoadoutTab(page);
-                    break;
-                case PanelType.BeelzHotkeysTab:
-                    BuildBeelzHotkeysTab(page);
-                    break;
-                case PanelType.BeelzTransformsTab:
-                    BuildBeelzTransformsTab(page);
-                    break;
-                case PanelType.BeelzSettingsTab:
-                    BuildBeelzSettingsTab(page);
-                    break;
-                case PanelType.BeelzAdminConfigTab:
-                    BuildBeelzAdminConfigTab(page);
-                    break;
-                case PanelType.BeelzAdminPlayersTab:
-                    BuildBeelzAdminPlayersTab(page);
-                    break;
-                case PanelType.BeelzAdminAbilityTableTab:
-                    BuildBeelzAdminAbilityTableTab(page);
-                    break;
-                case PanelType.UrielStorageTab:
-                    BuildUrielStorageTab(page);
-                    break;
-                case PanelType.UrielPrisonTab:
-                    BuildUrielPrisonTab(page);
-                    break;
-                case PanelType.UrielStairsTab:
-                    BuildUrielStairsTab(page);
-                    break;
-                case PanelType.UrielObjectsTab:
-                    BuildUrielObjectsTab(page);
-                    break;
-                case PanelType.UrielObjectCatalogTab:
-                    BuildUrielObjectCatalogTab(page);
-                    break;
-                case PanelType.UrielSettingsTab:
-                    BuildUrielSettingsTab(page);
-                    break;
-                case PanelType.UrielAdminSharingTab:
-                    BuildUrielAdminSharingTab(page);
-                    break;
-                case PanelType.UrielAdminObjectsTab:
-                    BuildUrielAdminObjectsTab(page);
-                    break;
-                case PanelType.UrielAdminConfigTab:
-                    BuildUrielAdminConfigTab(page);
-                    break;
-                case PanelType.UrielQuickStartTab:
-                    BuildUrielQuickStartTab(page);
-                    break;
-                case PanelType.UrielModHelpTab:
-                    BuildUrielModHelpTab(page);
-                    break;
-                case PanelType.FaustCastleInfoTab:
-                    BuildFaustCastleInfoTab(page);
-                    break;
-                case PanelType.FaustPlotsTab:
-                    BuildFaustPlotsTab(page);
-                    break;
-                case PanelType.FaustAllPlotsTab:
-                    BuildFaustAllPlotsTab(page);
-                    break;
-                case PanelType.FaustDecayWatchTab:
-                    BuildFaustDecayWatchTab(page);
-                    break;
-                case PanelType.FaustResourcesTab:
-                    BuildFaustResourcesTab(page);
-                    break;
-                case PanelType.FaustPlayerInfoTab:
-                    BuildFaustPlayerInfoTab(page);
-                    break;
-                case PanelType.FaustClansTab:
-                    BuildFaustClansTab(page);
-                    break;
-                case PanelType.FaustPositionsTab:
-                    BuildFaustPositionsTab(page);
-                    break;
-                case PanelType.FaustStatsTab:
-                    BuildFaustStatsTab(page);
-                    break;
-                case PanelType.FaustBossesTab:
-                    BuildFaustBossesTab(page);
-                    break;
-                case PanelType.FaustKillsTab:
-                    BuildFaustKillsTab(page);
-                    break;
-                case PanelType.FaustWorldScanTab:
-                    BuildFaustWorldScanTab(page);
-                    break;
-                case PanelType.FaustSettingsTab:
-                    BuildFaustSettingsTab(page);
-                    break;
-                case PanelType.FaustAdminControlTab:
-                    BuildFaustAdminControlTab(page);
-                    break;
-                case PanelType.FaustAdminAccessTab:
-                    BuildFaustAdminAccessTab(page);
-                    break;
-                case PanelType.FaustAdminOversightTab:
-                    BuildFaustAdminOversightTab(page);
-                    break;
-                case PanelType.FaustQuickStartTab:
-                    // Combined "Faust Guide" tab — quick start followed by the full command/feature
-                    // reference (these used to be two tabs; merged because Faust is informational-only).
-                    BuildFaustQuickStartTab(page);
-                    AddSpacer(page, 8);
-                    BuildFaustModHelpTab(page);
-                    break;
-                case PanelType.FaustModHelpTab:
-                    // Retained for back-compat; no longer listed in TabGroups (folded into Faust Guide).
-                    BuildFaustModHelpTab(page);
-                    break;
-                default:
-                    AddComingSoonBody(page, label);
-                    break;
-            }
-
-            pageWrapper.SetActive(false);
-            _tabContent[tab] = pageWrapper;
-            _tabInnerContent[tab] = page;
+            case PanelType.FamiliarsTab:
+                BuildFamiliarsTab(page);
+                break;
+            case PanelType.BoxesTab:
+                BuildBoxesTab(page);
+                break;
+            case PanelType.VBloodsTab:
+                BuildVBloodsTab(page);
+                break;
+            case PanelType.AllFamiliarsTab:
+                BuildAllFamiliarsTab(page);
+                break;
+            case PanelType.ClassTab:
+                BuildClassTab(page);
+                break;
+            case PanelType.ExpertiseTab:
+                BuildExpertiseTab(page);
+                break;
+            case PanelType.BloodLegacyTab:
+                BuildBloodLegacyTab(page);
+                break;
+            case PanelType.UnarmedShiftTab:
+                BuildUnarmedShiftTab(page);
+                break;
+            case PanelType.PrestigeTab:
+                BuildPrestigeTab(page);
+                break;
+            case PanelType.LevelsTab:
+                BuildLevelsTab(page);
+                break;
+            case PanelType.AdminTab:
+                BuildAdminTab(page);
+                break;
+            case PanelType.KindredLogisticsTab:
+                BuildKindredLogisticsTab(page);
+                break;
+            case PanelType.KindredLogisticsAdminTab:
+                BuildKindredLogisticsAdminTab(page);
+                break;
+            case PanelType.DailyQuestTab:
+                BuildDailyQuestTab(page);
+                break;
+            case PanelType.KindredCommandsPlayerTab:
+                BuildKindredCommandsPlayerTab(page);
+                break;
+            case PanelType.KindredAdminPlayersTab:
+                BuildKindredAdminPlayersTab(page);
+                break;
+            case PanelType.KindredAdminServerTab:
+                BuildKindredAdminServerTab(page);
+                break;
+            case PanelType.KindredAdminWorldTab:
+                BuildKindredAdminWorldTab(page);
+                break;
+            case PanelType.QuickStartTab:
+                BuildQuickStartTab(page);
+                break;
+            case PanelType.BloodcraftQuickStartTab:
+                BuildBloodcraftQuickStartTab(page);
+                break;
+            case PanelType.ModHelpTab:
+                BuildModHelpTab(page);
+                break;
+            case PanelType.BeelzQuickStartTab:
+                BuildBeelzQuickStartTab(page);
+                break;
+            case PanelType.BeelzModHelpTab:
+                BuildBeelzModHelpTab(page);
+                break;
+            case PanelType.VRisingBasicsTab:
+                BuildVRisingBasicsTab(page);
+                break;
+            case PanelType.GameGuideTab:
+                BuildGameGuideTab(page);
+                break;
+            case PanelType.SettingsTab:
+                BuildSettingsTab(page);
+                break;
+            case PanelType.ChatDiagTab:
+                BuildChatDiagTab(page);
+                break;
+            case PanelType.ConnectionTab:
+                BuildConnectionTab(page);
+                break;
+            case PanelType.AboutTab:
+                BuildAboutTab(page);
+                break;
+            case PanelType.VanillaAdminTab:
+                BuildVanillaAdminTab(page);
+                break;
+            case PanelType.GameUITab:
+                BuildGameUITab(page);
+                break;
+            case PanelType.BeelzBestiaryTab:
+                BuildBeelzBestiaryTab(page);
+                break;
+            case PanelType.BeelzLoadoutTab:
+                BuildBeelzLoadoutTab(page);
+                break;
+            case PanelType.BeelzHotkeysTab:
+                BuildBeelzHotkeysTab(page);
+                break;
+            case PanelType.BeelzTransformsTab:
+                BuildBeelzTransformsTab(page);
+                break;
+            case PanelType.BeelzSettingsTab:
+                BuildBeelzSettingsTab(page);
+                break;
+            case PanelType.BeelzAdminConfigTab:
+                BuildBeelzAdminConfigTab(page);
+                break;
+            case PanelType.BeelzAdminPlayersTab:
+                BuildBeelzAdminPlayersTab(page);
+                break;
+            case PanelType.BeelzAdminAbilityTableTab:
+                BuildBeelzAdminAbilityTableTab(page);
+                break;
+            case PanelType.UrielStorageTab:
+                BuildUrielStorageTab(page);
+                break;
+            case PanelType.UrielPrisonTab:
+                BuildUrielPrisonTab(page);
+                break;
+            case PanelType.UrielStairsTab:
+                BuildUrielStairsTab(page);
+                break;
+            case PanelType.UrielObjectsTab:
+                BuildUrielObjectsTab(page);
+                break;
+            case PanelType.UrielObjectCatalogTab:
+                BuildUrielObjectCatalogTab(page);
+                break;
+            case PanelType.UrielSettingsTab:
+                BuildUrielSettingsTab(page);
+                break;
+            case PanelType.UrielAdminSharingTab:
+                BuildUrielAdminSharingTab(page);
+                break;
+            case PanelType.UrielAdminObjectsTab:
+                BuildUrielAdminObjectsTab(page);
+                break;
+            case PanelType.UrielAdminConfigTab:
+                BuildUrielAdminConfigTab(page);
+                break;
+            case PanelType.UrielQuickStartTab:
+                BuildUrielQuickStartTab(page);
+                break;
+            case PanelType.UrielModHelpTab:
+                BuildUrielModHelpTab(page);
+                break;
+            case PanelType.FaustCastleInfoTab:
+                BuildFaustCastleInfoTab(page);
+                break;
+            case PanelType.FaustPlotsTab:
+                BuildFaustPlotsTab(page);
+                break;
+            case PanelType.FaustAllPlotsTab:
+                BuildFaustAllPlotsTab(page);
+                break;
+            case PanelType.FaustDecayWatchTab:
+                BuildFaustDecayWatchTab(page);
+                break;
+            case PanelType.FaustResourcesTab:
+                BuildFaustResourcesTab(page);
+                break;
+            case PanelType.FaustPlayerInfoTab:
+                BuildFaustPlayerInfoTab(page);
+                break;
+            case PanelType.FaustClansTab:
+                BuildFaustClansTab(page);
+                break;
+            case PanelType.FaustPositionsTab:
+                BuildFaustPositionsTab(page);
+                break;
+            case PanelType.FaustStatsTab:
+                BuildFaustStatsTab(page);
+                break;
+            case PanelType.FaustBossesTab:
+                BuildFaustBossesTab(page);
+                break;
+            case PanelType.FaustKillsTab:
+                BuildFaustKillsTab(page);
+                break;
+            case PanelType.FaustWorldScanTab:
+                BuildFaustWorldScanTab(page);
+                break;
+            case PanelType.FaustSettingsTab:
+                BuildFaustSettingsTab(page);
+                break;
+            case PanelType.FaustAdminControlTab:
+                BuildFaustAdminControlTab(page);
+                break;
+            case PanelType.FaustAdminAccessTab:
+                BuildFaustAdminAccessTab(page);
+                break;
+            case PanelType.FaustAdminOversightTab:
+                BuildFaustAdminOversightTab(page);
+                break;
+            case PanelType.NyarEventsTab:          BuildNyarEventsTab(page); break;
+            case PanelType.NyarLeaderboardsTab:    BuildNyarLeaderboardsTab(page); break;
+            case PanelType.NyarMyStatsTab:         BuildNyarMyStatsTab(page); break;
+            case PanelType.NyarSettingsTab:        BuildNyarSettingsTab(page); break;
+            case PanelType.NyarAdminEventsTab:     BuildNyarAdminEventsTab(page); break;
+            case PanelType.NyarAdminZonesTab:      BuildNyarAdminZonesTab(page); break;
+            case PanelType.NyarAdminAnnounceTab:   BuildNyarAdminAnnounceTab(page); break;
+            case PanelType.NyarAdminKillSwitchTab: BuildNyarAdminKillSwitchTab(page); break;
+            case PanelType.NyarGuideTab:           BuildNyarGuideTab(page); break;
+            case PanelType.FaustQuickStartTab:
+                // Combined "Faust Guide" tab — quick start followed by the full command/feature
+                // reference (these used to be two tabs; merged because Faust is informational-only).
+                BuildFaustQuickStartTab(page);
+                AddSpacer(page, 8);
+                BuildFaustModHelpTab(page);
+                break;
+            case PanelType.FaustModHelpTab:
+                // Retained for back-compat; no longer listed in TabGroups (folded into Faust Guide).
+                BuildFaustModHelpTab(page);
+                break;
+            default:
+                AddComingSoonBody(page, label);
+                break;
         }
+
+        pageWrapper.SetActive(false);
+        _tabContent[tab] = pageWrapper;
+        _tabInnerContent[tab] = page;
+        return pageWrapper;
     }
 
     // Returns the ScrollView wrapper (used for SetActive + as the visible tab
@@ -5115,9 +5304,11 @@ public partial class MainPanel : ResizeablePanelBase
         {
             if (!MessageService.IsInitialized) return;
             Behaviors.CoreUpdateBehavior.Actions.Remove(ticker);
+            if (_prestigeExoTicker == ticker) _prestigeExoTicker = null;
             try { MessageService.EnqueueMessage(".prestige get Exo"); }
             catch (System.Exception ex) { Utils.LogUtils.LogWarning($"PrestigeTab: auto .prestige get Exo failed — {ex.Message}"); }
         };
+        _prestigeExoTicker = ticker;   // 0.67.1: tracked so Reset() can remove it if it never fired
         Behaviors.CoreUpdateBehavior.Actions.Add(ticker);
     }
 
@@ -6759,13 +6950,19 @@ public partial class MainPanel : ResizeablePanelBase
         ToggleRef sessionT = null;
         ToggleRef alwaysT  = null;
 
-        System.Action refresh = () =>
+        // 0.67.2: returns false once this row's toggles are destroyed (page retired) so it can be dropped from
+        // _diagModeRefreshers — the same radios exist on Settings and on Chat & Diagnostics and must agree.
+        System.Func<bool> refreshOne = () =>
         {
+            if (offT != null && offT.Toggle == null) return false;
             var current = Config.Settings.DiagnosticModeSetting;
             if (offT     != null) offT.Toggle.SetIsOnWithoutNotify(current == Config.Settings.DiagnosticModeChoice.Off);
             if (sessionT != null) sessionT.Toggle.SetIsOnWithoutNotify(current == Config.Settings.DiagnosticModeChoice.Session);
             if (alwaysT  != null) alwaysT.Toggle.SetIsOnWithoutNotify(current == Config.Settings.DiagnosticModeChoice.Always);
+            return true;
         };
+        _diagModeRefreshers.Add(refreshOne);
+        System.Action refresh = RefreshAllDiagModeRadios;
 
         offT = AddDiagnosticRadio(row, "Off",
             "No diagnostic logging. Default state.",
@@ -6784,6 +6981,21 @@ public partial class MainPanel : ResizeablePanelBase
 
         // Sync initial state.
         refresh();
+    }
+
+    // 0.67.2: every live Diagnostic-mode radio row (Settings tab + Chat & Diagnostics tab).
+    private readonly List<System.Func<bool>> _diagModeRefreshers = new();
+
+    private void RefreshAllDiagModeRadios()
+    {
+        for (int i = _diagModeRefreshers.Count - 1; i >= 0; i--)
+        {
+            bool alive;
+            try { alive = _diagModeRefreshers[i](); }
+            catch { alive = false; }
+            if (!alive) _diagModeRefreshers.RemoveAt(i);
+        }
+        RefreshChatDiagRows();   // its "Diagnostic mode is on" note depends on this
     }
 
     /// <summary>0.15.0: one mutually-exclusive radio button for the
@@ -7878,122 +8090,16 @@ public partial class MainPanel : ResizeablePanelBase
     private static string FormatOverlayAlignText()
         => Config.Settings.OverlayTextAlignmentSetting == Config.Settings.OverlayAlignment.Right ? "Right" : "Left";
 
-    /// <summary>0.18: consolidated "Chat noise" controls — ALL of Raphael's chat-suppression in
-    /// one place, every toggle phrased "Hide …" and scoped to Raphael's OWN command/query traffic.
-    /// Replaces the old split between the "Chat noise" block and the separate "Chat Logging"
-    /// section, and the confusing 3-way Show* category split (Bloodcraft + the no-op Kindred
-    /// toggle are merged into one "command replies you trigger" control). Underlying config keys
-    /// (ShowChatBchAuto / ShowChatBloodcraft / ShowChatKindred / SuppressFamiliarActionChatter /
-    /// SuppressCommandFrameworkErrors) are unchanged, so saved prefs carry over. The KEY promise —
-    /// reinforced by the 0.18 generic-capture fix in MessageService — is that Raphael never hides
-    /// other players' chat or other mods' system messages; only chat copies of its OWN commands.</summary>
+    /// <summary>0.67.2: the "Chat noise" controls moved to Settings and Help → Chat & Diagnostics (one place for
+    /// every chat-visibility and diagnostics setting). This card just points there.</summary>
     private void BuildChatNoiseSection(GameObject page)
     {
         AddSectionHeading(page, "Chat noise");
         AddBodyText(page,
-            "Raphael only ever hides chat tied to its OWN commands and queries — it never touches other " +
-            "players' chat or other mods' system messages. These control which of Raphael's own chat copies it hides:");
-
-        // 1. Raphael's automatic background polling (overlay bonus-stats ticker, V-Blood scanner, tab
-        //    auto-refresh). Backed by ShowChatBchAuto, inverted. Default hidden.
-        AddChatLoggingToggle(page, "Hide Raphael's background query replies",
-            "Raphael quietly polls the server to keep its panels and overlays current (the XP overlay bonus-stats ticker, " +
-            "the V-Blood scanner, tab auto-refresh). On (default) keeps those replies out of chat. Turn off to see " +
-            "exactly what Raphael is sending — useful when diagnosing why a Raphael feature isn't picking up server data.",
-            () => !Config.Settings.ShowChatBchAuto,
-            hide => Config.Settings.SetShowChatBchAuto(!hide));
-
-        // 2. Replies to commands the USER triggers (button clicks / typed). Backed by
-        //    ShowChatBloodcraft + ShowChatKindred (merged), inverted. Default shown (OFF).
-        AddChatLoggingToggle(page, "Hide chat copies of Raphael command replies you trigger",
-            "When you click a Raphael button or type a Bloodcraft / Kindred command, the reply is mirrored into Raphael's " +
-            "panels. OFF (default) means the reply ALSO appears in chat as usual; ON keeps chat cleaner (the data " +
-            "still shows in Raphael's UI). Big list dumps (like the full familiar box list) are always mirrored to their " +
-            "tab rather than chat. Action confirmations and commands Raphael doesn't parse stay visible regardless.",
-            () => !Config.Settings.ShowChatBloodcraft,
-            hide => { Config.Settings.SetShowChatBloodcraft(!hide); Config.Settings.SetShowChatKindred(!hide); });
-
-        // 3. Familiar bind/unbind/switch-box confirmations (Bloodcraft action chatter).
-        AddSuppressActionChatterToggle(page);
-        // 4. Command-framework (VCF) "[error]"/"[denied]" chatter.
-        AddSuppressCommandFrameworkErrorsToggle(page);
-    }
-
-    /// <summary>0.9.1: opt-in toggle to suppress the chat confirmation lines
-    /// Bloodcraft prints when the user bind / unbind / switch-box / move /
-    /// smartbind / permanent-remove a familiar. The structured data pipes
-    /// (.fam boxes, .fam l, Eclipse stream) are unaffected — the UI still
-    /// updates normally. Friend-testing feedback: "is it possible to
-    /// suppress all of the chat messages that come through as you were
-    /// switching boxes and familiars". Default off so existing users see no
-    /// change.</summary>
-    private void AddSuppressActionChatterToggle(GameObject parent)
-    {
-        var row = UIFactory.CreateHorizontalGroup(parent, "SuppressChatterRow",
-            forceExpandWidth: true, forceExpandHeight: false,
-            childControlWidth: true, childControlHeight: true,
-            spacing: 6, padding: new Vector4(2, 2, 2, 2));
-        UIFactory.SetLayoutElement(row,
-            minWidth: 360, preferredWidth: 400, flexibleWidth: 1,
-            minHeight: 28, preferredHeight: 30, flexibleHeight: 0);
-
-        var t = UIFactory.CreateToggle(row, "SuppressActionChatterToggle");
-        UIFactory.SetLayoutElement(t.GameObject,
-            minWidth: 360, preferredWidth: 400, flexibleWidth: 1,
-            minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
-        t.Text.text = "Hide familiar-action chat (bind/unbind/switch box/...)";
-        t.Text.fontSize = Theme.ScaledUI(12);
-        t.Text.alignment = TextAlignmentOptions.MidlineLeft;
-        UIFactory.SetLayoutElement(t.Text.gameObject,
-            minWidth: 320, preferredWidth: 360, flexibleWidth: 1,
-            minHeight: 22, preferredHeight: 24, flexibleHeight: 0);
-        t.Toggle.isOn = Config.Settings.SuppressFamiliarActionChatter;
-        TooltipHover.Attach(t.GameObject,
-            "When on, Bloodcraft's confirmation chat lines for .fam b / .fam ub / .fam t / .fam cb / .fam mb / .fam sb / .fam r get eaten so they don't clutter your chat box. " +
-            "The UI continues to work normally — box list, contents, and overlays read from separate data feeds, not these confirmation lines. Off by default.");
-        t.OnValueChanged += value =>
-        {
-            Config.Settings.SetSuppressFamiliarActionChatter(value);
-        };
-    }
-
-    /// <summary>0.18: opt-out toggle to hide VampireCommandFramework (VCF) error chatter
-    /// from chat — the "[error]" / "[denied]" / "parameter conversion errors" system lines
-    /// that surface when a command Raphael sends (or an admin button clicked by a non-admin)
-    /// isn't usable on this server. Raphael is primarily a Bloodcraft client but can load on
-    /// Beelzebub-only / Kindred-only / vanilla servers, where these are pure noise. On by
-    /// default; reads live so flipping it takes effect on the next inbound message.</summary>
-    private void AddSuppressCommandFrameworkErrorsToggle(GameObject parent)
-    {
-        var row = UIFactory.CreateHorizontalGroup(parent, "SuppressVcfErrorsRow",
-            forceExpandWidth: true, forceExpandHeight: false,
-            childControlWidth: true, childControlHeight: true,
-            spacing: 6, padding: new Vector4(2, 2, 2, 2));
-        UIFactory.SetLayoutElement(row,
-            minWidth: 360, preferredWidth: 400, flexibleWidth: 1,
-            minHeight: 28, preferredHeight: 30, flexibleHeight: 0);
-
-        var t = UIFactory.CreateToggle(row, "SuppressVcfErrorsToggle");
-        UIFactory.SetLayoutElement(t.GameObject,
-            minWidth: 360, preferredWidth: 400, flexibleWidth: 1,
-            minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
-        t.Text.text = "Hide command-framework (VCF) error / denied chatter";
-        t.Text.fontSize = Theme.ScaledUI(12);
-        t.Text.alignment = TextAlignmentOptions.MidlineLeft;
-        UIFactory.SetLayoutElement(t.Text.gameObject,
-            minWidth: 320, preferredWidth: 360, flexibleWidth: 1,
-            minHeight: 22, preferredHeight: 24, flexibleHeight: 0);
-        t.Toggle.isOn = Config.Settings.SuppressCommandFrameworkErrors;
-        TooltipHover.Attach(t.GameObject,
-            "When on (default), Raphael eats the '[error]', '[denied]', and 'parameter conversion error' chat lines that " +
-            "a command framework (VCF — used by Bloodcraft, Beelzebub, and KindredCommands) prints when a command Raphael " +
-            "issues can't run here — e.g. a Bloodcraft command on a server without Bloodcraft, or an admin button " +
-            "clicked by a non-admin. These are never Raphael's own data, so they're just noise. Turn it OFF if you want to " +
-            "see why a command you typed yourself failed.");
-        t.OnValueChanged += value =>
-        {
-            Config.Settings.SetSuppressCommandFrameworkErrors(value);
-        };
+            "What Raphael hides from chat, plus diagnostics for every mod, now lives in one place.");
+        var row = MakeUrielRow(page, "ChatNoiseGoRow");
+        AddUrielButton(row, "ChatNoiseGo", "Open Chat & Diagnostics", "Go to Settings and Help → Chat & Diagnostics.",
+            () => ShowTabDeferred(PanelType.ChatDiagTab), 220);
     }
 
     /// <summary>Font-size control: a slider (50–400%) + a typed value box + Apply, replacing the old
@@ -10192,15 +10298,420 @@ public partial class MainPanel : ResizeablePanelBase
     // Tab switching
     // -----------------------------------------------------------------------
 
+    // -----------------------------------------------------------------------
+    // Lazy tab pages (0.67.1 PERF)
+    //
+    // Pre-0.67.1 the constructor built all ~60 pages in one frame (a 2-10 s freeze on first open, repeated on
+    // every whole-panel rebuild). Now:
+    //   • the shell (rail + footers) builds on open, with a "Loading…" placeholder in the content area;
+    //   • a clicked / initial tab goes through a single PENDING slot and builds next frame (placeholder shows
+    //     first); programmatic ShowTab builds synchronously because external callers may touch the page;
+    //   • TickLazyPages prewarms the rest ONE page per frame while the panel is open (never while closed);
+    //   • a mod's detection change marks only that mod's pages stale (InvalidateModPages) — no whole rebuild.
+    // Page lifecycle: EnsureTabBuilt retires the old page FIRST (its per-page teardown runs, then it is hidden
+    // and destroyed) and builds the replacement in the same synchronous frame. Builders assign shared panel
+    // fields, so "keep the old page if the rebuild fails" isn't safe — a failed build shows an error page.
+    // -----------------------------------------------------------------------
+
+    public enum ModGroup { Bloodcraft, Beelzebub, Uriel, Faust, Nyar }
+
+    private static string ModGroupTitle(ModGroup g) => g switch
+    {
+        ModGroup.Bloodcraft => "Bloodcraft",
+        ModGroup.Beelzebub  => "Beelzebub",
+        ModGroup.Uriel      => "Uriel",
+        ModGroup.Faust      => "Faust",
+        ModGroup.Nyar       => "Nyarlathotep",
+        _ => null,
+    };
+
+    private GameObject _tabContentRoot;
+    private GameObject _placeholderPage;
+    private TextMeshProUGUI _placeholderLabel;
+    private GameObject _buildingWrapper;
+    private readonly Dictionary<PanelType, GameObject> _errorPages = new();
+    private readonly HashSet<PanelType> _staleTabs = new();
+    private readonly HashSet<PanelType> _failedTabs = new();
+    private readonly Dictionary<PanelType, List<System.Action>> _pageTeardown = new();
+    private List<System.Action> _buildingTeardown;
+    private bool _isBuildingPage;
+    private PanelType? _pendingTab;
+    private int _pendingArmedFrame;
+    private int _navGen;
+    private bool _disposed;
+    private System.Action _prewarmTicker;
+    private int _prewarmPauseUntilFrame;
+    private int _prewarmBuilt;
+    private double _prewarmTotalMs;
+    private double _prewarmSlowestMs;
+    private PanelType _prewarmSlowestTab;
+    private bool _prewarmSummaryLogged;
+    private bool _mapImageSubscribed;
+    private const double PREWARM_SLOW_PAGE_MS = 16.0;
+    private const int PREWARM_SLOW_PAUSE_FRAMES = 10;
+
+    private bool IsTabBuilt(PanelType tab)
+        => _tabContent.TryGetValue(tab, out var go) && go != null && !_staleTabs.Contains(tab);
+
+    private void BuildPlaceholderPage(GameObject parent)
+    {
+        _placeholderPage = UIFactory.CreateVerticalGroup(parent, "TabLoadingPlaceholder",
+            forceWidth: true, forceHeight: false,
+            childControlWidth: true, childControlHeight: true,
+            spacing: 4, padding: new Vector4(14, 14, 14, 14), childAlignment: TextAnchor.UpperLeft);
+        UIFactory.SetLayoutElement(_placeholderPage,
+            minWidth: 380, preferredWidth: 420, flexibleWidth: 1,
+            minHeight: 280, flexibleHeight: 1);
+        var lbl = UIFactory.CreateLabel(_placeholderPage, "TabLoadingText", "Loading…",
+            TextAlignmentOptions.TopLeft, color: null, fontSize: Theme.ScaledUI(14));
+        UIFactory.SetLayoutElement(lbl.GameObject, minWidth: 300, flexibleWidth: 1,
+            minHeight: Theme.ScaledHeight(24), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
+        lbl.TextMesh.color = Theme.MutedBody;
+        _placeholderLabel = lbl.TextMesh;
+        _placeholderPage.SetActive(false);
+    }
+
+    // Show exactly one content-area child: a built page, an error page, or (null) the placeholder.
+    private void ShowOnlyPage(GameObject visible)
+    {
+        foreach (var kv in _tabContent)
+            if (kv.Value != null && kv.Value.activeSelf != (kv.Value == visible)) kv.Value.SetActive(kv.Value == visible);
+        foreach (var kv in _errorPages)
+            if (kv.Value != null && kv.Value.activeSelf != (kv.Value == visible)) kv.Value.SetActive(kv.Value == visible);
+        if (_placeholderPage != null)
+        {
+            bool showPlaceholder = visible == null;
+            if (_placeholderPage.activeSelf != showPlaceholder) _placeholderPage.SetActive(showPlaceholder);
+        }
+    }
+
+    // Put `tab` in the pending slot (latest request wins) and show the placeholder until it's built.
+    private void ArmPendingTab(PanelType tab)
+    {
+        ActiveTab = tab;
+        _pendingTab = tab;
+        _pendingArmedFrame = UnityEngine.Time.frameCount;
+        _navGen++;
+        if (_placeholderLabel != null)
+            _placeholderLabel.text = $"Loading {LookupTabLabel(tab) ?? tab.ToString()}…";
+        ShowOnlyPage(null);
+    }
+
+    /// <summary>0.67.1: tab-button / initial-open navigation. Built pages switch instantly; an unbuilt or stale
+    /// page shows "Loading…" this frame and is built next frame (TickLazyPages), so a click never freezes.</summary>
+    private void ShowTabDeferred(PanelType tab)
+    {
+        if (_disposed || LookupTabLabel(tab) == null) return;
+        if (IsTabBuilt(tab))
+        {
+            ShowTab(tab);
+            return;
+        }
+        _failedTabs.Remove(tab);   // an explicit click retries a failed page
+        ArmPendingTab(tab);
+    }
+
+    // Retire a page: run its teardown (static-event unhooks), hide it immediately (Destroy is end-of-frame), destroy.
+    private void RetirePage(PanelType tab)
+    {
+        if (_pageTeardown.TryGetValue(tab, out var td))
+        {
+            _pageTeardown.Remove(tab);
+            PageBuildContext.Drain(td);
+        }
+        if (_tabContent.TryGetValue(tab, out var old))
+        {
+            _tabContent.Remove(tab);
+            _tabInnerContent.Remove(tab);
+            if (old != null)
+            {
+                old.SetActive(false);
+                UnityEngine.Object.Destroy(old);
+            }
+        }
+        RetireErrorPage(tab);
+    }
+
+    private void RetireErrorPage(PanelType tab)
+    {
+        if (!_errorPages.TryGetValue(tab, out var err)) return;
+        _errorPages.Remove(tab);
+        if (err != null)
+        {
+            err.SetActive(false);
+            UnityEngine.Object.Destroy(err);
+        }
+    }
+
+    private void CreateErrorPage(PanelType tab, string label)
+    {
+        if (_tabContentRoot == null) return;
+        var err = UIFactory.CreateVerticalGroup(_tabContentRoot, $"TabError_{tab}",
+            forceWidth: true, forceHeight: false,
+            childControlWidth: true, childControlHeight: true,
+            spacing: 4, padding: new Vector4(14, 14, 14, 14), childAlignment: TextAnchor.UpperLeft);
+        UIFactory.SetLayoutElement(err, minWidth: 380, preferredWidth: 420, flexibleWidth: 1, minHeight: 280, flexibleHeight: 1);
+        var lbl = UIFactory.CreateLabel(err, "TabErrorText",
+            $"<color=#FF8080>Couldn't build the {label} tab.</color>\nThe error is in the BepInEx log. Click the tab again to retry.",
+            TextAlignmentOptions.TopLeft, color: null, fontSize: Theme.ScaledUI(13));
+        UIFactory.SetLayoutElement(lbl.GameObject, minWidth: 300, flexibleWidth: 1, minHeight: 40, flexibleHeight: 0);
+        lbl.TextMesh.enableWordWrapping = true;
+        err.SetActive(false);
+        _errorPages[tab] = err;
+    }
+
+    /// <summary>0.67.1: build `tab`'s page if it's missing or stale. Returns true when a usable page exists.
+    /// `explicitRetry` (clicks / programmatic ShowTab) clears a previous failure; prewarm skips failed tabs.</summary>
+    private bool EnsureTabBuilt(PanelType tab, bool explicitRetry)
+    {
+        if (_disposed || _tabContentRoot == null) return false;
+        if (IsTabBuilt(tab)) return true;
+        var label = LookupTabLabel(tab);
+        if (label == null) return false;   // not in any group (same as the old `_tabContent.ContainsKey` guard)
+        if (_failedTabs.Contains(tab))
+        {
+            if (!explicitRetry) return false;
+            _failedTabs.Remove(tab);
+        }
+        if (_isBuildingPage)
+        {
+            // A builder navigated mid-build — never observed; park it in the pending slot for the caller to drain.
+            // Only ShowTab reaches here reentrantly, so this is a navigation: it becomes the target (latest wins),
+            // and bumping _navGen stops a deferred commit of the outer tab.
+            LogUtils.LogWarning($"MainPanel: nested page build requested for {tab} while another page was building; deferred.");
+            _pendingTab = tab;
+            _pendingArmedFrame = UnityEngine.Time.frameCount - 1;
+            ActiveTab = tab;
+            _navGen++;
+            return false;
+        }
+
+        RetirePage(tab);
+
+        var teardown = new List<System.Action>();
+        var prevScope = PageBuildContext.Begin(teardown);
+        _isBuildingPage = true;
+        _buildingTeardown = teardown;
+        _buildingWrapper = null;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var wrapper = BuildTabPage(tab, label);
+            // PanelBase paints the user's panel colours once, after construction (PanelBase.cs ConstructUI);
+            // a page built later missed that pass, so paint just this page's subtree the same way.
+            if (UsesCustomBackgroundColor)
+                UIFactory.ApplyBackgroundColorRgbToPanel(wrapper, Settings.PanelBackgroundColor);
+            if (UsesCustomInnerBackgroundColor)
+                UIFactory.ApplyInnerBackgroundColorToPanel(wrapper, Settings.InnerPanelBackgroundColor);
+            _pageTeardown[tab] = teardown;
+            _staleTabs.Remove(tab);
+            sw.Stop();
+            double ms = sw.Elapsed.TotalMilliseconds;
+            _prewarmBuilt++;
+            _prewarmTotalMs += ms;
+            if (ms > _prewarmSlowestMs) { _prewarmSlowestMs = ms; _prewarmSlowestTab = tab; }
+            LogUtils.LogDiagnostic($"MainPanel: built tab {tab} in {ms:0.0} ms");
+            return true;
+        }
+        catch (System.Exception ex)
+        {
+            LogUtils.LogError($"MainPanel: building tab {tab} failed: {ex}");
+            PageBuildContext.Drain(teardown);
+            _tabContent.Remove(tab);
+            _tabInnerContent.Remove(tab);
+            if (_buildingWrapper != null)
+            {
+                _buildingWrapper.SetActive(false);
+                UnityEngine.Object.Destroy(_buildingWrapper);
+            }
+            _staleTabs.Remove(tab);
+            _failedTabs.Add(tab);
+            CreateErrorPage(tab, label);
+            return false;
+        }
+        finally
+        {
+            PageBuildContext.End(prevScope);
+            _isBuildingPage = false;
+            _buildingTeardown = null;
+            _buildingWrapper = null;
+        }
+    }
+
+    // Per-frame: (1) build a pending navigation target once its placeholder has rendered, then (2) prewarm one
+    // more page. Only while the panel is open; nothing is built while it's closed.
+    private void TickLazyPages()
+    {
+        if (_disposed || !Enabled || _tabContentRoot == null) return;
+        int frame = UnityEngine.Time.frameCount;
+
+        if (_pendingTab is PanelType pending)
+        {
+            if (frame <= _pendingArmedFrame) return;   // let "Loading…" render for at least one frame
+            int gen = _navGen;
+            _pendingTab = null;
+            EnsureTabBuilt(pending, explicitRetry: true);
+            // Commit only if nothing re-targeted navigation while we built (latest click wins).
+            if (gen == _navGen && ActiveTab == pending && !_pendingTab.HasValue)
+                ShowTabTail(pending);
+            return;   // one build per frame
+        }
+
+        if (frame < _prewarmPauseUntilFrame) return;
+        var next = NextTabToPrewarm();
+        if (next is not PanelType t)
+        {
+            if (!_prewarmSummaryLogged && _prewarmBuilt > 0)
+            {
+                _prewarmSummaryLogged = true;
+                int teardowns = 0;
+                foreach (var kv in _pageTeardown) teardowns += kv.Value.Count;
+                LogUtils.LogInfo($"MainPanel: prewarm done — {_prewarmBuilt} page build(s), {_prewarmTotalMs:0} ms total, " +
+                    $"slowest {_prewarmSlowestTab} {_prewarmSlowestMs:0} ms; page teardowns={teardowns}, " +
+                    $"box-name fields live={Raphael.UI.Forms.BoxNameDropdownField.LiveCount}.");
+            }
+            return;
+        }
+        _prewarmSummaryLogged = false;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        EnsureTabBuilt(t, explicitRetry: false);
+        if (sw.Elapsed.TotalMilliseconds > PREWARM_SLOW_PAGE_MS)
+            _prewarmPauseUntilFrame = frame + PREWARM_SLOW_PAUSE_FRAMES;
+    }
+
+    // Recomputed every tick from current state (no persistent queue, so nothing carries across a server switch):
+    // exact ActiveTab → rest of its group → other available groups (rail order; Game UI + Settings and Help last
+    // by position). Unavailable mod groups are skipped — built on click only — and failed tabs are skipped.
+    private PanelType? NextTabToPrewarm()
+    {
+        bool Wants(PanelType t) => !IsTabBuilt(t) && !_failedTabs.Contains(t);
+        if (Wants(ActiveTab) && LookupTabLabel(ActiveTab) != null) return ActiveTab;
+        TabGroupDef activeGroup = null;
+        foreach (var g in TabGroups)
+            foreach (var (t, _) in g.Tabs)
+                if (t == ActiveTab) activeGroup = g;
+        if (activeGroup != null && IsTabGroupAvailable(activeGroup.Title))
+            foreach (var (t, _) in activeGroup.Tabs)
+                if (Wants(t)) return t;
+        foreach (var g in TabGroups)
+        {
+            if (g == activeGroup || !IsTabGroupAvailable(g.Title)) continue;
+            foreach (var (t, _) in g.Tabs)
+                if (Wants(t)) return t;
+        }
+        return null;
+    }
+
+    /// <summary>0.67.1: a mod's detection state changed (present ↔ absent, or gave up). Mark only that mod's
+    /// built pages stale — they're rebuilt lazily (active one next frame, rest by prewarm / on click) instead
+    /// of destroying and rebuilding the whole panel. Safe while closed.</summary>
+    public void InvalidateModPages(ModGroup group)
+    {
+        if (_disposed) return;
+        var title = ModGroupTitle(group);
+        foreach (var g in TabGroups)
+        {
+            if (g.Title != title) continue;
+            foreach (var (t, _) in g.Tabs)
+            {
+                _failedTabs.Remove(t);
+                if (_tabContent.ContainsKey(t) || _errorPages.ContainsKey(t)) _staleTabs.Add(t);
+            }
+            // The active page is showing now: swap to "Loading…" so the stale content isn't interactable.
+            foreach (var (t, _) in g.Tabs)
+                if (t == ActiveTab && _staleTabs.Contains(t)) ArmPendingTab(t);
+        }
+        _prewarmSummaryLogged = false;
+        LogUtils.LogDiagnostic($"MainPanel: {title} detection changed — its tab pages will rebuild on demand.");
+    }
+
+    /// <summary>0.67.2: a setting shown on <paramref name="tab"/> changed elsewhere — rebuild that page when next
+    /// needed (prewarm / on click) so it doesn't show a stale value. No-op if it was never built.</summary>
+    private void MarkTabStale(PanelType tab)
+    {
+        if (_disposed || tab == ActiveTab) return;
+        if (_tabContent.ContainsKey(tab) || _errorPages.ContainsKey(tab)) { _staleTabs.Add(tab); _prewarmSummaryLogged = false; }
+    }
+
+    /// <summary>0.67.1: relog / server switch — every mod group's pages may describe the previous server.</summary>
+    public void InvalidateAllModPages()
+    {
+        foreach (ModGroup g in System.Enum.GetValues(typeof(ModGroup))) InvalidateModPages(g);
+    }
+
+    private void OnFaustMapImageLoaded()
+    {
+        if (_disposed) return;
+        try
+        {
+            if (_faustWsMapImgStatus != null) _faustWsMapImgStatus.text = FaustMapBackdrop.StatusLine();
+            RefreshFaustMapUnderlays();
+        }
+        catch (System.Exception ex) { LogUtils.LogDebug($"[Faust] map refresh after image load failed: {ex.Message}"); }
+    }
+
     public void ShowTab(PanelType tab)
     {
-        if (!_tabContent.ContainsKey(tab)) return;
-        foreach (var kv in _tabContent) kv.Value.SetActive(kv.Key == tab);
+        if (_disposed) return;
+        if (_isBuildingPage)
+        {
+            // A page builder navigated (never observed). Park it as the newest target — even if that tab is
+            // already built — and let the outermost ShowTab / the tick settle it after the current build.
+            LogUtils.LogWarning($"MainPanel: ShowTab({tab}) called while a page was building; deferred.");
+            _pendingTab = tab;
+            _pendingArmedFrame = UnityEngine.Time.frameCount - 1;
+            ActiveTab = tab;
+            _navGen++;
+            return;
+        }
+        // 0.67.1: programmatic navigation is synchronous (callers may touch the page right after), and it
+        // supersedes any pending deferred navigation so that can't take over next frame.
+        _pendingTab = null;
+        _navGen++;
+        bool built = EnsureTabBuilt(tab, explicitRetry: true);
+        // A builder that navigated mid-build parked its target in the pending slot — that newer target wins. Build
+        // it now (bounded, in case of a cycle) so nothing is left half-requested when this synchronous call returns.
+        var target = tab;
+        for (int i = 0; i < 3 && _pendingTab is PanelType nested; i++)
+        {
+            _pendingTab = null;
+            target = nested;
+            built = EnsureTabBuilt(nested, explicitRetry: true);
+        }
+        if (_pendingTab is PanelType stuck)
+        {
+            LogUtils.LogError($"MainPanel: nested tab navigation did not settle (still pending {stuck}); deferring it.");
+            ArmPendingTab(stuck);   // placeholder + next-frame build
+            return;
+        }
+        if (!built)
+        {
+            if (_errorPages.TryGetValue(target, out var errPage))
+            {
+                ActiveTab = target;
+                ShowOnlyPage(errPage);
+            }
+            return;
+        }
+        ShowTabTail(target);
+    }
+
+    // Everything ShowTab did once the page existed (unchanged pre-0.67.1 behaviour).
+    private void ShowTabTail(PanelType tab)
+    {
+        if (!_tabContent.TryGetValue(tab, out var pageGo) || pageGo == null)
+        {
+            if (_errorPages.TryGetValue(tab, out var errPage)) { ActiveTab = tab; ShowOnlyPage(errPage); }
+            return;
+        }
+        ShowOnlyPage(pageGo);
         ActiveTab = tab;
 
         // PERF: Beelz tabs ignore their state-change events while hidden; resync the
         // one being shown so it reflects current BeelzState (no-op for non-Beelz tabs).
         RefreshBeelzTabOnShow(tab);
+        // 0.67.2: the same settings are also editable on other tabs — re-read them when shown.
+        if (tab == PanelType.ChatDiagTab) RefreshChatDiagRows();
 
         // First-open auto-pull for tabs whose body depends on a server reply.
         // Boxes tab: send .fam boxes if we don't have any yet, so the user
@@ -10311,6 +10822,35 @@ public partial class MainPanel : ResizeablePanelBase
 
     internal override void Reset()
     {
+        // 0.67.1 lazy-page teardown, in order: stop every deferred/ticker path first so nothing builds or
+        // refreshes into a panel that's being destroyed, then drain the per-page teardowns, then the
+        // panel-wide unsubscribes below (RunFaustPickerUnsubs / DetachAll stay as safety drains).
+        _disposed = true;
+        _pendingTab = null;
+        if (_prewarmTicker != null)
+        {
+            Raphael.Behaviors.CoreUpdateBehavior.Actions.Remove(_prewarmTicker);
+            _prewarmTicker = null;
+        }
+        if (_deferredFeatureFlagsRefresh != null)
+        {
+            Raphael.Behaviors.CoreUpdateBehavior.Actions.Remove(_deferredFeatureFlagsRefresh);
+            _deferredFeatureFlagsRefresh = null;
+        }
+        if (_prestigeExoTicker != null)
+        {
+            Raphael.Behaviors.CoreUpdateBehavior.Actions.Remove(_prestigeExoTicker);
+            _prestigeExoTicker = null;
+        }
+        if (_mapImageSubscribed)
+        {
+            FaustMapBackdrop.ImageLoaded -= OnFaustMapImageLoaded;
+            _mapImageSubscribed = false;
+        }
+        PageBuildContext.Drain(_buildingTeardown);
+        foreach (var td in new List<List<System.Action>>(_pageTeardown.Values)) PageBuildContext.Drain(td);
+        _pageTeardown.Clear();
+
         if (_availabilitySubscribed)
         {
             Services.EclipseProtocolService.AvailabilityChanged -= OnBloodcraftAvailabilityChanged;
@@ -10321,12 +10861,15 @@ public partial class MainPanel : ResizeablePanelBase
             Services.Uriel.UrielState.PresenceChanged -= OnBloodcraftAvailabilityChanged;
             Services.Faust.FaustProtocolService.AvailabilityChanged -= OnBloodcraftAvailabilityChanged;   // matches the subscribe above
             Services.Faust.FaustState.PresenceChanged -= OnBloodcraftAvailabilityChanged;
+            Services.Nyar.NyarProtocolService.AvailabilityChanged -= OnBloodcraftAvailabilityChanged;
+            Services.Nyar.NyarState.PresenceChanged -= OnBloodcraftAvailabilityChanged;
             _availabilitySubscribed = false;
         }
         _userToggledGroups.Clear(); // F1: next server re-applies the detection-based default expansion
         UnsubscribeBeelz(); // 0.18: drop BeelzState handlers so they don't leak across rebuilds
         UnsubscribeUriel(); // 0.26: same, for UrielState handlers
         UnsubscribeFaust(); // drop FaustState handlers so they don't leak across rebuilds
+        UnsubscribeNyar();  // same, for NyarState handlers + the countdown tick
         RunFaustPickerUnsubs(); // 0.65.6: + the Faust picker repop closures (see MainPanel.Faust.cs)
         BoxNameDropdownField.DetachAll(); // 0.65.6: + the box-name form fields' BoxListChanged handlers
         if (_allFamSubscribed) // 0.65.6: All Familiars tab (subscribed in BuildAllFamiliarsTab) was never detached

@@ -101,6 +101,22 @@ public enum PanelType
     FaustQuickStartTab,     // help: Faust getting-started (lives in the Settings & Help group)
     FaustModHelpTab,        // help: Faust command/feature reference (Settings & Help group)
 
+    // Nyarlathotep-suite tabs (client UI for the admin-run world-event server mod; whole group gated on the
+    // `.nyar api version` handshake). Players get the live event board, leaderboards and their own stats;
+    // admins get the control panels (server-enforced, inline-gated like the other mods' admin tabs).
+    NyarEventsTab,          // player: live event board (api status + push events, per-wave countdown)
+    NyarLeaderboardsTab,    // player: api top (stat/window toggles, paging, own row highlighted, Share)
+    NyarMyStatsTab,         // player: api me (today/week/all) + hide/show + Share
+    NyarSettingsTab,        // client-side settings: diagnostics, handshake switches readout
+    NyarAdminEventsTab,     // admin: api events list + start/stop/enable/disable/reload/set + test spawn
+    NyarAdminZonesTab,      // admin: api zones list + add-here/remove
+    NyarAdminAnnounceTab,   // admin: announce text/digest + the five announcement switches (read-only)
+    NyarAdminKillSwitchTab, // admin: purge (two-step) + kill-switch countdown + stats reset
+    NyarGuideTab,           // help: Nyarlathotep guide (Settings & Help group)
+
+    // 0.67.2: one place for every chat-visibility + diagnostics control (Raphael, Bloodcraft and each server mod).
+    ChatDiagTab,
+
     // Secondary overlays (independent draggable panels):
     ExperienceOverlay,
     FamiliarOverlay,

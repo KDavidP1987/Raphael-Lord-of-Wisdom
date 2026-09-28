@@ -30,6 +30,13 @@ public partial class MainPanel
     // MainPanel stayed rooted. Each site registers its unsubscriber here; RunFaustPickerUnsubs() (Reset) drains it.
     private readonly System.Collections.Generic.List<Action> _faustPickerUnsubs = new();
 
+    // 0.67.1: a picker built as part of a lazily-built tab page unhooks when THAT page is retired (per-page
+    // rebuild on detection changes); outside a page build it falls back to the panel-lifetime list.
+    private void AddFaustPickerUnsub(Action unsub)
+    {
+        if (!PageBuildContext.Register(unsub)) _faustPickerUnsubs.Add(unsub);
+    }
+
     private void RunFaustPickerUnsubs()
     {
         var snapshot = _faustPickerUnsubs.ToArray();
@@ -308,7 +315,7 @@ public partial class MainPanel
             SetFaustDropdownOptions(dd, FaustPlayerPickerOptions(ids, disp), 0);
         };
         FaustState.PositionsChanged += repop;
-        _faustPickerUnsubs.Add(() => FaustState.PositionsChanged -= repop);
+        AddFaustPickerUnsub(() => FaustState.PositionsChanged -= repop);
 
         // Auto-fill once if the feature isn't fully off. (Don't gate on the "admin" token — admins CAN use
         // admin-gated features yet the handshake still reports `admin`, so gating on it wrongly left admins with an
@@ -366,7 +373,7 @@ public partial class MainPanel
             SetFaustDropdownOptions(dd, FaustCastlePickerOptions(ids), 0);
         };
         FaustState.AllPlotsChanged += repop;
-        _faustPickerUnsubs.Add(() => FaustState.AllPlotsChanged -= repop);
+        AddFaustPickerUnsub(() => FaustState.AllPlotsChanged -= repop);
 
         // Auto-fill once if the feature isn't fully off (don't gate on the "admin" token — admins can use it; the
         // inline Load button + the All Plots tab are the manual fallback for non-admins).
@@ -3618,7 +3625,7 @@ public partial class MainPanel
             ? $"{effCell:0}-unit cells (Faust's finest)"
             : $"{effCell:0}-unit cells (grouped {k}× from {hdr.Cell:0}-unit native)";
         string scaleNote = mapMode
-            ? (FaustMapBackdrop.HasImage ? "map image + grid" : "coordinate grid")
+            ? FaustMapBackdrop.BackdropNote()
             : (useMap ? "full-map scale" : (hdr.HasMapBounds ? "zoomed to data" : "zoomed to data (server has no map bounds)"));
         AddFaustListLine(parent, "HmCap",
             $"<color={Theme.MutedBodyHex}>{cellCount} cell(s) · {hdr.Samples} sample(s) · {detailNote} · {scaleNote} · {FaustHeatGradientName()} ramp · +X→right, +Z→up (north)</color>", Theme.ScaledUI(10));
@@ -4589,7 +4596,7 @@ public partial class MainPanel
             SetFaustDropdownOptions(bpick, FaustBossPickerOptions(bnames, bguids), 0);
         };
         FaustState.BossesChanged += brepop;
-        _faustPickerUnsubs.Add(() => FaustState.BossesChanged -= brepop);
+        AddFaustPickerUnsub(() => FaustState.BossesChanged -= brepop);
         _faustBossInput = AddFaustLabeledInput(lookCard, "FaustBossQ", "…or type name / GUID", "e.g. Solarus the Immaculate");
         var lrow = MakeFaustRow(lookCard, "FaustBossLookupBtns");
         AddFaustButton(lrow, "FaustBossLookup", "Look up boss",
@@ -5125,7 +5132,7 @@ public partial class MainPanel
             () => ApplyFaustMapCalibration(), 150);
         AddFaustButton(brow, "FaustWsMapReload", "Reload image",
             "Re-read config/Raphael/worldmap.png from disk (use after dropping in or replacing the file).",
-            () => { FaustMapBackdrop.Reset(); if (_faustWsMapImgStatus != null) _faustWsMapImgStatus.text = FaustMapBackdrop.StatusLine(); RefreshFaustMapUnderlays(); }, 130);
+            () => { FaustMapBackdrop.Reset(); FaustMapBackdrop.RequestLoad(); if (_faustWsMapImgStatus != null) _faustWsMapImgStatus.text = FaustMapBackdrop.StatusLine(); RefreshFaustMapUnderlays(); }, 130);
 
         // Runtime capture: pull the map texture straight from the running game (the assets are in hashed archives,
         // so there's no loose file to copy — this is the automated route, no external tools).
@@ -5628,7 +5635,7 @@ public partial class MainPanel
 
         // Legend.
         string frame = mapMode
-            ? (FaustMapBackdrop.HasImage ? "map image + grid" : "coordinate grid") + $" · world X[{wMinX:0}..{wMaxX:0}] Z[{wMinZ:0}..{wMaxZ:0}]"
+            ? FaustMapBackdrop.BackdropNote() + $" · world X[{wMinX:0}..{wMaxX:0}] Z[{wMinZ:0}..{wMaxZ:0}]"
             : "zoomed to data";
         string offNote = offMap > 0 ? $" · <color=#FFB070>{offMap} off-map</color>" : "";
         AddFaustListLine(parent, "WsMapCap",
@@ -5712,7 +5719,7 @@ public partial class MainPanel
         }
 
         string frame = mapMode
-            ? (FaustMapBackdrop.HasImage ? "map image + grid" : "coordinate grid") + $" · world X[{wMinX:0}..{wMaxX:0}] Z[{wMinZ:0}..{wMaxZ:0}]"
+            ? FaustMapBackdrop.BackdropNote() + $" · world X[{wMinX:0}..{wMaxX:0}] Z[{wMinZ:0}..{wMaxZ:0}]"
             : "zoomed to data";
         string offNote = offMap > 0 ? $" · <color=#FFB070>{offMap} off-map</color>" : "";
         AddFaustListLine(parent, "PmCap",

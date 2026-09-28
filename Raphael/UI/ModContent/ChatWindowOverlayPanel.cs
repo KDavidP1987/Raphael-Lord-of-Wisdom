@@ -211,10 +211,12 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         var contentVlg = ContentRoot.GetComponent<UnityEngine.UI.VerticalLayoutGroup>();
         if (contentVlg != null) { contentVlg.childForceExpandHeight = false; contentVlg.childControlHeight = true; }
 
-        // Tab button row.
+        // Tab button row. 0.67.3: 6px bottom padding (was 2) keeps the message log's top line clear of the tab
+        // buttons — the log viewport starts right under this row, so its first line used to touch the tabs.
+        // Height = 2 top + 22 button + 6 bottom = 30; keep it in step if the button height changes.
         var tabRow = UIFactory.CreateHorizontalGroup(ContentRoot, "ChatTabs",
-            true, false, true, true, 2, new Vector4(2, 2, 2, 2), bgColor: new Color(0f, 0f, 0f, 0f));
-        UIFactory.SetLayoutElement(tabRow, minHeight: 24, preferredHeight: 24, flexibleWidth: 1);
+            true, false, true, true, 2, new Vector4(2, 6, 2, 2), bgColor: new Color(0f, 0f, 0f, 0f));
+        UIFactory.SetLayoutElement(tabRow, minHeight: 30, preferredHeight: 30, flexibleWidth: 1);
 
         _tabButtons.Clear();
         for (int i = 0; i < TabDefs.Length; i++)
@@ -314,7 +316,7 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         // overlay multiplier (enlarging it grew every other overlay too).
         _log.fontSize = ChatFontSize();
         _log.lineSpacing = 4f;
-        _log.margin = new Vector4(6, 4, 6, 4);
+        _log.margin = new Vector4(6, 6, 6, 4);
         _log.color = Theme.DefaultText;
         UIFactory.SetLayoutElement(_log.gameObject, flexibleWidth: 1, flexibleHeight: 1);
 

@@ -87,6 +87,8 @@ public partial class MainPanel
         ("freelymove", "Free-move (s)", "num"), ("interruptonhit", "Interrupt on hit", "tri"),
         ("interruptible", "Interruptible", "tri"), ("freemove", "Free move", "onoff"), ("castspeed", "Cast speed (0-1)", "num"),
         ("powerwindow", "Power window (s)", "num"), ("leapheight", "Leap height", "num"),
+        ("maxstacks", "Max stacks", "num"), ("projcount", "Projectile count", "num"), ("knockback", "Knockback ×", "num"),
+        ("lifetime", "Lifetime (s)", "num"), ("casttime", "Cast time ×", "num"),
         ("summoncap", "Summon stacks", "num"), ("summontimeout", "Summon timeout (s)", "num"), ("summonunits", "Summon units", "num"),
         ("damagescale", "Damage ×", "num"), ("cooldownscale", "Cooldown ×", "num"),
         ("weapons", "Weapons", "text"), ("forms", "Forms", "text"), ("notes", "Notes", "text"),
@@ -112,6 +114,11 @@ public partial class MainPanel
         ["castspeed"]      = "Movement speed during the cast: 0 = rooted, 1 = full speed. 'clear' = baked default.",
         ["powerwindow"]    = "Granted-cast power window in seconds — how long power-scaled DoT/AoE effects keep applying after the cast (Beelz v0.120+). Write-only: the server doesn't report the current value, so this shows blank; type a number to set it, or 'clear' for the default.",
         ["leapheight"]     = "Leap/travel height for a leap ability's phase buff (TravelBuff.Height) — tame a boss leap that flings the caster sky-high (vanilla ~250; try ~20-40). Beelz v0.125+; GLOBAL prefab edit (changes the source boss's leap too). Write-only: not reported back, so it shows blank; type a number, or 'clear'/'defaults' to revert.",
+        ["maxstacks"]      = "How many times the ability's own buff can stack (1-255). Beelz v0.134+. The table scan doesn't report it, so it shows blank here (Admin: Players → Ability shaping → Load current settings shows the live value). 'clear' reverts.",
+        ["projcount"]      = "Projectiles per volley on fan/multishot/cluster abilities (capped at 3× the ability's own count, max 16). Beelz v0.134+. Blank here = not reported on the scan; 'clear' reverts.",
+        ["knockback"]      = "Knockback multiplier (distance + push time): 1.0 = unchanged, 0 = none. Beelz v0.134+. Blank here = not reported on the scan; 'clear' reverts.",
+        ["lifetime"]       = "Seconds the ability's projectiles/areas last (buff length is 'Effect duration'). Beelz v0.134+. Blank here = not reported on the scan; 'clear' reverts.",
+        ["casttime"]       = "EXPERIMENTAL cast-time multiplier (windup + recovery; not channels, hold-to-cast or charges). Beelz v0.134+. Blank here = not reported on the scan; 'clear' reverts.",
         ["summoncap"]      = "Summon STACKS — how many casts of this summon can be active at once (i.e. how many times you can use the summon before older ones must expire). The cast itself keeps its full unit count.",
         ["summontimeout"]  = "Seconds before summoned units expire.",
         ["summonunits"]    = "How many units a SINGLE cast summons (e.g. trim a 10-skeleton horde to fewer). 0 = the ability's natural count. Independent of Summon stacks — whichever limit is hit first applies.",
@@ -275,6 +282,8 @@ public partial class MainPanel
             l.TextMesh.enableWordWrapping = false; l.TextMesh.overflowMode = TextOverflowModes.Ellipsis;
         }
         string src = cap.Source == 'V' ? "<color=#FFD75A>V</color> " : "";
+        // api32: badge an ability an incompatibility lock would keep off the bar (its group is already full).
+        if (!string.IsNullOrEmpty(BeelzState.LockConflict(cap.AbilityGuid, cap.Category))) src = "<color=#FF8080>[Locked]</color> " + src;
         Col("Abil", $"{src}{cap.DisplayAbility}",                                                       BEELZ_COL_ABILITY_MIN, BEELZ_COL_ABILITY_PREF, 1, 12);
         Col("Unit", $"<color={Theme.MutedBodyHex}>{BeelzUnitName(cap.UnitGuid, cap.UnitName)}</color>", BEELZ_COL_UNIT_MIN,    BEELZ_COL_UNIT_PREF,    1, 11);
         Col("Cat",  $"<color={Theme.MutedBodyHex}>{(string.IsNullOrEmpty(cap.Category) ? "—" : cap.Category)}</color>", BEELZ_COL_CAT_MIN, BEELZ_COL_CAT_PREF, 0, 11);
@@ -459,6 +468,9 @@ public partial class MainPanel
     // F5: current-settings readout for the ability being shaped (filled from api info-guid).
     private TextMeshProUGUI _beelzShapeInfoLabel;
     private string _beelzShapeInfoGuid = "";
+    // Incompatibility locks admin (Beelz v0.135 / api32) — group name, member list, max, live group readout.
+    private string _beelzLockGroup = "", _beelzLockMembers = "", _beelzLockMax = "";
+    private TextMeshProUGUI _beelzLocksLabel;
     // F8 (lighter): live "current target" banners repeated near destructive admin actions.
     private readonly List<TextMeshProUGUI> _beelzAdminTargetBanners = new();
     // The server-wide shaping/tuning fields `.beelz admin ability <id> <field> <value>` accepts
@@ -468,6 +480,8 @@ public partial class MainPanel
         "cooldown", "range", "charges", "chargetime", "aoe", "projspeed", "duration", "healing",
         "forcetimeout", "freelymove", "interruptonhit", "interruptible", "freemove", "castspeed",
         "summoncap", "summontimeout", "summonunits", "damagescale", "cooldownscale",
+        // Beelz v0.120/v0.125 write-only tunables + v0.134 (api31) tuning knobs.
+        "leapheight", "powerwindow", "maxstacks", "projcount", "knockback", "lifetime", "casttime",
     };
     // Capture-filter admin (Admin: Config) — substring pattern + GUID inputs.
     private string _beelzAdminFilterPattern = "";
@@ -927,6 +941,9 @@ public partial class MainPanel
         Services.Uriel.UrielState.PresenceChanged += RefreshConnectionReadout;
         Services.Uriel.UrielProtocolService.AvailabilityChanged += RefreshConnectionReadout;
         BeelzState.AbilityInfoChanged += RefreshShapeInfo;   // F5: admin shaping current-settings readout
+        BeelzState.LocksChanged += RefreshBeelzLocksLabel;     // api32 lock groups (admin readout)
+        BeelzState.LocksChanged += RebuildBeelzLoadoutRows;    // api32 [Locked] badges on the assign list
+        BeelzState.LocksChanged += RebuildBeelzHotkeyBindList; // …and the hotkey bind list
         _beelzSubscribed = true;
     }
 
@@ -961,6 +978,9 @@ public partial class MainPanel
         Services.Uriel.UrielState.PresenceChanged -= RefreshConnectionReadout;   // 0.26
         Services.Uriel.UrielProtocolService.AvailabilityChanged -= RefreshConnectionReadout;
         BeelzState.AbilityInfoChanged -= RefreshShapeInfo;
+        BeelzState.LocksChanged -= RefreshBeelzLocksLabel;
+        BeelzState.LocksChanged -= RebuildBeelzLoadoutRows;
+        BeelzState.LocksChanged -= RebuildBeelzHotkeyBindList;
         _beelzSubscribed = false;
     }
 
@@ -2256,7 +2276,9 @@ public partial class MainPanel
         {
             if (!string.IsNullOrEmpty(info.Desc) && !info.Desc.Equals("none", StringComparison.OrdinalIgnoreCase))
                 sb.Append("\nDesc: ").Append(info.Desc.Replace('_', ' '));
-            if (info.CooldownSeconds > 0f) sb.Append("\nCooldown: ").Append(info.CooldownSeconds.ToString("0.#")).Append('s');
+            if (BeelzState.SupportsRuntimeCooldowns && info.UsesCharges) sb.Append("\nCooldown: uses charges");
+            else if (info.CooldownSeconds > 0f || info.Shaping?.Cooldown != null)
+                sb.Append("\nCooldown: ").Append(info.EffectiveCooldownSeconds.ToString("0.#")).Append('s');
         }
         return sb.ToString();
     }
@@ -2273,22 +2295,24 @@ public partial class MainPanel
         string kind = BeelzState.AbilityKind(cap.AbilityName);
         if (!string.IsNullOrEmpty(kind)) sb.Append("   Kind: ").Append(kind);
         if (!string.IsNullOrEmpty(cap.UnitType)) sb.Append("   Creature: ").Append(cap.UnitType);
-        if (BeelzState.TryGetCatalog(cap.AbilityName, out var c))
+        BeelzState.TryGetAbilityInfo(cap.AbilityGuid, out var info);
+        bool haveCat = BeelzState.TryGetCatalog(cap.AbilityName, out var c);
+        AppendBeelzRestrictionLines(sb, haveCat ? c : null, info);
+        if (haveCat)
         {
-            if (c.Weapons != null && c.Weapons.Count > 0) sb.Append("\nWeapons: ").Append(string.Join("/", c.Weapons));
-            if (c.Forms   != null && c.Forms.Count   > 0) sb.Append("   Forms: ").Append(string.Join("/", c.Forms));
             if (c.TransformOnly) sb.Append("   (transform-only)");
             if (c.DamageScale   > 0f && c.DamageScale   != 1f) sb.Append($"\nDamage ×{c.DamageScale:0.##} (admin-tuned)");
             if (c.CooldownScale > 0f && c.CooldownScale != 1f) sb.Append($"   Cooldown ×{c.CooldownScale:0.##}");
         }
-        if (BeelzState.TryGetAbilityInfo(cap.AbilityGuid, out var info))
+        if (info != null)
         {
             if (!string.IsNullOrEmpty(info.Desc) && !info.Desc.Equals("none", StringComparison.OrdinalIgnoreCase))
                 sb.Append("\n").Append(info.Desc.Replace('_', ' '));
-            if (info.CooldownSeconds > 0f) sb.Append($"\nCooldown {info.CooldownSeconds:0.#}s");
-            if (info.DamageScale != 1f)   sb.Append($"   dmg ×{info.DamageScale:0.##}");
-            if (info.CooldownScale != 1f) sb.Append($"   cd ×{info.CooldownScale:0.##}");
+            AppendBeelzCooldownDamageLine(sb, info);
         }
+        string lockGroup = BeelzState.LockConflict(cap.AbilityGuid, cap.Category);
+        if (!string.IsNullOrEmpty(lockGroup))
+            sb.Append($"\n<color=#FF8080>Locked by '{lockGroup}': that group is already full on your bar, so this stays off it until you remove one.</color>");
         // Diagnostics: raw prefab name + IDs for bug reports (toggle in Beelzebub → Settings).
         if (Config.Settings.BeelzDiagnostics)
         {
@@ -3809,6 +3833,70 @@ public partial class MainPanel
             foreach (var kv in changes) BeelzClient.SendUser($".beelz admin ability {idOrName} {kv.Key} {kv.Value}");
     }
 
+    // Weapon/form restriction lines. api29+ (Beelz v0.132): api info is authoritative — forms= lists ONLY
+    // allowed forms and form_blocks=/weapon_blocks= carry the "!" blacklists. Older servers: fall back to the
+    // catalog's api23 allow/"!"-block tokens (api info's forms= could hold INVERTED blocks there, so skip it).
+    private static void AppendBeelzRestrictionLines(System.Text.StringBuilder sb, BeelzCatalogAbility c, BeelzAbilityInfo info)
+    {
+        IReadOnlyList<string> weapons, weaponBlocks, forms, formBlocks;
+        if (info != null && BeelzState.SupportsFormBlocks)
+        {
+            weapons = info.Weapons; weaponBlocks = info.WeaponBlocks; forms = info.Forms; formBlocks = info.FormBlocks;
+        }
+        else if (c != null)
+        {
+            SplitBlocks(c.Weapons, out weapons, out weaponBlocks);
+            SplitBlocks(c.Forms, out forms, out formBlocks);
+        }
+        else return;
+        // weapons=Magic is the universal (non-weapon) bucket, not a restriction.
+        bool wAllow = weapons != null && weapons.Count > 0 && !(weapons.Count == 1 && weapons[0].Equals("Magic", StringComparison.OrdinalIgnoreCase));
+        if (wAllow) sb.Append("\nWeapons: ").Append(string.Join("/", weapons));
+        if (weaponBlocks != null && weaponBlocks.Count > 0) sb.Append(wAllow ? "   " : "\n").Append("Not with: ").Append(string.Join("/", weaponBlocks));
+        bool fAllow = forms != null && forms.Count > 0;
+        bool fBlock = formBlocks != null && formBlocks.Count > 0;
+        if (fAllow || fBlock)
+        {
+            sb.Append("\nUsable in: ").Append(fAllow ? string.Join("/", forms) : "any form");
+            if (fBlock) sb.Append(" except ").Append(string.Join("/", formBlocks));
+        }
+    }
+
+    private static void SplitBlocks(IReadOnlyList<string> tokens, out IReadOnlyList<string> allow, out IReadOnlyList<string> block)
+    {
+        var a = new List<string>(); var b = new List<string>();
+        if (tokens != null)
+            foreach (var t in tokens)
+            {
+                if (string.IsNullOrEmpty(t)) continue;
+                if (t[0] == '!') { if (t.Length > 1) b.Add(t.Substring(1)); } else a.Add(t);
+            }
+        allow = a; block = b;
+    }
+
+    // Cooldown + damage summary for a hover card. api31+: the runtime cooldown precedence (override, else
+    // shipped × scale, then the server floor) and no cooldown for charge-based abilities. api30+: the damage
+    // factor a cast would snapshot right now (only when the server's damage mode is Scale).
+    private static void AppendBeelzCooldownDamageLine(System.Text.StringBuilder sb, BeelzAbilityInfo info)
+    {
+        if (BeelzState.SupportsRuntimeCooldowns)
+        {
+            if (info.UsesCharges) sb.Append("\nUses charges");
+            else if (info.CooldownSeconds > 0f || info.Shaping?.Cooldown != null) sb.Append($"\nCooldown {info.EffectiveCooldownSeconds:0.#}s");
+        }
+        else
+        {
+            if (info.CooldownSeconds > 0f) sb.Append($"\nCooldown {info.CooldownSeconds:0.#}s");
+            if (info.CooldownScale != 1f) sb.Append($"   cd ×{info.CooldownScale:0.##}");
+        }
+        if (BeelzState.SupportsDamageMeta && info.DamageScaleEff.HasValue
+            && info.DamageMode.Equals("Scale", StringComparison.OrdinalIgnoreCase))
+        {
+            if (Math.Abs(info.DamageScaleEff.Value - 1f) > 0.005f) sb.Append($"   dmg ×{info.DamageScaleEff.Value:0.##}");
+        }
+        else if (!BeelzState.SupportsDamageMeta && info.DamageScale != 1f) sb.Append($"   dmg ×{info.DamageScale:0.##}");
+    }
+
     // Render the Beelz v0.107/v0.112/v0.113 (api24/25/26) informational metadata — activation condition,
     // curation state, source tier — as muted display lines, EACH gated on the connected server actually
     // emitting that token family. Shared by the F5 ability detail + the catalog/admin row tooltips so the
@@ -3999,9 +4087,87 @@ public partial class MainPanel
             () => { if (!ReqAbility(out var a)) return; _beelzShapeInfoGuid = a;
                     if (BeelzState.TryGetAbilityInfo(a, out _)) RefreshShapeInfo();
                     else { if (_beelzShapeInfoLabel != null) _beelzShapeInfoLabel.text = "<color=#FFD75A>Loading…</color>"; BeelzClient.RequestInfoGuid(a); } }, 150);
+        // Beelz v0.132: read-only dump of every tunable number in the ability's chain (incl. damage factors +
+        // shared-prefab warnings). Plain-text chat reply — no wire tokens.
+        if (BeelzState.SupportsAbilityInspect)
+            AddBeelzSmallButton(shapeRow2, "BeelzShapeInspect", "Inspect",
+                "Print every tunable number in this ability's chain (cooldown, cast time, charges, range, projectiles, lifetime, AoE, damage factors, stacks, knockback…) plus which prefabs it shares with other abilities (admin ability-inspect <id>). Read-only; the reply appears in chat.",
+                () => { if (ReqAbility(out var a)) AdminSend($".beelz admin ability-inspect {a}"); }, 80);
         _beelzShapeInfoLabel = AddInfoLabel(shapeCard, "BeelzShapeInfo", "", FontStyles.Normal, Theme.ScaledUI(11));
         UIFactory.SetLayoutElement(_beelzShapeInfoLabel.gameObject, minWidth: 360, preferredWidth: 400, flexibleWidth: 1, minHeight: 34, flexibleHeight: 0);
         _beelzShapeInfoLabel.enableWordWrapping = true;
+
+        // ---- incompatibility locks (Beelz v0.135 / api32) ----
+        if (BeelzState.SupportsLocks)
+        {
+            var lockCard = AddCard(page, "BeelzAdminLockCard"); AddSectionHeading(lockCard, "Incompatibility locks");
+            AddBodyText(lockCard,
+                "A lock group caps how many of its abilities one player can have on their bar + hotkeys at once " +
+                "(new groups start at max 1). Members are ability GUIDs or <b>cat:Category</b> (Travel, Aoe, Projectile, " +
+                "Summon, Buff, WeaponSpell, Spell, Melee, Other), comma-separated. A locked bind is never deleted — it " +
+                "shows the vanilla ability until the lock is lifted.");
+            var lockRow = MakeBeelzRow(lockCard, "BeelzAdminLockRow");
+            var lgIn = UIFactory.CreateInputField(lockRow, "BeelzLockGroup", "group name");
+            UIFactory.SetLayoutElement(lgIn.GameObject, minWidth: 110, preferredWidth: 130, flexibleWidth: 0, minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
+            lgIn.OnValueChanged += (string v) => { _beelzLockGroup = v ?? ""; };
+            var lmIn = UIFactory.CreateInputField(lockRow, "BeelzLockMembers", "members: guid, cat:Travel, …");
+            UIFactory.SetLayoutElement(lmIn.GameObject, minWidth: 180, preferredWidth: 240, flexibleWidth: 1, minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
+            lmIn.OnValueChanged += (string v) => { _beelzLockMembers = v ?? ""; };
+            var lxIn = UIFactory.CreateInputField(lockRow, "BeelzLockMax", "max");
+            UIFactory.SetLayoutElement(lxIn.GameObject, minWidth: 44, preferredWidth: 50, flexibleWidth: 0, minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
+            lxIn.OnValueChanged += (string v) => { _beelzLockMax = v ?? ""; };
+
+            var lockRow2 = MakeBeelzRow(lockCard, "BeelzAdminLockRow2");
+            AddBeelzSmallButton(lockRow2, "BeelzLockAdd", "Add / extend",
+                "Create the group, or add these members to it (admin lock add <group> \"<members>\").",
+                () => { if (!ReqLockGroup(out var g)) return; var m = (_beelzLockMembers ?? "").Replace("\"", "").Trim();
+                        if (m.Length == 0) { SetBeelzAdminStatus("<color=#FFB070>Enter one or more members.</color>"); return; }
+                        AdminSend($".beelz admin lock add {g} \"{m}\""); }, 96);
+            AddBeelzSmallButton(lockRow2, "BeelzLockMaxSet", "Set max",
+                "Set how many of the group's members may be active at once (admin lock max <group> <n>).",
+                () => { if (!ReqLockGroup(out var g)) return;
+                        if (!int.TryParse((_beelzLockMax ?? "").Trim(), out var n) || n < 1) { SetBeelzAdminStatus("<color=#FFB070>Max must be a whole number ≥ 1.</color>"); return; }
+                        AdminSend($".beelz admin lock max {g} {n}"); }, 70);
+            AddBeelzSmallButton(lockRow2, "BeelzLockRemoveMember", "Remove member",
+                "Remove ONE member (the first entry in the members box) from the group (admin lock remove <group> <member>).",
+                () => { if (!ReqLockGroup(out var g)) return; var m = (_beelzLockMembers ?? "").Split(',')[0].Replace("\"", "").Trim();
+                        if (m.Length == 0) { SetBeelzAdminStatus("<color=#FFB070>Enter the member to remove.</color>"); return; }
+                        AdminSend($".beelz admin lock remove {g} {m}"); }, 110);
+            AddBeelzConfirmButton(lockRow2, "BeelzLockRemoveGroup", "Delete group",
+                "Remove the whole lock group (admin lock remove <group>). Two-click confirm.",
+                () => { if (ReqLockGroup(out var g)) AdminSend($".beelz admin lock remove {g}"); }, 96, new Color(0.55f, 0.18f, 0.18f));
+
+            var lockRow3 = MakeBeelzRow(lockCard, "BeelzAdminLockRow3");
+            AddBeelzSmallButton(lockRow3, "BeelzLockRefresh", "Refresh groups", "Re-read the lock groups (api locks) into the list below.", BeelzClient.RequestLocks, 110);
+            AddBeelzSmallButton(lockRow3, "BeelzLockCheck", "Check player",
+                "Show which of the target player's active abilities are locked right now, and why (admin lock check <player>). Uses the Player name box above.",
+                () => { if (ReqName(out var n)) AdminSend($".beelz admin lock check {n}"); }, 100);
+            _beelzLocksLabel = AddInfoLabel(lockCard, "BeelzLocksList", "", FontStyles.Normal, Theme.ScaledUI(11));
+            UIFactory.SetLayoutElement(_beelzLocksLabel.gameObject, minWidth: 360, preferredWidth: 400, flexibleWidth: 1, minHeight: 20, flexibleHeight: 0);
+            _beelzLocksLabel.enableWordWrapping = true;
+            RefreshBeelzLocksLabel();
+            if (!BeelzState.LocksLoaded) BeelzClient.RequestLocks();
+        }
+
+        // ---- reseed ability rules (Beelz v0.135) ----
+        if (BeelzState.SupportsReseed)
+        {
+            var reseedCard = AddCard(page, "BeelzAdminReseedCard"); AddSectionHeading(reseedCard, "Reseed ability rules");
+            AddBodyText(reseedCard,
+                "Bring this server's ability_rules.json up to the installed Beelzebub's shipped defaults (new blocks, " +
+                "label fixes, tuning). <b>Preview</b> shows what would change. <b>Merge</b> keeps your edits and takes " +
+                "shipped changes you never touched. <b>Replace</b> overwrites with the shipped default — your curation is " +
+                "lost. A backup is kept either way. Re-scan the ability catalog afterwards.");
+            var reseedRow = MakeBeelzRow(reseedCard, "BeelzAdminReseedRow");
+            AddBeelzSmallButton(reseedRow, "BeelzReseedPreview", "Preview", "Show what a reseed would change (admin reseed preview). Changes nothing.",
+                () => AdminSend(".beelz admin reseed preview"), 76);
+            AddBeelzConfirmButton(reseedRow, "BeelzReseedMerge", "Merge",
+                "Take shipped changes for fields you never edited; keep your edits (admin reseed merge). Backup kept. Two-click confirm.",
+                () => AdminSend(".beelz admin reseed merge"), 70, new Color(0.5f, 0.35f, 0.15f));
+            AddBeelzConfirmButton(reseedRow, "BeelzReseedReplace", "Replace",
+                "Overwrite ability_rules.json with the shipped default — ALL your curation is lost (admin reseed replace CONFIRM). Backup kept. Two-click confirm.",
+                () => AdminSend(".beelz admin reseed replace CONFIRM"), 76, new Color(0.65f, 0.12f, 0.12f));
+        }
 
         // ---- per-unit transform tuning (per-form scalars + duration/cooldown overrides) ----
         var txCfgCard = AddCard(page, "BeelzAdminTxSetCard"); AddSectionHeading(txCfgCard, "Transform tuning (per unit)");
@@ -4224,6 +4390,34 @@ public partial class MainPanel
     private bool ReqPat(out string p)     { p = (_beelzAdminFilterPattern ?? "").Trim(); if (p.Length == 0) { SetBeelzAdminStatus("<color=#FFB070>Enter a name substring first.</color>"); return false; } return true; }
     private bool ReqGuid(out string g)    { g = (_beelzAdminFilterGuid ?? "").Trim();    if (g.Length == 0) { SetBeelzAdminStatus("<color=#FFB070>Enter a PrefabGUID first.</color>"); return false; } return true; }
 
+    // Lock group names go out as one token; the server shows spaces as '_', so do the same here.
+    private bool ReqLockGroup(out string g)
+    {
+        g = (_beelzLockGroup ?? "").Replace("\"", "").Trim().Replace(' ', '_');
+        if (g.Length == 0) { SetBeelzAdminStatus("<color=#FFB070>Enter a lock group name first.</color>"); return false; }
+        return true;
+    }
+
+    // api32: list the server's lock groups (from api locks) under the Incompatibility locks card.
+    private void RefreshBeelzLocksLabel()
+    {
+        if (_beelzLocksLabel == null) return;
+        if (!BeelzState.LocksLoaded) { _beelzLocksLabel.text = $"<color={Theme.MutedBodyHex}>Loading lock groups…</color>"; return; }
+        if (BeelzState.Locks.Count == 0) { _beelzLocksLabel.text = $"<color={Theme.MutedBodyHex}>No lock groups defined.</color>"; return; }
+        var sb = new System.Text.StringBuilder();
+        foreach (var grp in BeelzState.Locks)
+        {
+            var names = new List<string>();
+            foreach (var m in grp.Members)
+            {
+                if (m.StartsWith("cat:", StringComparison.OrdinalIgnoreCase)) { names.Add(m); continue; }
+                names.Add(BeelzState.TryGetAbilityInfo(m, out var i) && !string.IsNullOrEmpty(i.Label) ? $"{i.Label} ({m})" : m);
+            }
+            sb.Append($"<b>{grp.Name}</b> <color={Theme.MutedBodyHex}>max {grp.Max}:</color> {string.Join(", ", names)}\n");
+        }
+        _beelzLocksLabel.text = sb.ToString().TrimEnd('\n');
+    }
+
     // F5: render the selected ability's CURRENT server settings + shaping overrides from cached api info.
     // Re-runs on AbilityInfoChanged (cheap; only re-renders the ability currently loaded).
     private void RefreshShapeInfo()
@@ -4264,6 +4458,31 @@ public partial class MainPanel
             Tri("interruptible",  s.Interruptible);
             Tri("freemove",       s.FreeMove);
             Tri("castspeed",      s.CastSpeed);
+            // api31 (Beelz v0.134) tuning overrides.
+            if (s.MaxStacks.HasValue)     ov.Add($"maxstacks={s.MaxStacks.Value}");
+            if (s.ProjCount.HasValue)     ov.Add($"projcount={s.ProjCount.Value}");
+            if (s.Knockback.HasValue)     ov.Add($"knockback={s.Knockback.Value:0.##}");
+            if (s.Lifetime.HasValue)      ov.Add($"lifetime={s.Lifetime.Value:0.#}");
+            if (s.CastTime.HasValue)      ov.Add($"casttime={s.CastTime.Value:0.##}");
+        }
+        // api29 restrictions · api30 damage · api31 cooldown mode / effective value.
+        var rsb = new System.Text.StringBuilder();
+        AppendBeelzRestrictionLines(rsb, null, info);
+        if (rsb.Length > 0) sb.Append($"<color={Theme.MutedBodyHex}>{rsb.ToString().TrimStart('\n').Replace("\n", " · ")}</color>\n");
+        if (BeelzState.SupportsRuntimeCooldowns)
+            sb.Append($"<color={Theme.MutedBodyHex}>" + (info.UsesCharges ? "Cooldown mode: charges (cooldown rules skipped)"
+                : $"Effective bar cooldown: {info.EffectiveCooldownSeconds:0.##}s (shipped {info.CooldownSeconds:0.##}s)") + "</color>\n");
+        if (BeelzState.SupportsDamageMeta && !string.IsNullOrEmpty(info.DamageMode))
+        {
+            sb.Append($"<color={Theme.MutedBodyHex}>Damage: mode {info.DamageMode}");
+            if (info.DamageScaleEff.HasValue) sb.Append($" · ×{info.DamageScaleEff.Value:0.##} now");
+            if (info.SummonPower.HasValue && Math.Abs(info.SummonPower.Value - 1f) > 0.005f) sb.Append($" · summon power ×{info.SummonPower.Value:0.##}");
+            sb.Append("</color>");
+            if (info.Attribution.Equals("unreliable", StringComparison.OrdinalIgnoreCase))
+                sb.Append(" <color=#FFB070>· hit attribution UNRELIABLE (damage scaling may misfire)</color>");
+            else if (!string.IsNullOrEmpty(info.Attribution))
+                sb.Append($"<color={Theme.MutedBodyHex}> · attribution {info.Attribution}</color>");
+            sb.Append('\n');
         }
         sb.Append(ov.Count == 0 ? "<color=#90EE90>No shaping overrides set (running baseline).</color>" : $"Overrides set: {string.Join(", ", ov)}");
         _beelzShapeInfoLabel.text = sb.ToString();
@@ -4334,6 +4553,16 @@ public partial class MainPanel
         AddBeelzPlainButton(faRow, "ConnFaustRedetect", "Re-detect Faust",
             "Restart Faust detection from scratch — re-anchors the handshake loop and re-probes (.faust api version). Use after a server switch if the Faust group didn't appear. (Most servers don't run Faust.)",
             () => { Services.Faust.FaustProtocolService.Reset(); Services.Faust.FaustClient.RequestVersion(); RefreshConnectionReadout(); }, 170);
+
+        // --- Nyarlathotep ---
+        var ny = AddCard(page, "ConnNyarCard");
+        AddSectionHeading(ny, "Nyarlathotep");
+        _connNyarReadout = AddInfoLabel(ny, "ConnNyarState", "", FontStyles.Normal, Theme.ScaledUI(12));
+        _connNyarReadout.overflowMode = TextOverflowModes.Overflow;
+        var nyRow = MakeBeelzRow(ny, "ConnNyarRow");
+        AddBeelzPlainButton(nyRow, "ConnNyarRedetect", "Re-detect Nyarlathotep",
+            "Restart Nyarlathotep detection from scratch and re-probe (.nyar api version). Use after a server switch if the Nyarlathotep group didn't appear.",
+            () => { Services.Nyar.NyarProtocolService.Reset(); Services.Nyar.NyarClient.RequestVersion(); RefreshConnectionReadout(); }, 190);
 
         // --- Refresh Raphael (0.65.6) ---
         // Players reported the game slowing over a long session until a relog. This clears the same
@@ -4418,6 +4647,7 @@ public partial class MainPanel
                 s = "<color=#FFD75A>Detecting…</color> — handshake in progress.";
             _connFaustReadout.text = s;
         }
+        RefreshNyarConnectionReadout();
     }
 
     // Small labeled bool toggle row (mirrors the diagnostics toggle) for the Beelz Settings tab.
@@ -4851,6 +5081,12 @@ public partial class MainPanel
             "\nPut abilities on a player's bar directly (bypasses the normal guards; the reply notes a [WARNING]):\n" +
             "• .beelz admin set-slot|clear-slot (player) (slot 1-6) (abilityGuid) — universal-bar slot.\n" +
             "• .beelz admin set-weapon-slot|clear-weapon-slot (player) (weapon) (slot 1-6) (abilityGuid) — per-weapon slot.");
+
+        AddCollapsibleHelpDetail(page, "Admin — locks, reseed & inspect",
+            "• .beelz admin lock add (group) \"(member, member…)\" — create/extend a lock group; members are ability GUIDs or cat:Category (v0.135).\n" +
+            "• .beelz admin lock max (group) (n)  /  lock remove (group) [member]  /  lock list  /  lock check (player).\n" +
+            "• .beelz admin reseed preview | merge | replace CONFIRM — update ability_rules.json to the shipped defaults (backup kept).\n" +
+            "• .beelz admin ability-inspect (ability|ID) [export] — read-only view of every tunable number in the ability's chain (v0.132).");
 
         AddCollapsibleHelpDetail(page, "Admin — recovery & destructive ops",
             "Fix a stuck action bar — escalation ladder (each step is stronger than the last; keeps the collection):\n" +

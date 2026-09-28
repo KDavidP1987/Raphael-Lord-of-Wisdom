@@ -262,6 +262,8 @@ public class BCHubUIManager : UIManagerBase
         //   - hide any BC/Beelz overlay that lingered, so the new server re-detects from scratch
         //     instead of inheriting the previous server's tab/overlay state.
         try { _mainPanel?.RefreshTabGroupAvailabilityNow(); } catch { }
+        // 0.67.1: every mod group's tab pages may describe the previous server — mark them stale (rebuilt lazily).
+        try { _mainPanel?.InvalidateAllModPages(); } catch { }
         try { ApplyAvailabilityToOverlays(); } catch { }
         // 0.18.3: wipe the chat window (scrollback was cleared in the teardown hook via
         // ChatRelayService.Clear(); this clears any half-typed message + repaints empty) so a
@@ -874,9 +876,8 @@ public class BCHubUIManager : UIManagerBase
                       && Services.EclipseProtocolService.UserRegistered;
             bool bz = Services.Beelzebub.BeelzProtocolService.IsPresent;
             bool uri = Services.Uriel.UrielProtocolService.IsPresent;
+            TickModPageInvalidation(bc);
             if (_availabilityTrackInit && bc == _lastBcAvailable && bz == _lastBeelzAvailable && uri == _lastUrielAvailable) return;
-            // 0.29.6: did a mod just BECOME present (false->true) this transition? Drives the content rebuild below.
-            bool becamePresent = (bc && !_lastBcAvailable) || (bz && !_lastBeelzAvailable) || (uri && !_lastUrielAvailable);
             _availabilityTrackInit = true;
             _lastBcAvailable = bc;
             _lastBeelzAvailable = bz;
@@ -895,21 +896,54 @@ public class BCHubUIManager : UIManagerBase
             try { _mainPanel?.RefreshTabGroupAvailabilityNow(); }
             catch (System.Exception ex2) { Raphael.Utils.LogUtils.LogDebug($"tab-group refresh on availability transition failed: {ex2.Message}"); }
 
-            // 0.29.6: a refreshed group HEADER lights up, but a mod tab's CONTENT gates on presence at BUILD
-            // time (e.g. the Beelzebub tabs show "Looking for Beelzebub…" via AddBeelzAbsentNote) and is NOT
-            // re-run by the header refresh — so a tab built during the pre-handshake window stays stale after
-            // detection completes. That's the server-switch repro: the Connection status shows Connected but
-            // the open Beelzebub tab still reads "attempting to connect" (Uriel didn't show it because its
-            // content fetches on demand). When a mod just became present and the panel is OPEN, rebuild the
-            // content so the active tab re-renders against the now-present mod. Deferred (next frame) and
-            // gated on the rare presence transition; RebuildMainPanelNow preserves the active tab.
-            if (becamePresent && IsMainPanelOpen)
-            {
-                try { RequestRebuildMainPanel(); }
-                catch (System.Exception ex3) { Raphael.Utils.LogUtils.LogDebug($"panel content rebuild on availability transition failed: {ex3.Message}"); }
-            }
+            // 0.29.6 → 0.67.1: a mod tab's CONTENT gates on presence at BUILD time (e.g. Beelzebub's "Looking for
+            // Beelzebub…" note), so pages built before detection settled go stale. This used to rebuild the WHOLE
+            // panel on every became-present transition (a multi-second freeze, repeated as each mod's handshake
+            // landed). TickModPageInvalidation (above) now marks only the affected mod's pages stale instead.
         }
         catch (System.Exception ex) { Raphael.Utils.LogUtils.LogDebug($"TickOverlayAvailability: {ex.Message}"); }
+    }
+
+    // 0.67.1: per-mod detection snapshot — (present, gave-up, stand-down) for all five server mods, indexed by
+    // MainPanel.ModGroup. Any change marks just that mod's tab pages stale (rebuilt lazily: the visible one next
+    // frame, the rest by prewarm / on click) and refreshes the rail headers ("(connecting…)" → lit / "(unavailable)").
+    // The first observation only records a baseline. Works whether or not the panel is open.
+    private readonly int[] _lastModDetect = { -1, -1, -1, -1, -1 };
+
+    private static int DetectCode(bool present, bool gaveUp, bool standDown = false)
+        => (present ? 1 : 0) | (gaveUp ? 2 : 0) | (standDown ? 4 : 0);
+
+    private void TickModPageInvalidation(bool bcAvailable)
+    {
+        int bcCode = DetectCode(bcAvailable, Services.EclipseProtocolService.RegistrationGaveUp,
+                                Services.EclipseProtocolService.StandDownForEclipse());
+        int bzCode = DetectCode(Services.Beelzebub.BeelzProtocolService.IsPresent, Services.Beelzebub.BeelzProtocolService.DetectionGaveUp);
+        int urCode = DetectCode(Services.Uriel.UrielProtocolService.IsPresent, Services.Uriel.UrielProtocolService.DetectionGaveUp);
+        int fsCode = DetectCode(Services.Faust.FaustProtocolService.IsPresent, Services.Faust.FaustProtocolService.DetectionGaveUp);
+        int nyCode = DetectCode(Services.Nyar.NyarProtocolService.IsPresent, Services.Nyar.NyarProtocolService.DetectionGaveUp);
+        bool changed = false;
+        Check(MainPanel.ModGroup.Bloodcraft, bcCode);
+        Check(MainPanel.ModGroup.Beelzebub,  bzCode);
+        Check(MainPanel.ModGroup.Uriel,      urCode);
+        Check(MainPanel.ModGroup.Faust,      fsCode);
+        Check(MainPanel.ModGroup.Nyar,       nyCode);
+        if (changed)
+        {
+            try { _mainPanel?.RefreshTabGroupAvailabilityNow(); }
+            catch (System.Exception ex) { Raphael.Utils.LogUtils.LogDebug($"tab-group refresh on detection change failed: {ex.Message}"); }
+        }
+
+        void Check(MainPanel.ModGroup g, int code)
+        {
+            int i = (int)g;
+            if (_lastModDetect[i] == code) return;
+            bool baseline = _lastModDetect[i] == -1;
+            _lastModDetect[i] = code;
+            if (baseline) return;
+            changed = true;
+            try { _mainPanel?.InvalidateModPages(g); }
+            catch (System.Exception ex) { Raphael.Utils.LogUtils.LogDebug($"InvalidateModPages({g}) failed: {ex.Message}"); }
+        }
     }
 
     public void ApplyAvailabilityToOverlays()

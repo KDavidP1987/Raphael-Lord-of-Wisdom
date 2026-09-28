@@ -1039,6 +1039,21 @@ public static partial class MessageService
     }
 
     /// <summary>
+    /// 0.67.2: hide a VCF error line only when it's almost certainly caused by Raphael's own background traffic:
+    /// setting on, a background (silent) command went out recently, and the player sent nothing recently. Errors
+    /// for commands the player sent — buttons, Raphael chat, vanilla chat — always show (e.g. `.nyar help`, a typo,
+    /// an admin-only command while not admin). Fails open when the vanilla send hook isn't installed, since
+    /// vanilla-typed commands then can't be told apart.
+    /// </summary>
+    private static bool ShouldHideCommandFrameworkNoise()
+    {
+        if (!Config.Settings.SuppressCommandFrameworkErrors) return false;
+        if (!OutboundLedger.VcfSuppressionAllowed) return false;
+        if (OutboundLedger.UserSentRecently(OutboundLedger.VcfWindowSeconds)) return false;
+        return OutboundLedger.BackgroundSentRecently(OutboundLedger.VcfWindowSeconds);
+    }
+
+    /// <summary>
     /// Process an inbound chat-server message text. Returns true if the message
     /// was consumed by the pipeline and the caller should destroy the entity
     /// (so it doesn't appear in the player's chat window).
@@ -1054,7 +1069,7 @@ public static partial class MessageService
         // Those are never Raphael's structured data (Beelzebub uses [BEELZ:*]; Bloodcraft replies are
         // color-tagged human text handled by the intercepts below), so eating them is always safe.
         // Checked first + gated by the setting so a user debugging their OWN typed command can see it.
-        if (Config.Settings.SuppressCommandFrameworkErrors && IsCommandFrameworkNoise(text))
+        if (IsCommandFrameworkNoise(text) && ShouldHideCommandFrameworkNoise())
             return true;
 
         // 0.9.1 / 0.9.2 / 0.9.3: action-confirmation suppress.

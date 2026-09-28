@@ -22,16 +22,39 @@ namespace Raphael.UI.ModContent;
 internal static class FaustMapBackdrop
 {
     private static Sprite _sprite;
-    private static bool _tried;
+
+    // 0.67.1 PERF: the image is never decoded as a side effect of building UI. A user worldmap.png is typically the
+    // full 6080×6080 game map (~37 MP) and decoding it synchronously used to happen inside the MainPanel build
+    // (StatusLine() → LoadSprite()), freezing the game on first open even on servers without Faust. Now only the
+    // scheduled loader decodes (one frame after a map draw asks for it, after "Loading map image…" has rendered),
+    // and it keeps a ≤2048px cached copy on disk so later launches decode ~9× fewer pixels.
+    private enum LoadState { Idle, Scheduled, Loading, Done, Failed }
+    private static LoadState _loadState = LoadState.Idle;
+    private static int _loadGen;                  // bumped by Reset(); a load from an older generation never commits
+    private static Action _scheduledLoad;
+    private const int CacheMaxDim = 2048;
+
+    /// <summary>Raised on the main thread after the image finished loading (or failed), so boards can redraw.</summary>
+    public static event Action ImageLoaded;
 
     private static string ImagePath =>
         Path.Combine(Paths.ConfigPath, MyPluginInfo.PLUGIN_NAME, "worldmap.png");
+    private static string CachePath => Path.Combine(Paths.ConfigPath, MyPluginInfo.PLUGIN_NAME, "worldmap.cache.png");
+    private static string CacheKeyPath => Path.Combine(Paths.ConfigPath, MyPluginInfo.PLUGIN_NAME, "worldmap.cache.key");
 
     // The on-disk path the user drops worldmap.png into (shown in the UI so they can find it).
     public static string ImageFilePath => ImagePath;
 
-    // True when the user has supplied a usable image AND wants it drawn.
-    public static bool HasImage => Settings.FaustWorldMapImage && LoadSprite() != null;
+    public static bool IsLoaded => _sprite != null;
+    public static bool IsLoading => _loadState == LoadState.Scheduled || _loadState == LoadState.Loading;
+
+    // True when the user has supplied a usable image, wants it drawn, AND it has finished loading. Never decodes.
+    public static bool HasImage => Settings.FaustWorldMapImage && _sprite != null;
+
+    // True while an image is expected but not loaded yet (enabled, file present, not failed). Map draws call
+    // RequestLoad() in this state and show "Loading map image…" until ImageLoaded fires.
+    private static bool ImagePending => Settings.FaustWorldMapImage && _sprite == null
+        && _loadState != LoadState.Failed && SafeExists(ImagePath);
 
     // The loaded image's pixel aspect ratio (width / height), or 1.0 (square) when there's no image. Callers use
     // this to give the render rectangle the same aspect so the map isn't stretched (the V Rising map is square).
@@ -39,26 +62,56 @@ internal static class FaustMapBackdrop
     {
         get
         {
-            var s = LoadSprite();
+            var s = _sprite;
             if (s == null || s.texture == null || s.texture.height == 0) return 1f;
             return (float)s.texture.width / s.texture.height;
         }
     }
 
-    // True when SOME backdrop (image or grid) will draw — i.e. callers should use the fixed map rectangle.
-    public static bool Active => Settings.FaustWorldMapGrid || HasImage;
+    // True when SOME backdrop (image or grid) will draw — i.e. callers should use the fixed map rectangle. An image
+    // that is still loading counts (so the board keeps the map layout); one that failed to load doesn't.
+    public static bool Active => Settings.FaustWorldMapGrid || HasImage || ImagePending;
 
-    // A human-readable status line for the underlay card, so a black board isn't mysterious.
+    // Caption fragment for the map boards' footer line.
+    public static string BackdropNote()
+        => HasImage ? "map image + grid" : (ImagePending ? "loading map image…" : "coordinate grid");
+
+    // A human-readable status line for the underlay card, so a black board isn't mysterious. Never decodes.
     public static string StatusLine()
     {
-        var spr = LoadSprite();
+        var spr = _sprite;
         if (spr != null && spr.texture != null)
             return $"<color=#8FBF6F>Map image loaded</color> — {spr.texture.width}×{spr.texture.height}px.";
         if (!Settings.FaustWorldMapImage)
             return "<color=#B0B0B0>Map image is turned off (grid only). Enable it above to use worldmap.png.</color>";
-        if (!File.Exists(ImagePath))
+        if (!SafeExists(ImagePath))
             return $"<color=#FFB070>No map image yet</color> — drop a PNG named <b>worldmap.png</b> into <b>BepInEx/config/Raphael/</b>, then click <b>Reload image</b>. (Until then you'll see the grid only.)";
-        return "<color=#FF8080>worldmap.png is present but couldn't be loaded</color> — make sure it's a valid PNG, then Reload image.";
+        if (_loadState == LoadState.Failed)
+            return "<color=#FF8080>worldmap.png is present but couldn't be loaded</color> — make sure it's a valid PNG, then Reload image.";
+        if (IsLoading)
+            return "<color=#B0B0B0>Loading map image…</color>";
+        return "<color=#B0B0B0>Map image found — it loads the first time a map is drawn.</color>";
+    }
+
+    /// <summary>Schedule ONE load for the next frame (deduped). Safe to call from any draw path, every draw.</summary>
+    public static void RequestLoad()
+    {
+        if (_sprite != null || _loadState != LoadState.Idle) return;
+        if (!Settings.FaustWorldMapImage || !SafeExists(ImagePath)) return;
+        _loadState = LoadState.Scheduled;
+        int gen = _loadGen;
+        int armedFrame = Time.frameCount;
+        Action tick = null;
+        tick = () =>
+        {
+            if (Time.frameCount <= armedFrame) return;   // let "Loading map image…" render first
+            Behaviors.CoreUpdateBehavior.Actions.Remove(tick);
+            if (ReferenceEquals(_scheduledLoad, tick)) _scheduledLoad = null;
+            if (gen != _loadGen) return;                  // Reset() since scheduling — superseded
+            RunLoad(gen);
+        };
+        _scheduledLoad = tick;
+        Behaviors.CoreUpdateBehavior.Actions.Add(tick);
     }
 
     // Forget the cached sprite so a freshly dropped-in worldmap.png is picked up without a game restart.
@@ -66,12 +119,24 @@ internal static class FaustMapBackdrop
     // them — just dropping the reference leaked a full world-map texture per Reload/Capture. Destroy both.
     // Safe: both callers (Reload image / Capture in MainPanel.Faust) synchronously RefreshFaustMapUnderlays(),
     // which ClearChildren()s every board that could hold an Image using this sprite (_faustHeatGo, _faustWsMapGo).
+    // 0.67.1: also cancels a scheduled load and bumps the generation so an in-flight load can't commit after this.
     public static void Reset()
     {
+        if (_scheduledLoad != null)
+        {
+            Behaviors.CoreUpdateBehavior.Actions.Remove(_scheduledLoad);
+            _scheduledLoad = null;
+        }
+        _loadGen++;
+        _loadState = LoadState.Idle;
         var old = _sprite;
         _sprite = null;
-        _tried = false;
         DestroyPair(old, null);
+    }
+
+    private static bool SafeExists(string path)
+    {
+        try { return File.Exists(path); } catch { return false; }
     }
 
     // Best-effort destroy of a sprite and its texture (either may be null / already destroyed).
@@ -82,39 +147,177 @@ internal static class FaustMapBackdrop
         try { if (tex) UnityEngine.Object.Destroy(tex); } catch { }
     }
 
-    private static Sprite LoadSprite()
+    // The scheduled loader (the ONLY place that decodes). Prefers the ≤2048px cache when its key matches the
+    // current worldmap.png; otherwise decodes the original, downscales it on the GPU, keeps only the small copy in
+    // memory, and writes the cache for next time. Any cache problem falls back to the full-size image (today's
+    // behaviour). Commits only if no Reset() happened meanwhile (generation check), then raises ImageLoaded.
+    private static void RunLoad(int gen)
     {
-        if (_tried) return _sprite;
-        _tried = true;
+        _loadState = LoadState.Loading;
         // 0.65.6: build into locals and commit to _sprite only as the last step; anything not committed
-        // (LoadImage failure, an exception mid-setup) is destroyed in finally instead of leaking.
+        // (LoadImage failure, an exception mid-setup, a superseded generation) is destroyed in finally.
         Texture2D tex = null;
         Sprite sprite = null;
         bool committed = false;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
+            // Failure paths throw so they share the one epilogue below that raises ImageLoaded (boards leave
+            // "Loading map image…" either way); only a superseded generation returns silently.
             var path = ImagePath;
-            if (!File.Exists(path)) return null;
-            var data = File.ReadAllBytes(path);
-            tex = new Texture2D(2, 2, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-            // IL2CPP: ImageConversion.LoadImage accepts a managed byte[] via the interop implicit conversion.
-            if (!ImageConversion.LoadImage(tex, data)) return null;
+            if (!File.Exists(path)) throw new FileNotFoundException("worldmap.png disappeared before it could load");
+            string key = SourceKey(path);
+            bool fromCache = false;
+
+            tex = TryLoadCache(key);
+            if (tex != null) fromCache = true;
+            else
+            {
+                tex = DecodePng(File.ReadAllBytes(path));
+                if (tex == null) throw new InvalidDataException("not a valid PNG");
+                if (Math.Max(tex.width, tex.height) > CacheMaxDim)
+                {
+                    var small = Downscale(tex, CacheMaxDim);
+                    if (small != null)
+                    {
+                        WriteCache(small, key);
+                        UnityEngine.Object.Destroy(tex);   // drop the full-size copy (~148 MB for 6080²)
+                        tex = small;
+                    }
+                }
+            }
+
+            if (gen != _loadGen) return;   // superseded by Reset() — finally destroys what we built
+            tex.wrapMode = TextureWrapMode.Clamp;
             tex.hideFlags = HideFlags.HideAndDontSave;
             sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
             sprite.hideFlags = HideFlags.HideAndDontSave;
-            LogUtils.LogInfo($"[Faust] world-map image loaded ({tex.width}x{tex.height}) from {path}");
             _sprite = sprite;
             committed = true;
-            return _sprite;
+            _loadState = LoadState.Done;
+            LogUtils.LogInfo($"[Faust] world-map image loaded ({tex.width}x{tex.height}{(fromCache ? ", map cache used" : "")}) " +
+                             $"in {sw.Elapsed.TotalMilliseconds:0} ms from {(fromCache ? CachePath : path)}");
         }
         catch (Exception e)
         {
             LogUtils.LogWarning($"[Faust] world-map image load failed: {e.Message}");
-            return null;
+            if (gen == _loadGen) _loadState = LoadState.Failed;
         }
         finally
         {
             if (!committed) DestroyPair(sprite, tex);
+            if (gen == _loadGen && _loadState == LoadState.Loading) _loadState = LoadState.Failed;
+        }
+        if (gen == _loadGen)
+        {
+            try { ImageLoaded?.Invoke(); }
+            catch (Exception e) { LogUtils.LogDebug($"[Faust] ImageLoaded handler threw: {e.Message}"); }
+        }
+    }
+
+    private static Texture2D DecodePng(byte[] data)
+    {
+        var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        bool ok = false;
+        try
+        {
+            // IL2CPP: ImageConversion.LoadImage accepts a managed byte[] via the interop implicit conversion.
+            ok = ImageConversion.LoadImage(tex, data);
+            return ok ? tex : null;
+        }
+        finally
+        {
+            if (!ok) UnityEngine.Object.Destroy(tex);   // also on a throw — never leak the native texture
+        }
+    }
+
+    // Identifies the source image version: size + last-write time. A new worldmap.png (drop-in / Capture) changes it.
+    private static string SourceKey(string path)
+    {
+        var fi = new FileInfo(path);
+        return $"{fi.Length}|{fi.LastWriteTimeUtc.Ticks}";
+    }
+
+    private static Texture2D TryLoadCache(string key)
+    {
+        Texture2D tex = null;
+        try
+        {
+            if (!File.Exists(CachePath) || !File.Exists(CacheKeyPath)) return null;
+            if (File.ReadAllText(CacheKeyPath).Trim() != key) return null;
+            tex = DecodePng(File.ReadAllBytes(CachePath));
+            if (tex == null) return null;
+            if (tex.width <= 0 || tex.height <= 0 || Math.Max(tex.width, tex.height) > CacheMaxDim)
+            {
+                UnityEngine.Object.Destroy(tex);
+                return null;
+            }
+            return tex;
+        }
+        catch (Exception e)
+        {
+            if (tex) UnityEngine.Object.Destroy(tex);
+            LogUtils.LogWarning($"[Faust] map cache unreadable, using the full image: {e.Message}");
+            return null;
+        }
+    }
+
+    // GPU downscale to fit maxDim (aspect kept). Same Blit → ReadPixels readback FaustMapCapture uses.
+    private static Texture2D Downscale(Texture2D src, int maxDim)
+    {
+        float f = maxDim / (float)Math.Max(src.width, src.height);
+        int w = Math.Max(1, Mathf.RoundToInt(src.width * f));
+        int h = Math.Max(1, Mathf.RoundToInt(src.height * f));
+        RenderTexture rt = null;
+        Texture2D small = null;
+        var prev = RenderTexture.active;
+        try
+        {
+            rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            rt.filterMode = FilterMode.Bilinear;
+            Graphics.Blit(src, rt);
+            RenderTexture.active = rt;
+            small = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            small.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+            small.Apply(false);
+            var done = small;
+            small = null;   // handed to the caller — don't destroy in finally
+            return done;
+        }
+        catch (Exception e)
+        {
+            LogUtils.LogWarning($"[Faust] map downscale failed, keeping the full image: {e.Message}");
+            return null;
+        }
+        finally
+        {
+            RenderTexture.active = prev;
+            if (rt != null) RenderTexture.ReleaseTemporary(rt);
+            if (small) UnityEngine.Object.Destroy(small);
+        }
+    }
+
+    // Write the cache atomically: PNG to .tmp → replace → key file LAST (a missing/old key means "rebuild").
+    private static void WriteCache(Texture2D small, string key)
+    {
+        var tmp = CachePath + ".tmp";
+        try
+        {
+            var encoded = ImageConversion.EncodeToPNG(small);
+            if (encoded == null || encoded.Length == 0) return;
+            var data = new byte[encoded.Length];
+            for (int i = 0; i < encoded.Length; i++) data[i] = encoded[i];
+            if (File.Exists(CacheKeyPath)) File.Delete(CacheKeyPath);   // invalidate first; restored below on success
+            if (File.Exists(tmp)) File.Delete(tmp);
+            File.WriteAllBytes(tmp, data);
+            File.Move(tmp, CachePath, true);
+            File.WriteAllText(CacheKeyPath, key);
+            LogUtils.LogInfo($"[Faust] map cache written ({small.width}x{small.height}) → {CachePath}");
+        }
+        catch (Exception e)
+        {
+            LogUtils.LogWarning($"[Faust] map cache write failed (the full image still works): {e.Message}");
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
         }
     }
 
@@ -139,7 +342,9 @@ internal static class FaustMapBackdrop
         float wMinX, float wMaxX, float wMinZ, float wMaxZ)
     {
         bool drewImage = false;
-        var spr = Settings.FaustWorldMapImage ? LoadSprite() : null;
+        // 0.67.1: never decode here — ask the scheduled loader; ImageLoaded redraws the boards when it's ready.
+        if (ImagePending) RequestLoad();
+        var spr = Settings.FaustWorldMapImage ? _sprite : null;
         if (spr != null)
         {
             var imgGo = UIFactory.CreateUIObject("MapImg", board);
