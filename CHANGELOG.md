@@ -1,5 +1,19 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.68.1 — Beelzebub 0.137.3-0.137.5 support (API 35)
+
+Catches up to Beelzebub 0.137.3-0.137.5 (`ApiVersion 35`). No `[BEELZ:*]` line changed shape. New gates in
+`BeelzState`: `SupportsSaddleRCT` (api>=34) and `SupportsLayeredClearBar` (api>=35). Older servers keep the old behavior.
+
+- **Mounted loadout uses slots 5/6/7 (R / C / Ultimate)** on api>=34; `BeelzClient.FormAllowedSlots("Mounted")`
+  returns {5, 6, 7} there (3/6/7 before). The slot rows, per-ability bind buttons and the "only binds..." note follow.
+  The server moves saved slot-3 saddle binds to 5 and rejects `form-grant mounted 3`.
+- **Clear bar / Clear set re-reads `api slots`** after `.beelz clearbar` on api>=35. Clearbar now re-resolves the whole
+  live bar (and can dismount or end a transform) even when nothing was bound, which emits no slot-cleared event.
+- No change needed for: the dismount / transform-ended sentences on reset and clearbar replies, the `Still transforming`
+  reply to `.beelz phase` (both show in chat as-is), or the phase display (already driven by `transform-phase-shift`).
+- README: Beelzebub row -> v0.137.x (API 35).
+
 ## 0.68.0 — Beelzebub 0.137 support (API 33): one-step bar reset
 
 Catches up to Beelzebub 0.137.0-0.137.2 (`ApiVersion 33`, `docs/BCH_INTEGRATION_HANDOFF.md`). No `[BEELZ:*]` line

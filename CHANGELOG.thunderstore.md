@@ -4,9 +4,16 @@
 [CHANGELOG.md](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/blob/main/CHANGELOG.md).
 Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
-**Current: v0.68.0** (pre-1.0 beta).
+**Current: v0.68.1** (pre-1.0 beta).
 
 ---
+
+## 0.68.1 — Beelzebub 0.137.3-0.137.5 support
+
+- Mounted loadout now binds R / C / Ultimate (slots 5, 6, 7) on Beelzebub 0.137.3+, matching the server.
+  Older servers keep Shift / C / Ultimate.
+- Clear bar and Clear set refresh your slot list afterwards, since on Beelzebub 0.137.4+ they can dismount you or end
+  a transform.
 
 ## 0.68.0 — Beelzebub 0.137 support
 

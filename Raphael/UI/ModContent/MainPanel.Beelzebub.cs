@@ -1968,7 +1968,7 @@ public partial class MainPanel
         // Rebuilding the big assign list here is what caused the 1-2s freeze on set switch, so normally
         // rebuild just the slots.
         RebuildBeelzLoadoutSlots();
-        // …EXCEPT when the slot RESTRICTION changes (e.g. to/from Mounted = 3/6/7 only): the assign rows'
+        // …EXCEPT when the slot RESTRICTION changes (e.g. to/from Mounted = 5/6/7 only; 3/6/7 before api34): the assign rows'
         // per-ability bind buttons (P/1-6/U) are restricted too, so they must rebuild now instead of going
         // stale until a manual Refresh. Ordinary weapon↔weapon / ↔Universal switches keep the same all-8
         // set, so this is skipped there and the freeze never happens.
@@ -1976,7 +1976,7 @@ public partial class MainPanel
             RebuildBeelzLoadoutAssign();
     }
 
-    // The slots a set key permits (null = all 8). Forms may restrict (Mounted = 3/6/7); weapons/universal = all.
+    // The slots a set key permits (null = all 8). Forms may restrict (Mounted = 5/6/7, or 3/6/7 before api34); weapons/universal = all.
     private static int[] BeelzAllowedSlotsForGroup(string key)
         => BeelzGroupIsFormKey(key) ? BeelzClient.FormAllowedSlots(key) : null;
     private static bool BeelzSlotSetEqual(int[] a, int[] b)
@@ -2064,12 +2064,14 @@ public partial class MainPanel
         string g = _beelzSelectedGroup ?? "";
         // Most sets show all 8 bindable slots: primary (left-click, 0), the six spell slots (1-6), and
         // ultimate (T, 7). Unbound primary/ultimate read "(empty → vanilla)" like any other empty slot.
-        // A form may restrict its slots (Mounted only accepts 3/6/7 — the horse owns the rest); hide the
+        // A form may restrict its slots (Mounted only accepts 5/6/7 on api34+, 3/6/7 before — the horse owns the rest); hide the
         // others and add a one-line note so the user isn't confused why a slot is missing.
         int[] allowedSlots = BeelzGroupIsFormKey(g) ? BeelzClient.FormAllowedSlots(g) : null;
         if (allowedSlots != null)
             AddSimpleRow(_beelzLoadoutRowContainer,
-                $"<color={Theme.MutedBodyHex}>{BeelzGroupLabel(g)} only binds slots 3 (Shift) / 6 (C) / 7 (Ultimate) — the horse owns the rest.</color>", italic: true);
+                BeelzState.SupportsSaddleRCT
+                    ? $"<color={Theme.MutedBodyHex}>{BeelzGroupLabel(g)} only binds slots 5 (R) / 6 (C) / 7 (Ultimate) — the horse owns the rest.</color>"
+                    : $"<color={Theme.MutedBodyHex}>{BeelzGroupLabel(g)} only binds slots 3 (Shift) / 6 (C) / 7 (Ultimate) — the horse owns the rest.</color>", italic: true);
         foreach (int n in BeelzSlotOrder)
         {
             if (allowedSlots != null && Array.IndexOf(allowedSlots, n) < 0) continue;
@@ -2212,7 +2214,7 @@ public partial class MainPanel
             minHeight: Theme.ScaledHeight(22), preferredHeight: Theme.ScaledHeight(24), flexibleHeight: 0);
 
         int idx = cap.Index;
-        // A restricted form (Mounted = 3/6/7 only) hides the bind buttons the server would refuse, so the
+        // A restricted form (Mounted = 5/6/7, or 3/6/7 before api34) hides the bind buttons the server would refuse, so the
         // ability's slot column lines up with the slot rows above.
         string selKey = _beelzSelectedGroup ?? "";
         int[] allowedSlots = BeelzGroupIsFormKey(selKey) ? BeelzClient.FormAllowedSlots(selKey) : null;

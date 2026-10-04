@@ -312,6 +312,12 @@ internal static class BeelzState
     /// <summary>Beelz v0.137.1 (api stayed 33): grants / unslots reach the live bar at once with no weapon swap,
     /// so Raphael's auto `.beelz refresh` after a grant is no longer needed.</summary>
     public static bool GrantsApplyImmediately => PluginVersionAtLeast(0, 137, 1);
+    /// <summary>api34 (Beelz v0.137.3): Mounted saddle slots are 5/6/7 (R / C / T), not 3/6/7; saved slot-3 saddle
+    /// binds move to 5 and `form-grant mounted 3` is rejected. A reset while riding dismounts.</summary>
+    public static bool SupportsSaddleRCT => ApiVersion >= 34;
+    /// <summary>api35 (Beelz v0.137.4): `clearbar` runs the layered reset for its set and re-resolves the whole
+    /// live bar (dismounts / ends a transform and says so), so Raphael re-reads `api slots` after it.</summary>
+    public static bool SupportsLayeredClearBar => ApiVersion >= 35;
     /// <summary>Beelz v0.132 admin `ability-inspect` + v0.135 admin `lock`/`reseed` chat commands (no wire).</summary>
     public static bool SupportsAbilityInspect => PluginVersionAtLeast(0, 132, 0);
     public static bool SupportsReseed         => PluginVersionAtLeast(0, 135, 0);

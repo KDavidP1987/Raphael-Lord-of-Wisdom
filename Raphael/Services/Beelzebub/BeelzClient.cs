@@ -35,19 +35,20 @@ internal static class BeelzClient
     // are boss TRANSFORMATIONS entered via `.beelz transform` (managed on the Transforms tab + its own
     // `.beelz tform` loadout editor), NOT shapeshift forms — so they don't belong in the per-form picker.
     // NOTE: "Mounted" (riding a horse) is a loadout form too (Beelz v0.101/api23), gated server-side by
-    // Forms_CustomAbilities_Enabled. Unlike the shapeshift-wheel forms it only accepts slots 3/6/7 (R / C /
-    // ultimate) — the horse owns primary/leap/space/gallop/thrust — so the loadout UI restricts its slot
-    // rows (see BeelzFormAllowsSlot). form-grant/form-unslot accept "mounted" like any other form.
+    // Forms_CustomAbilities_Enabled. Unlike the shapeshift-wheel forms it only accepts three slots: 5/6/7
+    // (R / C / ultimate) on Beelz v0.137.3+ (api34), 3/6/7 before that — the horse owns the riding controls —
+    // so the loadout UI restricts its slot rows (see FormAllowedSlots). form-grant/form-unslot accept "mounted" like any other form.
     public static readonly string[] Forms =
     {
         "Wolf", "Bear", "Rat", "Spider", "Toad", "Mounted",
     };
 
     // Slots a given form's loadout accepts. Most forms take all 8 (primary/1-6/ultimate); "Mounted" only
-    // takes 3/6/7 (the horse owns the rest). Returns null = no restriction (all slots allowed).
+    // takes 5/6/7 on api34+ (Beelz v0.137.3 moved the saddle off slot 3, which the client never draws) and
+    // 3/6/7 on older servers. Returns null = no restriction (all slots allowed).
     public static int[] FormAllowedSlots(string form)
         => (!string.IsNullOrEmpty(form) && form.Equals("Mounted", System.StringComparison.OrdinalIgnoreCase))
-            ? new[] { 3, 6, 7 }
+            ? (BeelzState.SupportsSaddleRCT ? new[] { 5, 6, 7 } : new[] { 3, 6, 7 })
             : null;
 
     // ---- read API (machine-readable replies) ----
@@ -172,8 +173,13 @@ internal static class BeelzClient
     // call — bare `.beelz resetbar` NO-OPS since Beelz v0.76 added a required CONFIRM token. bucket
     // = null/"all" = every set; "universal" = the any-weapon set; a weapon family OR a form name =
     // that set. Keeps captures/unlocks; emits a slot-cleared event so the loadout view refreshes.
+    // Beelz v0.137.4 (api35): clearbar re-resolves the whole live bar (may dismount / end a transform) even when
+    // nothing was bound, and then no slot-cleared event fires — so re-read `api slots` once ourselves.
     public static void ClearBar(string bucket = null)
-        => SendUser(string.IsNullOrEmpty(bucket) ? ".beelz clearbar" : $".beelz clearbar {bucket}");
+    {
+        SendUser(string.IsNullOrEmpty(bucket) ? ".beelz clearbar" : $".beelz clearbar {bucket}");
+        if (BeelzState.SupportsLayeredClearBar) RequestSlots();
+    }
 
     // The nuke-ALL variant now requires the literal CONFIRM token (Beelz v0.76); bare `resetbar`
     // does nothing. Prefer ClearBar for a normal clear button; keep this for an explicit
