@@ -660,9 +660,11 @@ internal static class BeelzProtocolService
             case "hotkey-cleared":
                 _needHotkeys = true; break;
             case "transform-activated":
-            case "transform-ended":
             case "transform-phase-shift":
                 _needActive = _needTransforms = true; break;
+            // Beelz v0.137.2: bar edits made while transformed apply when it ends -> re-read the slots too.
+            case "transform-ended":
+                _needActive = _needTransforms = _needSlots = true; break;
             case "config-changed":
                 _needConfig = true; _needLocks = BeelzState.SupportsLocks; break;
             // Beelz v0.135 / api32: a bar resolve kept an ability OFF the live bar (locked=1) or let it back
@@ -701,7 +703,8 @@ internal static class BeelzProtocolService
         if (_needBarRefresh)
         {
             _needBarRefresh = false;
-            if (Raphael.Config.Settings.BeelzAutoRefreshBar) BeelzClient.RefreshBarSilent();
+            // Beelz v0.137.1+ puts grants on the live bar itself; the extra refresh is only for older servers.
+            if (Raphael.Config.Settings.BeelzAutoRefreshBar && !BeelzState.GrantsApplyImmediately) BeelzClient.RefreshBarSilent();
         }
     }
 

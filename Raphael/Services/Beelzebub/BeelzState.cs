@@ -305,6 +305,13 @@ internal static class BeelzState
     public static bool SupportsRuntimeCooldowns => ApiVersion >= 31;
     /// <summary>api32 (Beelz v0.135): `api locks` + `type=ability-locked` event (incompatibility locks).</summary>
     public static bool SupportsLocks => ApiVersion >= 32;
+    /// <summary>api33 (Beelz v0.137): one layered bar reset behind `resetbar` / admin `reset-loadouts` / `purge`
+    /// (spells leave the bar at once, spellbook spells kept), admin `bar` read-only diagnostic, and
+    /// `rebuildslots` / `clearslotmods` marked LEGACY (`rebuildbar` = alias of `bar`).</summary>
+    public static bool SupportsLayeredBarReset => ApiVersion >= 33;
+    /// <summary>Beelz v0.137.1 (api stayed 33): grants / unslots reach the live bar at once with no weapon swap,
+    /// so Raphael's auto `.beelz refresh` after a grant is no longer needed.</summary>
+    public static bool GrantsApplyImmediately => PluginVersionAtLeast(0, 137, 1);
     /// <summary>Beelz v0.132 admin `ability-inspect` + v0.135 admin `lock`/`reseed` chat commands (no wire).</summary>
     public static bool SupportsAbilityInspect => PluginVersionAtLeast(0, 132, 0);
     public static bool SupportsReseed         => PluginVersionAtLeast(0, 135, 0);

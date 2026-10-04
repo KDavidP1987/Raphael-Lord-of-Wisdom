@@ -539,6 +539,7 @@ public partial class MainPanel
         ["DefaultVerbosity"] = "Default chat-notification level for players: Silent / Summary / Verbose.",
         ["Abilities_ApplyConfig"] = "Master switch for per-ability shaping (cooldown/range/etc.). Default ON; OFF disables all baked ability edits.",
         ["Forms_CustomAbilities_Enabled"] = "Inject your loadout abilities onto vanilla shapeshift forms. Required for per-form sets to apply in-game.",
+        ["Forms_AutoFillFromCaptures"] = "A shapeshift form with no per-form or universal binds: OFF (default) keeps the form's own kit; ON fills its bar with your first six captures (the pre-0.137 behavior).",
         ["Grant_PowerScalingMode"] = "How granted abilities scale: PlayerScaled (with your power) or Boosted.",
         ["Grant_PowerScalingFactor"] = "Multiplier applied when scaling granted-ability power.",
         ["Grant_MinimumCooldownSeconds"] = "Global floor on every ability's cooldown (0 = none).",
@@ -1613,22 +1614,36 @@ public partial class MainPanel
             () => BeelzClient.ClearBar(), 86, new Color(0.55f, 0.30f, 0.18f));
         AddBeelzSmallButton(actionRow, "BeelzRefreshBar", "Fix bar",
             "Re-apply the correct spell bar if it looks blank/wrong (.beelz refresh).", BeelzClient.RefreshBar, 70);
-        // Recovery for a bar STUCK on a transformation's abilities after the transform ended. Reverts any
-        // active transform (no-op if not transformed), then on Beelz v0.120+ runs the AUTHORITATIVE
-        // `.beelz resetbar` — which clears the engine's deeply-cached slot values and re-applies your saved
-        // loadout (a plain `.beelz refresh` can't clear that cache). Older servers fall back to refresh.
-        AddBeelzSmallButton(actionRow, "BeelzUnstickBar", "Unstick bar",
-            "Stuck showing a transformation's abilities after it ended? This reverts any active transform, then " +
-            "(Beelz v0.120+) authoritatively clears the engine's cached slot values and RE-APPLIES your saved " +
-            "loadout (.beelz revert → .beelz resetbar) — a plain Fix bar can't clear a deeply-stuck slot. On " +
-            "older servers it falls back to .beelz refresh. If a bar SURVIVES a relog, the guaranteed cure is an " +
-            "admin Respawn (Beelzebub → Admin: Players → Recovery).",
-            () =>
-            {
-                BeelzClient.Revert();
-                if (BeelzState.SupportsAuthoritativeBarReset) BeelzClient.ResetBar();
-                else                                          BeelzClient.RefreshBar();
-            }, 90);
+        // Beelz v0.137 / api33: `.beelz resetbar CONFIRM` is one layered reset (saved binds -> equip rows -> form
+        // sources -> engine mods -> weapon skills re-applied); spells leave the bar at once and spellbook spells stay.
+        // It replaces the old revert -> resetbar pair. Two-click confirm: it clears every saved bind.
+        if (BeelzState.SupportsLayeredBarReset)
+        {
+            AddBeelzConfirmButton(actionRow, "BeelzUnstickBar", "Reset bar",
+                "Complete bar reset (.beelz resetbar CONFIRM): clears every saved bind and puts your weapon's own skills " +
+                "back, with no weapon swap. Keeps your captures, unlocks and the spells you picked in the spellbook (J). " +
+                "Still stuck? Ask an admin to run Diagnose bar (Beelzebub → Admin: Players → Recovery).",
+                BeelzClient.ResetBar, 86, new Color(0.55f, 0.30f, 0.18f));
+        }
+        else
+        {
+            // Older servers: recovery for a bar STUCK on a transformation's abilities after the transform ended.
+            // Reverts any active transform (no-op if not transformed), then on Beelz v0.120+ runs the AUTHORITATIVE
+            // `.beelz resetbar` (a plain `.beelz refresh` can't clear the engine's cached slot values). Pre-0.120
+            // servers fall back to refresh.
+            AddBeelzSmallButton(actionRow, "BeelzUnstickBar", "Unstick bar",
+                "Stuck showing a transformation's abilities after it ended? This reverts any active transform, then " +
+                "(Beelz v0.120+) authoritatively clears the engine's cached slot values and RE-APPLIES your saved " +
+                "loadout (.beelz revert → .beelz resetbar) — a plain Fix bar can't clear a deeply-stuck slot. On " +
+                "older servers it falls back to .beelz refresh. If a bar SURVIVES a relog, the guaranteed cure is an " +
+                "admin Respawn (Beelzebub → Admin: Players → Recovery).",
+                () =>
+                {
+                    BeelzClient.Revert();
+                    if (BeelzState.SupportsAuthoritativeBarReset) BeelzClient.ResetBar();
+                    else                                          BeelzClient.RefreshBar();
+                }, 90);
+        }
 
         // Scan all (loads catalog metadata → enables the Kind filter + row columns).
         AddBeelzScanAllButton(page, BeelzScanTarget.Loadout);
@@ -4202,48 +4217,58 @@ public partial class MainPanel
 
         // ---- recovery ----
         var recCard = AddCard(page, "BeelzAdminRecCard"); AddSectionHeading(recCard, "Recovery (non-destructive)");
-        var recRow = MakeBeelzRow(recCard, "BeelzAdminRecRow");
-        AddBeelzSmallButton(recRow, "BeelzAdmRespawn", "Respawn", "Respawn in place; keeps inventory / blood / captures / unlocks (admin respawn). Beelz v0.120: the GUARANTEED cure for an action bar stuck on a creature kit — even one that survived a relog (rebuilds a fresh character entity; NOT a character reset).", () => { if (ReqName(out var n)) AdminSend($".beelz admin respawn {n}"); }, 76);
-        AddBeelzSmallButton(recRow, "BeelzAdmRebuild", "Rebuild slots", "Authoritatively clear the engine's cached slot values and re-apply the player's saved grants (admin rebuildslots) — Beelz v0.120's fix for a stuck bar. If a bar survives a relog, escalate to Respawn.", () => { if (ReqName(out var n)) AdminSend($".beelz admin rebuildslots {n}"); }, 100);
-        AddBeelzSmallButton(recRow, "BeelzAdmClearMods", "Clear slot mods", "Clear orphaned ability-slot mods (admin clearslotmods).", () => { if (ReqName(out var n)) AdminSend($".beelz admin clearslotmods {n}"); }, 110);
-        // Rebuild the player's action bar from their saved Beelzebub bindings (admin rebuildbar) — a bar-recovery
-        // step alongside Rebuild slots. Two-click confirm because it rewrites the player's whole bar.
-        AddBeelzConfirmButton(recRow, "BeelzAdmRebuildBar", "Rebuild bar",
-            "Rebuild the player's action bar from their saved Beelzebub bindings (admin rebuildbar) — a bar-recovery " +
-            "step alongside Rebuild slots. Two-click confirm. If the bar is still stuck after this, escalate to " +
-            "Respawn, then Purge bar.",
-            () => { if (ReqName(out var n)) AdminSend($".beelz admin rebuildbar {n}"); }, 100, new Color(0.5f, 0.35f, 0.15f));
-        // Beelz v0.131: strip stuck STATE buffs (invisible / phased / immaterial) that survive respawn + relog.
-        // A DIFFERENT problem from a stuck action bar — fixes a stuck PLAYER STATE, not slot bindings. Omitting
-        // the buff arg removes the known culprits; non-destructive, so no confirm (like Respawn / Rebuild slots).
-        var recRowCleanse = MakeBeelzRow(recCard, "BeelzAdminRecRowCleanse");
-        AddBeelzSmallButton(recRowCleanse, "BeelzAdmCleanse", "Cleanse stuck buffs",
-            "Strip stuck STATE buffs from a player — invisible / phased / immaterial buffs that survive respawn AND " +
-            "relog (admin cleanse <player>). Removes the known culprits. Non-destructive. Use this for a stuck/invisible " +
-            "PLAYER; for a stuck ACTION BAR use Rebuild slots → Respawn → Purge bar instead.",
-            () => { if (ReqName(out var n)) AdminSend($".beelz admin cleanse {n}"); }, 130);
-        var recRow2 = MakeBeelzRow(recCard, "BeelzAdminRecRow2");
-        AddBeelzSmallButton(recRow2, "BeelzAdmCopy", "Copy collection", "Back up a player's captures+transforms to the admin clipboard (admin copy-collection).", () => { if (ReqName(out var n)) AdminSend($".beelz admin copy-collection {n}"); }, 116);
-        AddBeelzSmallButton(recRow2, "BeelzAdmPaste", "Paste collection", "Paste the clipboard onto a player; additive, skips dupes (admin paste-collection).", () => { if (ReqName(out var n)) AdminSend($".beelz admin paste-collection {n}"); }, 120);
-        // Beelz v0.100: clear a player's slot binds + custom (per-form/transform) loadouts + active transform,
-        // while KEEPING their collection. Confirm-gated — it wipes all their binds, but is recoverable by rebinding.
-        AddBeelzConfirmButton(recRow2, "BeelzAdmResetLoadouts", "Reset loadouts",
-            "Clear a player's slot binds + custom loadouts + active transform (admin reset-loadouts <player> CONFIRM). Their COLLECTION is kept — they just have to rebind. Good for a player stuck with a broken bar.",
-            // Server requires the literal CONFIRM token (AdminCommands.ResetLoadouts) — without it the server
-            // only replies with a prompt and does nothing. Raphael's own two-click confirm IS the user gate.
-            () => { if (ReqName(out var n)) AdminSend($".beelz admin reset-loadouts {n} CONFIRM"); }, 116, new Color(0.5f, 0.35f, 0.15f));
-        // Beelz v0.121: LAST-RESORT stuck-bar fix. Wipes ALL Beelzebub bar integration to vanilla (ends/un-parks
-        // any transform; clears every slot/form/weapon/hotkey bind) AND removes the leaked engine-level
-        // AbilityGroupSlot modifications that survive relog/respawn/rebuildslots — while KEEPING the player's
-        // captured abilities + transform unlocks. Player must be ONLINE; they re-slot afterward. The server needs
-        // the literal CONFIRM token (sent for the user); Raphael's own two-click confirm is the user gate.
-        AddBeelzConfirmButton(recRow2, "BeelzAdmPurge", "Purge bar",
-            "LAST RESORT for a creature kit JAMMED on the bar that survives relog AND Respawn AND Rebuild slots / " +
-            "Clear slot mods (an engine-level modification leak). Wipes ALL Beelzebub bar integration to vanilla and " +
-            "removes the leaked engine slot modifications, KEEPING the player's captures + transform unlocks (they " +
-            "re-slot afterward). Player must be ONLINE. Try Respawn first (it keeps bindings); use Purge only if the " +
-            "stuck bar persists. (admin purge <player> CONFIRM)",
-            () => { if (ReqName(out var n)) AdminSend($".beelz admin purge {n} CONFIRM"); }, 96, new Color(0.6f, 0.25f, 0.12f));
+        // Beelz v0.137 / api33: one layered reset behind reset-loadouts / purge, and a read-only `admin bar`
+        // readout. rebuildslots / clearslotmods are LEGACY and rebuildbar is an alias of `bar`, so those buttons
+        // go and the ladder becomes Diagnose bar -> Reset player's bar -> Purge bar -> Respawn.
+        if (BeelzState.SupportsLayeredBarReset)
+        {
+            BuildBeelzAdminRecoveryLayered(recCard);
+        }
+        else
+        {
+            var recRow = MakeBeelzRow(recCard, "BeelzAdminRecRow");
+            AddBeelzSmallButton(recRow, "BeelzAdmRespawn", "Respawn", "Respawn in place; keeps inventory / blood / captures / unlocks (admin respawn). Beelz v0.120: the GUARANTEED cure for an action bar stuck on a creature kit — even one that survived a relog (rebuilds a fresh character entity; NOT a character reset).", () => { if (ReqName(out var n)) AdminSend($".beelz admin respawn {n}"); }, 76);
+            AddBeelzSmallButton(recRow, "BeelzAdmRebuild", "Rebuild slots", "Authoritatively clear the engine's cached slot values and re-apply the player's saved grants (admin rebuildslots) — Beelz v0.120's fix for a stuck bar. If a bar survives a relog, escalate to Respawn.", () => { if (ReqName(out var n)) AdminSend($".beelz admin rebuildslots {n}"); }, 100);
+            AddBeelzSmallButton(recRow, "BeelzAdmClearMods", "Clear slot mods", "Clear orphaned ability-slot mods (admin clearslotmods).", () => { if (ReqName(out var n)) AdminSend($".beelz admin clearslotmods {n}"); }, 110);
+            // Rebuild the player's action bar from their saved Beelzebub bindings (admin rebuildbar) — a bar-recovery
+            // step alongside Rebuild slots. Two-click confirm because it rewrites the player's whole bar.
+            AddBeelzConfirmButton(recRow, "BeelzAdmRebuildBar", "Rebuild bar",
+                "Rebuild the player's action bar from their saved Beelzebub bindings (admin rebuildbar) — a bar-recovery " +
+                "step alongside Rebuild slots. Two-click confirm. If the bar is still stuck after this, escalate to " +
+                "Respawn, then Purge bar.",
+                () => { if (ReqName(out var n)) AdminSend($".beelz admin rebuildbar {n}"); }, 100, new Color(0.5f, 0.35f, 0.15f));
+            // Beelz v0.131: strip stuck STATE buffs (invisible / phased / immaterial) that survive respawn + relog.
+            // A DIFFERENT problem from a stuck action bar — fixes a stuck PLAYER STATE, not slot bindings. Omitting
+            // the buff arg removes the known culprits; non-destructive, so no confirm (like Respawn / Rebuild slots).
+            var recRowCleanse = MakeBeelzRow(recCard, "BeelzAdminRecRowCleanse");
+            AddBeelzSmallButton(recRowCleanse, "BeelzAdmCleanse", "Cleanse stuck buffs",
+                "Strip stuck STATE buffs from a player — invisible / phased / immaterial buffs that survive respawn AND " +
+                "relog (admin cleanse <player>). Removes the known culprits. Non-destructive. Use this for a stuck/invisible " +
+                "PLAYER; for a stuck ACTION BAR use Rebuild slots → Respawn → Purge bar instead.",
+                () => { if (ReqName(out var n)) AdminSend($".beelz admin cleanse {n}"); }, 130);
+            var recRow2 = MakeBeelzRow(recCard, "BeelzAdminRecRow2");
+            AddBeelzSmallButton(recRow2, "BeelzAdmCopy", "Copy collection", "Back up a player's captures+transforms to the admin clipboard (admin copy-collection).", () => { if (ReqName(out var n)) AdminSend($".beelz admin copy-collection {n}"); }, 116);
+            AddBeelzSmallButton(recRow2, "BeelzAdmPaste", "Paste collection", "Paste the clipboard onto a player; additive, skips dupes (admin paste-collection).", () => { if (ReqName(out var n)) AdminSend($".beelz admin paste-collection {n}"); }, 120);
+            // Beelz v0.100: clear a player's slot binds + custom (per-form/transform) loadouts + active transform,
+            // while KEEPING their collection. Confirm-gated — it wipes all their binds, but is recoverable by rebinding.
+            AddBeelzConfirmButton(recRow2, "BeelzAdmResetLoadouts", "Reset loadouts",
+                "Clear a player's slot binds + custom loadouts + active transform (admin reset-loadouts <player> CONFIRM). Their COLLECTION is kept — they just have to rebind. Good for a player stuck with a broken bar.",
+                // Server requires the literal CONFIRM token (AdminCommands.ResetLoadouts) — without it the server
+                // only replies with a prompt and does nothing. Raphael's own two-click confirm IS the user gate.
+                () => { if (ReqName(out var n)) AdminSend($".beelz admin reset-loadouts {n} CONFIRM"); }, 116, new Color(0.5f, 0.35f, 0.15f));
+            // Beelz v0.121: LAST-RESORT stuck-bar fix. Wipes ALL Beelzebub bar integration to vanilla (ends/un-parks
+            // any transform; clears every slot/form/weapon/hotkey bind) AND removes the leaked engine-level
+            // AbilityGroupSlot modifications that survive relog/respawn/rebuildslots — while KEEPING the player's
+            // captured abilities + transform unlocks. Player must be ONLINE; they re-slot afterward. The server needs
+            // the literal CONFIRM token (sent for the user); Raphael's own two-click confirm is the user gate.
+            AddBeelzConfirmButton(recRow2, "BeelzAdmPurge", "Purge bar",
+                "LAST RESORT for a creature kit JAMMED on the bar that survives relog AND Respawn AND Rebuild slots / " +
+                "Clear slot mods (an engine-level modification leak). Wipes ALL Beelzebub bar integration to vanilla and " +
+                "removes the leaked engine slot modifications, KEEPING the player's captures + transform unlocks (they " +
+                "re-slot afterward). Player must be ONLINE. Try Respawn first (it keeps bindings); use Purge only if the " +
+                "stuck bar persists. (admin purge <player> CONFIRM)",
+                () => { if (ReqName(out var n)) AdminSend($".beelz admin purge {n} CONFIRM"); }, 96, new Color(0.6f, 0.25f, 0.12f));
+        }
 
         // ---- captures + summons ----
         var capCard = AddCard(page, "BeelzAdminCapCard"); AddSectionHeading(capCard, "Captures & summons");
@@ -4384,6 +4409,43 @@ public partial class MainPanel
         _beelzAdminStatusLabel.gameObject.SetActive(true);
     }
     private void AdminSend(string cmd) { BeelzClient.SendUser(cmd); SetBeelzAdminStatus($"<color=#90EE90>Sent:</color> {cmd}"); }
+    // Beelz v0.137+ (api33) admin Recovery card. Escalation ladder, weakest first; Cleanse is for a stuck player
+    // state, not the bar. Reset/purge send the literal CONFIRM the server needs; Raphael's two-click is the gate.
+    private void BuildBeelzAdminRecoveryLayered(GameObject recCard)
+    {
+        AddBodyText(recCard,
+            "Stuck action bar? Work left to right: <b>Diagnose bar</b> → <b>Reset player's bar</b> → <b>Purge bar</b> → " +
+            "<b>Respawn</b>. All of them keep the player's captures and unlocks.");
+        var recRow = MakeBeelzRow(recCard, "BeelzAdminRecRow");
+        AddBeelzSmallButton(recRow, "BeelzAdmDiagBar", "Diagnose bar",
+            "Read-only per-slot readout of the player's bar: saved bind, Beelzebub equip row, override buffs, and gear- vs " +
+            "other-sourced engine mods (admin bar <player>). Changes nothing; the reply is shown in chat.",
+            () => { if (ReqName(out var n)) AdminSend($".beelz admin bar {n}"); }, 100);
+        AddBeelzConfirmButton(recRow, "BeelzAdmResetLoadouts", "Reset player's bar",
+            "Complete bar reset for another player, the same as their own Reset bar (admin reset-loadouts <player> CONFIRM): " +
+            "clears saved binds + custom loadouts + active transform, and spells leave the live bar at once with no weapon " +
+            "swap. Keeps captures, unlocks and spellbook (J) spells. Two-click confirm.",
+            () => { if (ReqName(out var n)) AdminSend($".beelz admin reset-loadouts {n} CONFIRM"); }, 136, new Color(0.5f, 0.35f, 0.15f));
+        AddBeelzConfirmButton(recRow, "BeelzAdmPurge", "Purge bar",
+            "Same reset as Reset player's bar, PLUS clears the player's hotkeys (admin purge <player> CONFIRM). Use it for a " +
+            "bar still stuck after Reset player's bar. Keeps captures + unlocks; player must be ONLINE. Two-click confirm.",
+            () => { if (ReqName(out var n)) AdminSend($".beelz admin purge {n} CONFIRM"); }, 96, new Color(0.6f, 0.25f, 0.12f));
+        AddBeelzSmallButton(recRow, "BeelzAdmRespawn", "Respawn",
+            "Last resort: respawn in place, keeping inventory / blood / captures / unlocks AND binds (admin respawn <player>). " +
+            "Rebuilds a fresh character entity; NOT a character reset.",
+            () => { if (ReqName(out var n)) AdminSend($".beelz admin respawn {n}"); }, 76);
+
+        var recRowCleanse = MakeBeelzRow(recCard, "BeelzAdminRecRowCleanse");
+        AddBeelzSmallButton(recRowCleanse, "BeelzAdmCleanse", "Cleanse stuck buffs",
+            "Strip stuck STATE buffs from a player — invisible / phased / immaterial buffs that survive respawn AND relog " +
+            "(admin cleanse <player>). Removes the known culprits. Non-destructive. For a stuck PLAYER, not a stuck bar.",
+            () => { if (ReqName(out var n)) AdminSend($".beelz admin cleanse {n}"); }, 130);
+
+        var recRow2 = MakeBeelzRow(recCard, "BeelzAdminRecRow2");
+        AddBeelzSmallButton(recRow2, "BeelzAdmCopy", "Copy collection", "Back up a player's captures+transforms to the admin clipboard (admin copy-collection).", () => { if (ReqName(out var n)) AdminSend($".beelz admin copy-collection {n}"); }, 116);
+        AddBeelzSmallButton(recRow2, "BeelzAdmPaste", "Paste collection", "Paste the clipboard onto a player; additive, skips dupes (admin paste-collection).", () => { if (ReqName(out var n)) AdminSend($".beelz admin paste-collection {n}"); }, 120);
+    }
+
     private bool ReqName(out string n)    { n = (_beelzAdminPlayerName ?? "").Trim();   if (n.Length == 0) { SetBeelzAdminStatus("<color=#FFB070>Enter a player name first.</color>"); return false; } return true; }
     private bool ReqUnit(out string g)    { g = (_beelzAdminUnitGuid ?? "").Trim();     if (g.Length == 0) { SetBeelzAdminStatus("<color=#FFB070>Enter a unit GUID first.</color>"); return false; } return true; }
     private bool ReqAbility(out string g) { g = (_beelzAdminAbilityGuid ?? "").Trim();  if (g.Length == 0) { SetBeelzAdminStatus("<color=#FFB070>Enter an ability GUID first.</color>"); return false; } return true; }
@@ -4779,7 +4841,8 @@ public partial class MainPanel
             "Auto-refresh the action bar after a grant (.beelz refresh)",
             Config.Settings.BeelzAutoRefreshBar,
             v => Config.Settings.SetBeelzAutoRefreshBar(v),
-            "ON: after you grant/unslot an ability from Raphael, it re-applies your bar so the new ability shows immediately. OFF: rely on the server's own refresh.");
+            "ON: after you grant/unslot an ability from Raphael, it re-applies your bar so the new ability shows immediately. OFF: rely on the server's own refresh. " +
+            "Beelzebub 0.137.1+ shows grants at once by itself, so Raphael skips the extra refresh there.");
 
         RefreshBeelzDiagnosticsReadout();
     }
@@ -4992,7 +5055,9 @@ public partial class MainPanel
             "• .beelz form-grant (form|auto) (slot) (index|abilityID) · .beelz form-unslot (form|auto) (slot) — per-FORM sets for the shapeshift-wheel forms (Wolf/Bear/Rat/Spider/Toad). Werewolf/Golem/Gargoyle are boss transformations — manage them on the Transforms tab.\n" +
             "• .beelz loadouts — summary of the universal set + each per-weapon set + the active weapon.\n" +
             "• .beelz clearbar [all|universal|<weapon>|<form>] — clear a chosen set → vanilla (keeps captures).   • .beelz refresh — re-apply your bar if it looks wrong.\n" +
+            "• .beelz resetbar CONFIRM — complete bar reset: clears every saved bind and puts your weapon's skills back at once; keeps captures + spellbook (J) spells (v0.137).\n" +
             "• .beelz preset save|load|list|delete (name) — save / restore loadout presets.\n" +
+            "Grants and unslots show on the bar right away (v0.137.1); made while in a form, a transform or on a mount, they apply when that ends.\n" +
             "Weapon families: Sword, GreatSword, Axe, Mace, Spear, Daggers, Crossbow, Longbow, Pistols, Reaper, Whip, " +
             "Claws, Pollaxe, Slashers, TwinBlades, Unarmed, FishingPole.");
 
@@ -5090,11 +5155,11 @@ public partial class MainPanel
 
         AddCollapsibleHelpDetail(page, "Admin — recovery & destructive ops",
             "Fix a stuck action bar — escalation ladder (each step is stronger than the last; keeps the collection):\n" +
-            "• .beelz admin rebuildslots (player) — authoritatively clear cached slot values + re-apply saved grants (v0.120).\n" +
-            "• .beelz admin rebuildbar (player) — rebuild the player's bar from their saved Beelzebub bindings.\n" +
-            "• .beelz admin clearslotmods (player) — clear orphaned ability-slot modifications.\n" +
-            "• .beelz admin respawn (player) — respawn in place (keeps inventory + progress); the guaranteed cure even for a bar that survived a relog.\n" +
-            "• .beelz admin purge (player) CONFIRM — LAST RESORT (v0.121): wipes ALL Beelzebub bar integration + removes the leaked engine-level slot modifications that survive respawn/rebuildslots; keeps captures + unlocks (player re-slots afterward; must be online).\n" +
+            "• .beelz admin bar (player) — read-only per-slot readout of the bar (saved bind, equip row, override buffs, engine mods). Changes nothing (v0.137).\n" +
+            "• .beelz admin reset-loadouts (player) CONFIRM — the complete bar reset (same as the player's resetbar): binds + custom loadouts + transform cleared, spells off the bar at once, spellbook spells kept.\n" +
+            "• .beelz admin purge (player) CONFIRM — the same reset PLUS hotkeys cleared; for a bar still stuck after reset-loadouts (player must be online).\n" +
+            "• .beelz admin respawn (player) — respawn in place (keeps inventory, progress and binds); last resort.\n" +
+            "Before v0.137, rebuildslots / clearslotmods / rebuildbar were the middle steps; they are LEGACY now (rebuildbar just prints the admin bar readout).\n" +
             "\nFix a stuck PLAYER STATE (not the bar):\n" +
             "• .beelz admin cleanse (player) [buffNameOrGuid] — strip stuck STATE buffs (invisible / phased / immaterial) that survive respawn AND relog (v0.131). Omit the buff to remove the known culprits, or name/GUID a specific buff. Non-destructive.\n" +
             "\nOther recovery:\n" +

@@ -1,5 +1,32 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.68.0 — Beelzebub 0.137 support (API 33): one-step bar reset
+
+Catches up to Beelzebub 0.137.0-0.137.2 (`ApiVersion 33`, `docs/BCH_INTEGRATION_HANDOFF.md`). No `[BEELZ:*]` line
+changed shape. New gates in `BeelzState`: `SupportsLayeredBarReset` (api>=33) and `GrantsApplyImmediately`
+(plugin>=0.137.1). Older servers keep the old buttons and behavior.
+
+- **Loadout tab:** on api>=33 "Unstick bar" (revert -> resetbar) becomes one confirm-gated **Reset bar**
+  (`.beelz resetbar CONFIRM`). The server's layered reset takes spells off the bar at once with no weapon swap and
+  keeps spellbook (J) spells.
+- **Admin: Players -> Recovery** (api>=33): new ladder **Diagnose bar** (`admin bar <player>`, read-only chat
+  readout) -> **Reset player's bar** (`reset-loadouts CONFIRM`) -> **Purge bar** (`purge CONFIRM`, also clears hotkeys) ->
+  **Respawn**. The legacy Rebuild slots / Clear slot mods buttons and the Rebuild bar duplicate (now an alias of
+  `admin bar`) are hidden. New builder `BuildBeelzAdminRecoveryLayered`.
+- **Grants show at once (0.137.1):** the auto `.beelz refresh` after a grant (`BeelzAutoRefreshBar`) is skipped on
+  plugin >= 0.137.1; the `api slots` re-read still runs.
+- **`transform-ended` now also re-reads `api slots`** (0.137.2: bar edits made while transformed apply on exit).
+- Config view: description for the new `Forms_AutoFillFromCaptures` key.
+- Guide: `resetbar CONFIRM` and the "grants show right away" note in the player reference; admin recovery ladder
+  rewritten (`admin bar`, reset-loadouts, purge, respawn; legacy commands noted).
+- README: Beelzebub row -> v0.137.2 (API 33).
+- Not in this release: the handoff's optional "No Name" action-bar hover card / ability library (separate feature).
+
+## 0.67.4 — Nyarlathotep beta banner
+
+- Nyarlathotep tabs now show the same beta feedback banner and **Give feedback** Discord button as Beelzebub, Uriel
+  and Faust (`BetaFeedbackGroups`).
+
 ## 0.67.3 — Chat window spacing
 
 - Chat window: message text no longer touches the tab buttons. Tab row bottom padding 2 -> 6 px (row 24 -> 30),

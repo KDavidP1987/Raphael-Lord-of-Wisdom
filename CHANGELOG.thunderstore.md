@@ -4,9 +4,23 @@
 [CHANGELOG.md](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/blob/main/CHANGELOG.md).
 Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
-**Current: v0.67.3** (pre-1.0 beta).
+**Current: v0.68.0** (pre-1.0 beta).
 
 ---
+
+## 0.68.0 — Beelzebub 0.137 support
+
+- **Reset bar** (Loadout tab) replaces "Unstick bar" with one confirmed click. Spells leave the bar immediately, with
+  no weapon swap, and spellbook (J) spells are kept. Older Beelzebub servers keep "Unstick bar".
+- Admin Recovery buttons now go in order: **Diagnose bar** (read-only) -> **Reset player's bar** -> **Purge bar** ->
+  **Respawn**. The old Rebuild slots / Clear slot mods / Rebuild bar buttons are hidden on Beelzebub 0.137+.
+- Granted abilities appear on the bar immediately on Beelzebub 0.137.1+, so Raphael no longer sends an extra refresh.
+- Your ability slots refresh when a transform ends.
+- The config view now describes the server setting `Forms_AutoFillFromCaptures`.
+
+## 0.67.4 — Nyarlathotep beta banner
+
+- Nyarlathotep tabs now carry the beta banner with a **Give feedback** link to The Shadow Realm Discord.
 
 ## 0.67.3 — Chat window spacing
 

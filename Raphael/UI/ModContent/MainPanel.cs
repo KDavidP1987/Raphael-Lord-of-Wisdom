@@ -1951,8 +1951,9 @@ public partial class MainPanel : ResizeablePanelBase
 
     // 0.67: Beelzebub, Uriel and Faust are in beta and had downloads but no feedback. One slim line at the top
     // of each of their tabs asks for issues / ideas and links The Shadow Realm Discord (permanent invite).
+    // 0.67.4: Nyarlathotep added.
     private const string SHADOW_REALM_INVITE = "https://discord.gg/c4YU2HbHFA";
-    private static readonly string[] BetaFeedbackGroups = { "Beelzebub", "Uriel", "Faust" };
+    private static readonly string[] BetaFeedbackGroups = { "Beelzebub", "Uriel", "Faust", "Nyarlathotep" };
 
     private void MaybeAddBetaFeedbackBanner(GameObject page, PanelType tab)
     {
@@ -2057,7 +2058,7 @@ public partial class MainPanel : ResizeablePanelBase
         _buildingWrapper = pageWrapper;   // 0.67.1: lets EnsureTabBuilt destroy a half-built page if a builder throws
         AddTabHeading(page, label);
         MaybeAddEclipseStandDownBanner(page, tab); // 0.17.1: command-console-mode notice
-        MaybeAddBetaFeedbackBanner(page, tab);     // 0.67: beta feedback ask on Beelzebub / Uriel / Faust tabs
+        MaybeAddBetaFeedbackBanner(page, tab);     // 0.67: beta feedback ask on Beelzebub / Uriel / Faust / Nyarlathotep tabs
 
         switch (tab)
         {

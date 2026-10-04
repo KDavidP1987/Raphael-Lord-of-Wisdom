@@ -109,7 +109,7 @@ Settings don't transfer — Raphael writes a new config, so overlay positions, c
 | **Bloodcraft** (server) | v1.13.21 | Primary integration |
 | **KindredCommands** (server) | v2.5.8 | Admin/player commands → Kindred |
 | **KindredLogistics** (server) | v1.6.0 | Logistics toggles → Kindred |
-| **Beelzebub** (server, optional) | v0.135 (API 32) | Abilities / transforms → Beelzebub |
+| **Beelzebub** (server, optional) | v0.137.2 (API 33) | Abilities / transforms → Beelzebub |
 | **Faust** (server, optional) | 0.16.4 (API 19) | Server investigation & analytics → Faust |
 | **Uriel** (server, optional) | v0.20.0 | Storage / prisons / stairs / spawning → Uriel |
 | **Nyarlathotep** (server, optional) | v0.5.2 (API 4) | World events / leaderboards → Nyarlathotep |
