@@ -81,6 +81,37 @@ internal static class PlayerRosterService
         return false;
     }
 
+    // 0.69.0 (#2): the authoritative NetworkId for one CONNECTED player name (self included), straight from the
+    // server-pushed UserInfoElement roster. Quiet (no log line) so it can run per chat message. Whisper sends and
+    // the chat-sender pairing use it first, so a name can never resolve to another player's id.
+    internal static bool TryFindOnline(string name, out PlayerRef player)
+    {
+        player = default;
+        if (string.IsNullOrWhiteSpace(name)) return false;
+        try
+        {
+            if (Plugin.IsClientNull()) return false;
+            var em = Plugin.EntityManager;
+            if (!SingletonAccessor<UserInfoBufferSingleton>.TryGetSingletonEntityWasteful(em, out var singleton)) return false;
+            if (singleton == Entity.Null || !em.HasBuffer<UserInfoElement>(singleton)) return false;
+            var buf = em.GetBuffer<UserInfoElement>(singleton);
+            // A game-resolved sender may carry a colour tag or quotes; match on the bare name.
+            string want = System.Text.RegularExpressions.Regex.Replace(name, "<[^<>]*>", string.Empty).Replace("\"", string.Empty).Trim();
+            if (want.Length == 0) return false;
+            for (int i = 0; i < buf.Length; i++)
+            {
+                var ui = buf[i];
+                if (!ui.IsConnected) continue;
+                var nm = ui.Name.ToString();
+                if (!string.Equals(nm, want, StringComparison.OrdinalIgnoreCase)) continue;
+                player = new PlayerRef(nm, ui.NetworkId);
+                return true;
+            }
+        }
+        catch (Exception ex) { LogUtils.LogDebug($"TryFindOnline: {ex.Message}"); }
+        return false;
+    }
+
     // 0.17.3 (#38): the full connected-player roster from the UserInfoElement buffer.
     // The buffer lives on the UserInfoBufferSingleton entity, which V Rising parks on a
     // DISABLED entity — a plain CreateEntityQuery skips disabled entities (we saw

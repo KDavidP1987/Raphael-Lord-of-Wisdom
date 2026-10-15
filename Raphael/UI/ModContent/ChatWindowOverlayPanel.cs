@@ -520,7 +520,9 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
                 sb.Append(ln.Received.ToString("HH:mm")).Append("  [").Append(ln.Channel).Append("] ");
                 string sender = StripRichTags(ln.Sender ?? string.Empty).Trim();
                 if (sender.Length > 0) sb.Append(sender).Append(": ");
-                sb.Append(StripRichTags(ln.Text ?? string.Empty).Trim()).Append('\n');
+                // 0.69.0 (#1): strip only REAL rich-text tags from the body — a blanket '<'…'>' strip
+                // deleted roleplay text like "<telepathy>" and everything after an unclosed '<'.
+                sb.Append(StripKnownRichTags(ln.Text ?? string.Empty).Trim()).Append('\n');
                 n++;
             }
             UnityEngine.GUIUtility.systemCopyBuffer = sb.ToString();
@@ -633,6 +635,7 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         if (idx < 0) idx = DefaultComposeIndex(); // e.g. Clan requested while not in a clan
         _composeIndex = Mathf.Clamp(idx, 0, Mathf.Max(0, _composeTargets.Count - 1));
         if (_composeDropdown != null) _composeDropdown.SetValueWithoutNotify(_composeIndex);
+        RememberAllTabSelection();
         Render();
     }
 
@@ -656,6 +659,9 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         ChatRelayService.RememberWhisperTarget(name, id);
         _closedPartners.Remove(name);
         _initiatedPartners.Add(name);
+        // 0.69.0 (#2): one whisper target on both tabs — a /w on the All tab used to leave the Whispers tab's
+        // recipient on the previous person, so the next message there went to them.
+        _whisperSendTo = name;
         // B4: if the whisper was started FROM the Whispers tab (e.g. /whisper Name typed in its message bar),
         // open that conversation IN PLACE instead of jumping to the All tab.
         if (WhispersTabIndex >= 0 && _activeTab == WhispersTabIndex)
@@ -678,6 +684,7 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         {
             _composeIndex = idx;
             if (_composeDropdown != null) _composeDropdown.SetValueWithoutNotify(_composeIndex);
+            RememberAllTabSelection();
         }
         Render();
     }
@@ -691,9 +698,12 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         name = null; id = default;
         if (string.IsNullOrWhiteSpace(typed)) return false;
         typed = typed.Trim();
-        var pool = ChatRelayService.GetKnownPlayers();
+        // 0.69.0 (#2): the online roster FIRST — it's authoritative. The chat-paired cache came first before,
+        // and a drifted entry there made "/w PERSON2" resolve to another player's id.
+        var pool = new List<PlayerRosterService.PlayerRef>();
         try { pool.AddRange(PlayerRosterService.GetOnlinePlayers()); } catch { }
         try { if (PlayerRosterService.TryGetSelfPlayer(out var me)) pool.Add(me); } catch { }   // B1: allow whispering yourself (note to self)
+        pool.AddRange(ChatRelayService.GetKnownPlayers());
         foreach (var p in pool)
             if (string.Equals(p.Name, typed, StringComparison.OrdinalIgnoreCase)) { name = p.Name; id = p.Id; return true; }
         foreach (var p in pool)
@@ -1337,6 +1347,7 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         if (onWhispers && WhisperPartners().Count == 0)
         {
             if (_composeDropdownObj != null) _composeDropdownObj.SetActive(false);
+            if (ComposeListIsAllTab) CaptureAllTabLabel();   // #2: keep the All tab's pick across this clear
             _composeTargets.Clear();
             _composeSignature = "";
             _whisperSendTo = null;
@@ -1371,9 +1382,11 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         // are applied by the handlers directly, so they don't need to be in the signature.
         string sig = (onWhispers ? "W|" : (IsInClan() ? "C|" : "-|")) + string.Join("|", partners);
         if (sig == _composeSignature && _composeTargets.Count > 0) return false;
+        // 0.69.0 (#2): only an All-tab list can supply the All tab's previous selection.
+        if (ComposeListIsAllTab) CaptureAllTabLabel();
         _composeSignature = sig;
 
-        string prevLabel = (_composeIndex >= 0 && _composeIndex < _composeTargets.Count) ? _composeTargets[_composeIndex].Label : null;
+        string prevLabel = _allTabComposeLabel;
         _composeTargets.Clear();
 
         if (onWhispers)
@@ -1430,6 +1443,9 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         ddObj.transform.SetSiblingIndex(0); // leftmost — before the input field + Send
         _composeDropdownObj = ddObj;
         _composeDropdown.SetValueWithoutNotify(sel);
+        // The new dropdown already holds value 0, so SetValue(0) is a no-op that never redraws the caption;
+        // refresh it explicitly so the box always names the real target (#2: "@name" box showing blank/stale).
+        try { _composeDropdown.RefreshShownValue(); } catch { }
         // Outside-click close (TMP's own blocker doesn't fire in our canvas).
         Raphael.UI.Forms.FormDropdownRegistry.Register(_composeDropdown);
         bool onWhispers = WhispersTabIndex >= 0 && _activeTab == WhispersTabIndex;
@@ -1444,14 +1460,33 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
     {
         if (i < 0 || i >= _composeTargets.Count) return;
         _composeIndex = i;
-        if (WhispersTabIndex >= 0 && _activeTab == WhispersTabIndex)
-        {
-            // The box drives only the SEND target — it deliberately leaves the VIEW (_activeWhisperPartner)
-            // alone, so you can stay on "All Whispers" while picking who to message.
-            var t = _composeTargets[i];
-            if (t.IsWhisper && t.Whisper != null) _whisperSendTo = t.Whisper;
-        }
+        // The box drives only the SEND target — it deliberately leaves the VIEW (_activeWhisperPartner)
+        // alone, so you can stay on "All Whispers" while picking who to message. 0.69.0 (#2): a whisper pick
+        // on the All tab updates the same recipient, so the two tabs never disagree about who you're whispering.
+        var t = _composeTargets[i];
+        if (t.IsWhisper && t.Whisper != null) _whisperSendTo = t.Whisper;
+        RememberAllTabSelection();
     }
+
+    // 0.69.0 (#2): the All tab's own selection (Global / Local / Clan / @name), kept apart from the Whispers
+    // tab's recipient list. Both tabs share _composeTargets/_composeIndex, so switching Whispers → All used to
+    // carry the Whispers-tab entry over and silently turn the All tab's channel into a whisper.
+    private string _allTabComposeLabel;
+    private void RememberAllTabSelection()
+    {
+        bool onWhispers = WhispersTabIndex >= 0 && _activeTab == WhispersTabIndex;
+        if (!onWhispers) CaptureAllTabLabel();
+    }
+
+    // Caller guarantees _composeTargets currently holds the All tab's list (the tab may already have switched).
+    private void CaptureAllTabLabel()
+    {
+        if (_composeIndex >= 0 && _composeIndex < _composeTargets.Count)
+            _allTabComposeLabel = _composeTargets[_composeIndex].Label;
+    }
+
+    private bool ComposeListIsAllTab => _composeSignature.Length > 0 && _composeTargets.Count > 0
+                                        && !_composeSignature.StartsWith("W|", StringComparison.Ordinal);
 
     // 0.17.3: keep a dropdown's caption + list items on ONE line (ellipsis), so a long
     // whisper target / player name doesn't word-wrap inside the cell and look odd.
@@ -1475,6 +1510,10 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         if (n == 0) { EnsureComposeTargets(); n = _composeTargets.Count; if (n == 0) return; }
         _composeIndex = ((_composeIndex + dir) % n + n) % n;
         if (_composeDropdown != null) _composeDropdown.SetValueWithoutNotify(_composeIndex);
+        // A programmatic cycle doesn't fire OnComposeChanged, so keep the whisper recipient in step here (#2).
+        var t = _composeTargets[_composeIndex];
+        if (t.IsWhisper && t.Whisper != null) _whisperSendTo = t.Whisper;
+        RememberAllTabSelection();
     }
 
     // Per-frame: on the All tab while typing, Tab cycles the send target. Uses a
@@ -1491,14 +1530,9 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
             else if (_inputFocusGrace > 0) _inputFocusGrace--;
             if (_inputFocusGrace > 0 && UnityEngine.Input.GetKeyDown(KeyCode.Tab))
             {
+                // On the Whispers tab, Tab cycles the SEND target (the box), NOT the view; CycleCompose keeps
+                // _whisperSendTo in step on both tabs.
                 CycleCompose(+1);
-                // On the Whispers tab, Tab cycles the SEND target (the box), NOT the view; a programmatic
-                // cycle doesn't fire OnComposeChanged, so sync _whisperSendTo here.
-                if (onWhispers && _composeIndex >= 0 && _composeIndex < _composeTargets.Count)
-                {
-                    var t = _composeTargets[_composeIndex];
-                    if (t.IsWhisper && t.Whisper != null) _whisperSendTo = t.Whisper;
-                }
             }
 
             // 0.17.3: re-evaluate the available compose targets a few times a minute so
@@ -1906,7 +1940,9 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         // 0.65.3: neutralize any rich-text tag the message leaves OPEN before it joins the shared
         // TMP block — otherwise an unclosed <i>/<b>/<color>/… bleeds into every line after it (the
         // "chat randomly turns italic and won't stop" report). See CloseDanglingTags.
-        string body = CloseDanglingTags(ln.Text);
+        // 0.69.0 (#1): player-typed text shows a '<' that isn't a known style tag literally, so
+        // roleplay like "<telepathy>" or "<i think so>" isn't swallowed as markup.
+        string body = CloseDanglingTags(IsPlayerChannel(ln.Channel) ? EscapeStrayBrackets(ln.Text) : ln.Text);
         string hex = null;
         if (Settings.ChatColorOwnMessages && ChatRelayService.IsOwnSender(ln.Sender))
             hex = Settings.ChatOwnMessageColorHex;
@@ -1925,7 +1961,57 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         "b", "i", "u", "s", "sub", "sup", "color", "size", "font", "mark",
         "cspace", "mspace", "style", "gradient", "rotate", "voffset", "indent",
         "align", "nobr", "noparse", "link", "lowercase", "uppercase", "smallcaps", "allcaps",
+        "alpha", "line-height", "line-indent", "margin", "margin-left", "margin-right", "width",
+        "font-weight", "underline", "strikethrough",
     };
+
+    private static bool IsPlayerChannel(ChatRelayService.Channel c)
+        => c is ChatRelayService.Channel.Global or ChatRelayService.Channel.Local
+             or ChatRelayService.Channel.Clan or ChatRelayService.Channel.Whisper;
+
+    // Every tag TextMeshPro parses as markup: a bare/closing name ("<b>", "</color>"), a name with a
+    // value ("<color=#f00>", "<size=120%>", "<link=\"x\">"), or the colour shorthand ("<#f00>").
+    private const string RichTagNames =
+        "b|i|u|s|sub|sup|mark|color|size|font|cspace|mspace|style|gradient|rotate|voffset|indent|align|nobr|noparse|" +
+        "link|a|lowercase|uppercase|smallcaps|allcaps|alpha|line-height|line-indent|margin|margin-left|margin-right|" +
+        "width|font-weight|underline|strikethrough|pos|space|sprite|material|page|br|nbsp|zwsp";
+    private static readonly System.Text.RegularExpressions.Regex KnownRichTag = new(
+        @"</?(?:" + RichTagNames + @")(?:=[^<>]*)?>|<#[0-9A-Fa-f]{3,8}>",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // The style tags a player may still use in their own message; anything else with a '<' shows as text.
+    private static readonly System.Text.RegularExpressions.Regex PlayerStyleTag = new(
+        @"</?(?:b|i|u|s|sub|sup|mark|color|alpha|lowercase|uppercase|smallcaps|allcaps|underline|strikethrough|font-weight)(?:=[^<>]*)?>|<#[0-9A-Fa-f]{3,8}>",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Copy/plain-text form: remove real markup only; a '<' that isn't a tag stays.
+    internal static string StripKnownRichTags(string s)
+        => string.IsNullOrEmpty(s) || s.IndexOf('<') < 0 ? s : KnownRichTag.Replace(s, string.Empty);
+
+    // Display form of a player's message: keep their style tags, render every other '<' literally.
+    internal static string EscapeStrayBrackets(string s)
+    {
+        if (string.IsNullOrEmpty(s) || s.IndexOf('<') < 0) return s;
+        var sb = new StringBuilder(s.Length + 32);
+        int i = 0;
+        foreach (System.Text.RegularExpressions.Match m in PlayerStyleTag.Matches(s))
+        {
+            AppendLiteralBrackets(sb, s, i, m.Index - i);
+            sb.Append(m.Value);
+            i = m.Index + m.Length;
+        }
+        AppendLiteralBrackets(sb, s, i, s.Length - i);
+        return sb.ToString();
+    }
+
+    private static void AppendLiteralBrackets(StringBuilder sb, string s, int start, int len)
+    {
+        for (int k = start; k < start + len; k++)
+        {
+            if (s[k] == '<') sb.Append("<noparse><</noparse>");
+            else sb.Append(s[k]);
+        }
+    }
 
     // 0.65.3 ITALICS-BLEED FIX. Every visible chat line is concatenated into ONE TextMeshPro
     // component (joined by '\n'), so a style/scope tag a SERVER or other-mod message leaves OPEN
@@ -1946,9 +2032,14 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
             if (lt < 0) break;
             int gt = text.IndexOf('>', lt + 1);
             if (gt < 0) break;                 // a bare '<' with no '>' isn't a tag — stop scanning
+            // A stray '<' before the '>' isn't a tag either; TMP restarts at the inner '<', so do we
+            // (otherwise "<like so <i>hi" hid the real <i> and left italics open).
+            int inner2 = text.IndexOf('<', lt + 1, gt - lt - 1);
+            if (inner2 >= 0) { i = inner2; continue; }
             string inner = text.Substring(lt + 1, gt - lt - 1);
             i = gt + 1;
             if (inner.Length == 0) continue;
+            if (inner[0] == '#') inner = "color";   // <#f00> colour shorthand, closed by </color>
             bool closing = inner[0] == '/';
             string bodyTag = closing ? inner.Substring(1) : inner;
             int cut = bodyTag.Length;          // tag name ends at the first '=' or ' '
@@ -2259,5 +2350,6 @@ public class ChatWindowOverlayPanel : ResizeablePanelBase
         _composeTargets.Clear();
         _composeIndex = 0;
         _composeSignature = " ";
+        _allTabComposeLabel = null;
     }
 }

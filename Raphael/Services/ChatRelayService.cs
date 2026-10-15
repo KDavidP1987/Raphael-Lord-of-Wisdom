@@ -77,8 +77,20 @@ internal static class ChatRelayService
         _pendingSenderIds.Enqueue(fromUser);
     }
 
+    // 0.69.0 (#2): the online roster is authoritative — a connected player's name always resolves to THEIR
+    // NetworkId (and repairs the cached entry). The cache from chat pairing is only the fallback for a name
+    // the roster doesn't list (e.g. the roster isn't loaded yet). The old cache-only lookup could send a
+    // whisper to the wrong player when the arrival-order pairing below had drifted by one.
     internal static bool TryGetWhisperTarget(string partner, out NetworkId id)
-        => _playerIds.TryGetValue(partner ?? string.Empty, out id);
+    {
+        if (PlayerRosterService.TryFindOnline(partner, out var p))
+        {
+            id = p.Id;
+            _playerIds[partner] = p.Id;
+            return true;
+        }
+        return _playerIds.TryGetValue(partner ?? string.Empty, out id);
+    }
 
     // Record a whisper target chosen from the player picker, so reply-send works
     // even before that player has whispered us.
@@ -196,7 +208,12 @@ internal static class ChatRelayService
             {
                 NetworkId id = default; bool hasId = false;
                 if (_pendingSenderIds.Count > 0) { id = _pendingSenderIds.Dequeue(); hasId = true; }
-                if (hasId && !string.IsNullOrEmpty(sender)) _playerIds[sender] = id;
+                // 0.69.0 (#2): a skipped duplicate above leaves its id in the queue, so the arrival-order
+                // pairing can drift by one. Prefer the roster's id for a connected sender; the queued id is
+                // only used for a name the roster doesn't list.
+                if (!string.IsNullOrEmpty(sender) && PlayerRosterService.TryFindOnline(sender, out var online))
+                    _playerIds[sender] = online.Id;
+                else if (hasId && !string.IsNullOrEmpty(sender)) _playerIds[sender] = id;
                 if (channel == Channel.Whisper && !string.IsNullOrEmpty(sender)) partner = sender;
             }
 
