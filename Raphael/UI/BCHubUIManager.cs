@@ -90,6 +90,8 @@ public class BCHubUIManager : UIManagerBase
     private bool _loggedOut;
 
     public bool IsMainPanelOpen => _mainPanel != null && _mainPanel.Enabled;
+    /// <summary>0.69.0: a Nyarlathotep tab is on screen (drives the faster status refresh, handoff api 8 §2).</summary>
+    public bool IsNyarTabVisible => IsMainPanelOpen && _mainPanel.ActiveTab.ToString().StartsWith("Nyar", System.StringComparison.Ordinal);
 
     // 0.9.7: per-panel accessors so the Size & Positioning settings section
     // can adjust each panel's width/height and reset-to-default. The Ensure*
@@ -143,6 +145,7 @@ public class BCHubUIManager : UIManagerBase
 
     public override void Reset()
     {
+        NyarToastHost.Clear();
         base.Reset();
         foreach (var p in _panels)
         {
@@ -204,9 +207,13 @@ public class BCHubUIManager : UIManagerBase
         _beelzTransformOverlay?.SetActive(active && (_beelzTransformOverlay?.Enabled ?? false));
         _urielSharedOverlay?.SetActive(active && (_urielSharedOverlay?.Enabled ?? false));
         _urielObjectSpawnerOverlay?.SetActive(active && (_urielObjectSpawnerOverlay?.Enabled ?? false));
+        NyarToastHost.SetVisible(active);
         // 0.16.x: floating launcher follows a single visibility rule (below).
         RefreshFloatingButtonVisibility();
     }
+
+    /// <summary>0.69.0: Raphael's canvas root, for click-through HUD pieces that aren't panels (NyarToastHost).</summary>
+    public UnityEngine.GameObject UiRootObject => UiBase?.RootObject;
 
     /// <summary>0.18.1: queue a full Raphael-UI hide because the player left the game. SAFE to call
     /// from the ClientBootstrapSystem.OnDestroy teardown hook — pure flag assignment, no UI/ECS

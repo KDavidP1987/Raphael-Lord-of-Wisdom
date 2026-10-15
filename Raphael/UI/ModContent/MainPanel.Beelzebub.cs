@@ -4626,7 +4626,7 @@ public partial class MainPanel
         var nyRow = MakeBeelzRow(ny, "ConnNyarRow");
         AddBeelzPlainButton(nyRow, "ConnNyarRedetect", "Re-detect Nyarlathotep",
             "Restart Nyarlathotep detection from scratch and re-probe (.nyar api version). Use after a server switch if the Nyarlathotep group didn't appear.",
-            () => { Services.Nyar.NyarProtocolService.Reset(); Services.Nyar.NyarClient.RequestVersion(); RefreshConnectionReadout(); }, 190);
+            () => { Services.Nyar.NyarProtocolService.Reset(); Services.Nyar.NyarClient.SendProbe(); RefreshConnectionReadout(); }, 190);
 
         // --- Refresh Raphael (0.65.6) ---
         // Players reported the game slowing over a long session until a relog. This clears the same
@@ -4961,13 +4961,27 @@ public partial class MainPanel
 
         AddGuideSection(page, "2. Build ability sets (Loadout)",
             "Open Beelzebub → Loadout and pick a SET from the dropdown: \"Universal\" applies on any weapon, " +
-            "or pick a specific weapon family. Click a slot number (1-6) next to a captured ability to bind " +
-            "it. A per-weapon set overrides Universal on the slots you fill, and the server auto-switches to " +
-            "it when you equip that weapon. Empty slots keep your normal in-game abilities. You can edit a " +
+            "a weapon family, or a form (Wolf, Bear, Rat, Spider, Toad, Mounted). Click a slot button next to a " +
+            "captured ability to bind it. A per-weapon set overrides Universal on the slots you fill, and the " +
+            "server switches to it when you equip that weapon. A form set loads when you enter that form. " +
+            "Empty slots keep your normal in-game abilities. Binds show on the bar right away. You can edit a " +
             "weapon's set even without holding it; use \"Copy from\" to clone one set onto another.");
         AddCollapsibleHelpDetail(page, "Slot meanings",
-            "1 = Primary (Q / left-click) · 2 = Travel (Space) · 3 = Shift · 4 = Heavy (E) · 5 = Spell 1 (R) · " +
-            "6 = Spell 2 (C). There's no separate ultimate slot — slot 1 is the primary attack.");
+            "Primary (left-click) · 1 (Q) · 2 = Travel (Space) · 3 = Shift · 4 = Heavy (E) · 5 = Spell 1 (R) · " +
+            "6 = Spell 2 (C) · Ultimate (T).\n" +
+            "The slot buttons show the key (LM / Q / Sp / Sh / E / R / C / T). Turn this off in Beelzebub → Settings " +
+            "to see slot numbers (P / 1-6 / U) instead.\n" +
+            "The Mounted set only takes R, C and T (slots 5, 6, 7). The horse uses the other keys.\n" +
+            "If you pick a vanilla spell for a slot in the spellbook (J), that slot goes back to your spell.");
+
+        AddGuideSection(page, "Bar looks wrong?",
+            "Three buttons on the Loadout tab, from mild to strong:\n" +
+            "• <b>Fix bar</b> — re-applies your saved binds (.beelz refresh).\n" +
+            "• <b>Clear bar</b> / <b>Clear set</b> — clears the binds of every set, or of one set. Captures are kept.\n" +
+            "• <b>Reset bar</b> — clears every saved bind and puts your weapon skills back at once. Keeps your " +
+            "captures, unlocks, hotkeys and spellbook (J) spells (.beelz resetbar CONFIRM).\n" +
+            "Clearing or resetting while riding dismounts you. While transformed, it ends the transform. " +
+            "Still stuck? Ask an admin to use Diagnose bar on the Admin: Players tab.");
 
         AddGuideSection(page, "3. Extra abilities (Action Bar)",
             "Beyond the 6 slots, the Hotkeys tab lets you name extra abilities — each becomes a TILE on the " +
@@ -4977,8 +4991,11 @@ public partial class MainPanel
 
         AddGuideSection(page, "4. Transform",
             "If you've unlocked them, the Transforms tab lets you become a boss form (Dracula, Morgana, Werewolf, " +
-            "Golem, Gargoyle) — switch phase, fire the signature summon / detonation, then revert. Every other " +
-            "unit is collected for its abilities (or devoured), not transformed into.");
+            "Golem, Gargoyle) — switch phase, fire the signature summon / detonation, then revert. Werewolf, Golem " +
+            "and Gargoyle are still test forms. A boss has more abilities than you have slots, so the Transforms tab " +
+            "also lets you pick which of its abilities go on each slot, per phase. A form takes a moment to appear; " +
+            "until it does, phase changes reply \"Still transforming\". Every other unit is collected for its " +
+            "abilities (or devoured), not transformed into.");
 
         AddGuideSection(page, "Don't see the Beelzebub tabs?",
             "They only appear once Raphael confirms Beelzebub on your server — which can lag a few seconds after " +
@@ -4991,7 +5008,8 @@ public partial class MainPanel
     }
 
     // The comprehensive in-app guide — purpose, mechanics, and the FULL player + admin command
-    // reference (sourced from the Beelzebub repo's BCH_INTEGRATION_HANDOFF §10, ApiVersion 8).
+    // reference (sourced from the Beelzebub repo's BCH_INTEGRATION_HANDOFF §10 + docs/COMMANDS.md; checked
+    // against Beelzebub v0.137.7 / ApiVersion 35).
     // Quick Start above is the short orientation; this is the deep reference. Argument
     // placeholders use (parentheses), not <angle brackets>, so TMP doesn't treat them as tags.
     private void BuildBeelzModHelpTab(GameObject page)
@@ -5013,10 +5031,12 @@ public partial class MainPanel
         AddCollapsibleHelpDetail(page, "Core concepts",
             "• Capture — a per-ability roll on each kill (rates set by the server). Captured abilities live in your " +
             "collection (Bestiary / Loadout).\n" +
+            "• Bad-luck protection — each kill with no drop raises your odds; a drop resets them (.beelz odds).\n" +
             "• Devour — the rare jackpot: a unit's whole eligible kit granted at once.\n" +
-            "• Slots & loadouts — bind a captured ability to one of 6 bar slots. Two bucket types: the UNIVERSAL set " +
-            "(fires on any weapon) and PER-WEAPON sets (fire only with that weapon drawn; they override the universal " +
-            "bind on their slots). The server auto-switches the active set when you swap weapons. Unarmed is its own family.\n" +
+            "• Slots & loadouts — bind a captured ability to a bar slot: primary (left-click), 1-6, or ultimate (T). " +
+            "The UNIVERSAL set fires on any weapon. PER-WEAPON sets fire only with that weapon drawn and override the " +
+            "universal bind on their slots. PER-FORM sets load in a shapeshift form or on a mount. The server " +
+            "auto-switches the active set when you swap weapons. Unarmed is its own family.\n" +
             "• Hotkeys — named bindings beyond the 6 slots, cast on demand from the on-screen action bar.\n" +
             "• Transform — become one of the renderable boss forms (Dracula, Morgana, Werewolf, Golem, Gargoyle): multi-phase kits, signature " +
             "summons, detonation AoEs. Every other unit is collected/devoured, not transformed into.\n" +
@@ -5047,19 +5067,22 @@ public partial class MainPanel
             "• .beelz search (term) — find a captured ability by name.\n" +
             "• .beelz info (index|name) — one ability's details.\n" +
             "• .beelz bestiary (page)  ·  .beelz bestiary unit (name) — collection book, per-unit X/Y.\n" +
-            "• .beelz progress — completion %.   • .beelz catalog (page) — curated reference.   • .beelz current — your active bar.");
+            "• .beelz progress — completion %.   • .beelz catalog (page) — curated reference.\n" +
+            "• .beelz current  ·  .beelz active — what is on your spell bar right now, with ability info per slot.");
 
         AddCollapsibleHelpDetail(page, "Player — loadouts (action bar)",
-            "• .beelz grant (slot 1-6) (index) — bind a captured ability to a UNIVERSAL slot.\n" +
+            "Slot can be 1-6, primary (left-click) or ultimate (T). Index is from .beelz list, or use the ability ID.\n" +
+            "• .beelz grant (slot) (index|abilityID) — bind a captured ability to a UNIVERSAL slot.\n" +
             "• .beelz unslot (slot) — clear a universal slot.\n" +
-            "• .beelz weapon-grant (weapon|auto) (slot 1-6) (index) — bind to a PER-WEAPON set (auto = your current weapon).\n" +
+            "• .beelz weapon-grant (weapon|auto) (slot) (index) — bind to a PER-WEAPON set (auto = your current weapon).\n" +
             "• .beelz weapon-unslot (weapon|auto) (slot) — clear a per-weapon bind.\n" +
-            "• .beelz form-grant (form|auto) (slot) (index|abilityID) · .beelz form-unslot (form|auto) (slot) — per-FORM sets for the shapeshift-wheel forms (Wolf/Bear/Rat/Spider/Toad). Werewolf/Golem/Gargoyle are boss transformations — manage them on the Transforms tab.\n" +
+            "• .beelz form-grant (form|auto) (slot) (index|abilityID) · .beelz form-unslot (form|auto) (slot) — per-FORM sets for the shapeshift-wheel forms (Wolf/Bear/Rat/Spider/Toad) and Mounted. Mounted only takes slots 5, 6, 7 (R, C, T). By default, beast forms keep their own abilities (server setting Forms_AutoFillFromCaptures). Werewolf/Golem/Gargoyle are boss transformations — manage them on the Transforms tab.\n" +
             "• .beelz loadouts — summary of the universal set + each per-weapon set + the active weapon.\n" +
-            "• .beelz clearbar [all|universal|<weapon>|<form>] — clear a chosen set → vanilla (keeps captures).   • .beelz refresh — re-apply your bar if it looks wrong.\n" +
-            "• .beelz resetbar CONFIRM — complete bar reset: clears every saved bind and puts your weapon's skills back at once; keeps captures + spellbook (J) spells (v0.137).\n" +
+            "• .beelz clearbar [all|universal|(weapon)|(form)] — fully clear the set you name → vanilla; other sets and captures are kept. Dismounts you or ends a transform if needed, and says so.\n" +
+            "• .beelz refresh — re-apply your bar if it looks wrong.\n" +
+            "• .beelz resetbar CONFIRM — complete bar reset: clears every saved bind and puts your weapon's skills back at once; keeps captures, unlocks, hotkeys, presets and spellbook (J) spells. Dismounts you or ends a transform if needed.\n" +
             "• .beelz preset save|load|list|delete (name) — save / restore loadout presets.\n" +
-            "Grants and unslots show on the bar right away (v0.137.1); made while in a form, a transform or on a mount, they apply when that ends.\n" +
+            "Grants and unslots show on the bar right away; made while in a form, a transform or on a mount, they apply when that ends.\n" +
             "Weapon families: Sword, GreatSword, Axe, Mace, Spear, Daggers, Crossbow, Longbow, Pistols, Reaper, Whip, " +
             "Claws, Pollaxe, Slashers, TwinBlades, Unarmed, FishingPole.");
 
@@ -5072,23 +5095,25 @@ public partial class MainPanel
         AddCollapsibleHelpDetail(page, "Player — transform",
             "• .beelz transforms (filter) — your unlocked transforms.\n" +
             "• .beelz transform (index|name) — transform.   • .beelz revert — end it.\n" +
-            "• .beelz preview (index|name) — what you'd get per phase.   • .beelz phase (n) — switch phase.\n" +
-            "• .beelz active — your active transform.   • .beelz detonate — fire its signature AoE.\n" +
-            "• .beelz summon (n) — cast a transformed unit's signature add-summon.\n" +
+            "• .beelz preview (index|name) — what you'd get per phase.   • .beelz phase [n] — show or switch phase.\n" +
+            "• .beelz tform (unit) abilities — list a boss's full kit.   • .beelz tform (unit) set (phase) (slot) (index) — pick which ability goes on a slot in that phase.\n" +
+            "• .beelz tform (unit) clear (phase) (slot)  ·  .beelz tform (unit) defaults — undo one pick / go back to the curated kit. (Transforms tab editor.)\n" +
+            "• .beelz detonate — fire its signature AoE.   • .beelz summon [n] — cast a transformed unit's signature add-summon.\n" +
+            "A boss form takes a moment to appear. Until then, .beelz phase and .beelz refresh reply \"Still transforming\". If a form never finishes, .beelz revert clears it.\n" +
             "Renderable forms: Dracula, Morgana, Werewolf, Golem, Gargoyle (+ a basic werewolf). Every OTHER unit is collected/devoured for its abilities rather than transformed into.");
 
         AddCollapsibleHelpDetail(page, "Player — summons & manage",
             "• .beelz summons stash|restore|clear|status — manage your minions (works untransformed too; stash before a waygate).\n" +
-            "• .beelz tp — recall summons to you.\n" +
+            "• .beelz tp — shortcut for summons stash before a waygate or bat form; they come back at your destination.\n" +
             "• .beelz forget (i)  ·  .beelz forget-transform (i) — delete a capture / unlock.\n" +
-            "• .beelz clear CONFIRM — wipe ALL your captures + slots (the literal word CONFIRM is required).\n" +
+            "• .beelz clear CONFIRM — wipe ALL your Beelzebub data: captures, unlocks, binds, hotkeys and presets. Cannot be undone. To fix only the bar, use resetbar.\n" +
             "• .beelz top — server collection leaderboard  ·  .beelz odds — your live drop / Devour / pity chances (Bestiary tab buttons).\n" +
             "• .beelz silent on|off — mute the \"you already knew that\" duplicate-devour message (Settings tab).\n" +
             "• .beelz verbosity silent|summary|verbose — your chat-notification level.");
 
         AddCollapsibleHelpDetail(page, "Machine API (what Raphael calls under the hood)",
-            ".beelz api (version|list|slots|transforms|active|info|progress|rules|catalog|catalog units|catalog abilities|" +
-            "hotkeys|transform-config|bestiary|config|cooldowns|verbosity|bch). These return compact [BEELZ:*] lines that " +
+            ".beelz api (version|list|slots|transforms|active|info|info-guid|progress|rules|catalog|catalog units|catalog abilities|" +
+            "hotkeys|transform-config|tform-kit|tform-binds|bestiary|config|cooldowns|verbosity|bch). These return compact [BEELZ:*] lines that " +
             "Raphael parses into the tabs — you never need them by hand. .beelz api bch on subscribes Raphael to the live event stream. " +
             "Turn on Beelzebub → Settings → Diagnostics to see this traffic in the log.");
 
@@ -5108,6 +5133,10 @@ public partial class MainPanel
             "• .beelz admin progress (player) — a player's collection % .\n" +
             "• .beelz admin snapshot — server-wide summary.\n" +
             "• .beelz admin buffs (player) — diagnostic: dump a player's live buffs + ability slots to the log.\n" +
+            "• .beelz admin bar-raw [player] — diagnostic: log each bar slot's raw engine data. Changes nothing.\n" +
+            "• .beelz admin modleak [player|all] — diagnostic: list leftover slot helpers (the cause of startup \"Couldn't remap old Modification Id\" errors). The server cleans these up on its own. Changes nothing.\n" +
+            "• .beelz admin dump (abilityGuid|form|forms) — diagnostic: log an ability's prefab chain or form data.\n" +
+            "• .beelz admin damage-stats [ability] | reset — per-hit damage scaling counters (Damage_Mode; run a session in Telemetry first).\n" +
             "• .beelz admin tune-list — list abilities with cast-tuning overrides.\n" +
             "• .beelz admin transform show — current transform mode / duration / cooldown.\n" +
             "\nControl what can be captured (then .beelz admin reload to apply file edits):\n" +
@@ -5123,7 +5152,9 @@ public partial class MainPanel
             "PrefabGUID). Curation: enabled, weapons, forms, transformonly, difficulty, phase, allowdenied, category, notes. " +
             "Server-wide shaping (Abilities_ApplyConfig, default on): cooldown, range, charges, chargetime, aoe, projspeed, " +
             "duration, healing, forcetimeout, freelymove, interruptonhit, interruptible, freemove, castspeed, summoncap, " +
-            "summontimeout, summonunits, damagescale, cooldownscale. (Raphael's Admin: Players tab has a picker for these.)\n" +
+            "summontimeout, summonunits, damagescale, cooldownscale. Review: reviewstatus (Blocked / Hidden stop capture), " +
+            "reviewtag, condition. Omit the field to READ the ability. (Raphael's Admin: Players tab has a picker for these.)\n" +
+            "• .beelz admin ability-set (name|ID) \"(field=value)(field=value)…\" — set many fields in one command.\n" +
             "• .beelz admin ability (id) defaults  ·  .beelz admin ability all defaults — reset shaping to the shipped baseline.\n" +
             "• .beelz admin tune (ability) (field) (value) — shortcut for one shaping field. .beelz admin tune-list lists tuned abilities.\n" +
             "• .beelz admin transform-set (CHAR_unit) (field) (value) — per-unit transform scalars: enabled, difficulty, " +
@@ -5131,6 +5162,7 @@ public partial class MainPanel
             "• .beelz admin default (damagescale|cooldownscale) (value) — server-wide baseline for abilities with no override.\n" +
             "• .beelz admin set (key) (value) — set ANY config key live (persists to the .cfg).\n" +
             "• .beelz admin broadcast (status|test|leaderboard on|off|interval (min)|top (1-5)|complete on|off) — server announcements (Admin: Config tab).\n" +
+            "• .beelz admin broadcast-msg (complete|leaderboard) (list|add|remove|edit) — edit the announcement messages.\n" +
             "• .beelz admin difficulty (basic|brutal) — server difficulty tier.\n" +
             "• .beelz admin freeze-captures (on|off|status) — pause / resume all ability capture server-wide.\n" +
             "• .beelz admin transform mode|duration|cooldown (regular|vblood) (value) — transform timing.");
@@ -5146,8 +5178,8 @@ public partial class MainPanel
             "• .beelz admin clear-transform (player) — end a player's active transform.\n" +
             "• .beelz admin revert-all — end every active transform on the server.\n" +
             "\nPut abilities on a player's bar directly (bypasses the normal guards; the reply notes a [WARNING]):\n" +
-            "• .beelz admin set-slot|clear-slot (player) (slot 1-6) (abilityGuid) — universal-bar slot.\n" +
-            "• .beelz admin set-weapon-slot|clear-weapon-slot (player) (weapon) (slot 1-6) (abilityGuid) — per-weapon slot.");
+            "• .beelz admin set-slot|clear-slot (player) (slot 0-7) (abilityGuid) — universal-bar slot (0 = primary, 7 = ultimate).\n" +
+            "• .beelz admin set-weapon-slot|clear-weapon-slot (player) (weapon) (slot 0-7) (abilityGuid) — per-weapon slot.");
 
         AddCollapsibleHelpDetail(page, "Admin — locks, reseed & inspect",
             "• .beelz admin lock add (group) \"(member, member…)\" — create/extend a lock group; members are ability GUIDs or cat:Category (v0.135).\n" +
@@ -5159,8 +5191,10 @@ public partial class MainPanel
             "Fix a stuck action bar — escalation ladder (each step is stronger than the last; keeps the collection):\n" +
             "• .beelz admin bar (player) — read-only per-slot readout of the bar (saved bind, equip row, override buffs, engine mods). Changes nothing (v0.137).\n" +
             "• .beelz admin reset-loadouts (player) CONFIRM — the complete bar reset (same as the player's resetbar): binds + custom loadouts + transform cleared, spells off the bar at once, spellbook spells kept.\n" +
-            "• .beelz admin purge (player) CONFIRM — the same reset PLUS hotkeys cleared; for a bar still stuck after reset-loadouts (player must be online).\n" +
+            "• .beelz admin purge (player) CONFIRM — the same reset PLUS hotkeys cleared; for a bar still stuck after reset-loadouts.\n" +
+            "Both work on offline players: the saved binds clear now, the live bar resets at next login.\n" +
             "• .beelz admin respawn (player) — respawn in place (keeps inventory, progress and binds); last resort.\n" +
+            "• .beelz admin unmount [player] — free a player stuck on a summoned mount: strips mount buffs, removes the stray steed, re-applies binds.\n" +
             "Before v0.137, rebuildslots / clearslotmods / rebuildbar were the middle steps; they are LEGACY now (rebuildbar just prints the admin bar readout).\n" +
             "\nFix a stuck PLAYER STATE (not the bar):\n" +
             "• .beelz admin cleanse (player) [buffNameOrGuid] — strip stuck STATE buffs (invisible / phased / immaterial) that survive respawn AND relog (v0.131). Omit the buff to remove the known culprits, or name/GUID a specific buff. Non-destructive.\n" +
@@ -5190,6 +5224,8 @@ public partial class MainPanel
             "transform-set / default / deny* / allow* / transformonly; hand-edits need admin reload (no restart).\n" +
             "• ability_metadata_overrides.json — optional display name/description/school/type/category overrides; " +
             "hand-edit + admin reload.\n" +
+            "• state.json — per-player data, keyed by Steam ID.\n" +
+            "Optional per-hit damage scaling (Damage_Mode) is off by default. Try Telemetry and check admin damage-stats first.\n" +
             "Raphael's Admin: Config tab builds a generic editor from the server's live config keys, so new settings just appear.");
     }
 

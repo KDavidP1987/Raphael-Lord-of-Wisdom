@@ -387,6 +387,8 @@ public partial class MainPanel : ResizeablePanelBase
                 (PanelType.NyarMyStatsTab,         "My Stats"),
                 (PanelType.NyarSettingsTab,        "Settings"),
                 (PanelType.NyarAdminEventsTab,     "Admin: Events"),
+                (PanelType.NyarAdminTemplatesTab,  "Admin: Templates"),
+                (PanelType.NyarAdminPillarsTab,    "Admin: Pillars"),
                 (PanelType.NyarAdminZonesTab,      "Admin: Zones"),
                 (PanelType.NyarAdminAnnounceTab,   "Admin: Announce"),
                 (PanelType.NyarAdminKillSwitchTab, "Admin: Kill Switch"),
@@ -2265,6 +2267,8 @@ public partial class MainPanel : ResizeablePanelBase
             case PanelType.NyarMyStatsTab:         BuildNyarMyStatsTab(page); break;
             case PanelType.NyarSettingsTab:        BuildNyarSettingsTab(page); break;
             case PanelType.NyarAdminEventsTab:     BuildNyarAdminEventsTab(page); break;
+            case PanelType.NyarAdminTemplatesTab:  BuildNyarAdminTemplatesTab(page); break;
+            case PanelType.NyarAdminPillarsTab:    BuildNyarAdminPillarsTab(page); break;
             case PanelType.NyarAdminZonesTab:      BuildNyarAdminZonesTab(page); break;
             case PanelType.NyarAdminAnnounceTab:   BuildNyarAdminAnnounceTab(page); break;
             case PanelType.NyarAdminKillSwitchTab: BuildNyarAdminKillSwitchTab(page); break;
@@ -6381,8 +6385,9 @@ public partial class MainPanel : ResizeablePanelBase
         AddSpacer(page, 4);
         AddGuideSection(page,
             "Beelzebub  —  ability capture, loadouts & transforms",
-            "Powers the BEELZEBUB group: the bestiary of captured abilities, loadout / hotkey " +
-            "assignment, the ability action-bar overlay, and creature transforms.");
+            "Powers the BEELZEBUB group: the bestiary of captured abilities, loadouts per weapon and per " +
+            "form (Wolf, Bear, Rat, Spider, Toad, Mounted), hotkeys, creature transforms, the bar-repair " +
+            "tools (Fix bar, Clear bar, Reset bar), and admin ability shaping and player recovery.");
 
         AddSpacer(page, 6);
         AddGuideSection(page,
@@ -6395,6 +6400,13 @@ public partial class MainPanel : ResizeablePanelBase
             "Faust  —  server investigation & analytics",
             "Powers the FAUST group: castle / plot / decay reporting, player positions, server-stats " +
             "charts, clan rosters, and activity heat maps.");
+
+        AddSpacer(page, 6);
+        AddGuideSection(page,
+            "Nyarlathotep  —  world events",
+            "Powers the NYARLATHOTEP group. The server stages NPC world events: empowered factions, hunting " +
+            "waves, arena swarms, region hunting grounds, faction revenge and a map-wide apocalypse. Raphael " +
+            "shows what's running, where, and when the next wave comes, and gives admins the event controls.");
         AddSpacer(page, 12);
 
         // ── Region 3 ─────────────────────────────────────────────────────

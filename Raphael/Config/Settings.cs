@@ -1322,6 +1322,23 @@ public class Settings
     public static void SetFaustShowProtocolInChat(bool v) => SetBool(nameof(FaustShowProtocolInChat), v);
     public static void SetNyarShowProtocolInChat(bool v)  => SetBool(nameof(NyarShowProtocolInChat),  v);
 
+    // 0.69.0: Nyarlathotep on-screen notifications (toasts from the [NYAR:ev] push stream; handoff api 8 §4).
+    // A master switch plus one switch per category, and how long each toast stays up. Nyarlathotep → Settings.
+    public static bool NyarToasts          => GetBoolOr(nameof(NyarToasts), true);
+    public static bool NyarToastStartEnd   => GetBoolOr(nameof(NyarToastStartEnd), true);
+    public static bool NyarToastWaveWarn   => GetBoolOr(nameof(NyarToastWaveWarn), true);
+    public static bool NyarToastWave       => GetBoolOr(nameof(NyarToastWave), false);
+    public static bool NyarToastKillswitch => GetBoolOr(nameof(NyarToastKillswitch), true);
+    public static bool NyarToastLogin      => GetBoolOr(nameof(NyarToastLogin), true);
+    public static int  NyarToastSeconds    => ConfigEntries.TryGetValue(nameof(NyarToastSeconds), out var e) && e is ConfigEntry<int> i ? Math.Clamp(i.Value, 2, 30) : 6;
+    public static void SetNyarToasts(bool v)          => SetBool(nameof(NyarToasts), v);
+    public static void SetNyarToastStartEnd(bool v)   => SetBool(nameof(NyarToastStartEnd), v);
+    public static void SetNyarToastWaveWarn(bool v)   => SetBool(nameof(NyarToastWaveWarn), v);
+    public static void SetNyarToastWave(bool v)       => SetBool(nameof(NyarToastWave), v);
+    public static void SetNyarToastKillswitch(bool v) => SetBool(nameof(NyarToastKillswitch), v);
+    public static void SetNyarToastLogin(bool v)      => SetBool(nameof(NyarToastLogin), v);
+    public static void SetNyarToastSeconds(int v)     => SetInt(nameof(NyarToastSeconds), Math.Clamp(v, 2, 30));
+
     // Faust decay/duration display granularity (Castle Info + All Plots decay timers). 0=Auto (the two
     // largest non-zero units, so a weeks-long timer never renders as a huge hour count), 1=Hours+minutes
     // (legacy), 2=Days/hours/minutes, 3=Weeks/days/hours/minutes. Cycled from the Faust → Settings tab.
@@ -1728,6 +1745,13 @@ public class Settings
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(FaustDiagnostics),            false,  "Faust diagnostic details (default off). ON: Raphael writes a verbose [Faust][diag] wire trace (commands sent + raw [FAUST:*] replies) to the BepInEx LogOutput.log so testers/admins can report exactly which Faust queries fired and what came back. Toggle it from the Faust → Settings tab; also implied while the global DiagnosticMode is active.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarAvailability),            "Auto", "Whether the server has the Nyarlathotep mod (admin-run world events: waves, empowered NPCs, boss adds, defended zones, sieges, stats). Auto = present iff the server answered our `.nyar api version` handshake. On = always assume present. Off = always disable the NYARLATHOTEP tab group.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarDiagnostics),             false,  "Nyarlathotep diagnostic details (default off). ON: Raphael writes a verbose [Nyar][diag] wire trace (commands sent + raw [NYAR:*] replies) to the BepInEx LogOutput.log. Toggle it from the Nyarlathotep → Settings tab; also implied while the global Diagnostic mode is on.");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarToasts),                  true,   "Nyarlathotep on-screen notifications (default on): short toasts when a world event begins or ends, a wave is coming, or the kill switch fires. Per-category switches below. Nyarlathotep → Settings.");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarToastStartEnd),           true,   "Nyarlathotep toast: an event has begun / is over (default on).");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarToastWaveWarn),           true,   "Nyarlathotep toast: wave warning countdown (default on; only sent when the server's wave warnings are on).");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarToastWave),               false,  "Nyarlathotep toast: a wave has spawned (default off).");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarToastKillswitch),         true,   "Nyarlathotep toast: the kill switch purged events (default on).");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarToastLogin),              true,   "Nyarlathotep toast: on login, a summary of the events already under way (default on).");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarToastSeconds),            6,      "How many seconds each Nyarlathotep toast stays on screen (2-30, default 6).");
         foreach (var (key, mod) in new[] { (nameof(BeelzShowProtocolInChat), "Beelzebub"), (nameof(UrielShowProtocolInChat), "Uriel"),
                                            (nameof(FaustShowProtocolInChat), "Faust"),     (nameof(NyarShowProtocolInChat),  "Nyarlathotep") })
             InitConfigEntry(GENERAL_SETTINGS_GROUP, key, false, $"Show {mod}'s machine-readable protocol lines in chat instead of removing them after Raphael reads them (default off; Raphael still parses them). Replies to a command you sent to {mod} yourself show for a few seconds even when this is off. Settings and Help → Chat & Diagnostics.");

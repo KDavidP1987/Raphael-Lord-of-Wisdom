@@ -29,7 +29,7 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
   - **Kindred** — Logistics (+ admin), Commands, Admin: Players / Server / World.
   - **Beelzebub** — Bestiary, Loadout (universal + per-weapon + per-form ability sets), Hotkeys, Transforms, Settings, admin Config / Players.
   - **Faust** — Castle Info, Open/All Plots, Decay Watch, Castle Resources, Player Info, Clans, Player Positions, Server Stats, **Boss Status**, **Leaderboards**, **World Map**, admin Control / Oversight.
-  - **Nyarlathotep** — Live Events (wave countdowns), Leaderboards, My Stats, Settings, admin Events / Zones / Announce / Kill Switch.
+  - **Nyarlathotep** — Live Events (regions, wave countdowns, on-screen notices), Settings, admin Events / Templates / Pillars / Announce / Kill Switch. Leaderboards, My Stats and Zones are ready for when Nyarlathotep adds them.
   - **Settings & Help** — Quick Start, per-mod Help guides, **V Rising Basics** (in-built base-game guide), Game Guide (external links), Settings, **Chat & Diagnostics**, About.
 - **Secondary overlays** (toggle from the footer) — XP, Familiar, Familiar Browser, Daily Quest, Professions, Shift Spell, a Combined info overlay, Quick Actions, a Familiar Quick Spawn overlay, and a Faust Boss Tracker. Each is independently draggable/resizable with its own transparency; visibility persists across sessions.
 - **Freeze actions while the UI is open** (opt-in) — stop moving/attacking/casting and block menu hotkeys while you click around the panel.
@@ -110,9 +110,9 @@ Settings don't transfer — Raphael writes a new config, so overlay positions, c
 | **KindredCommands** (server) | v2.5.8 | Admin/player commands → Kindred |
 | **KindredLogistics** (server) | v1.6.0 | Logistics toggles → Kindred |
 | **Beelzebub** (server, optional) | v0.137.x (API 35) | Abilities / transforms → Beelzebub |
-| **Faust** (server, optional) | 0.16.4 (API 19) | Server investigation & analytics → Faust |
-| **Uriel** (server, optional) | v0.20.0 | Storage / prisons / stairs / spawning → Uriel |
-| **Nyarlathotep** (server, optional) | v0.5.2 (API 4) | World events / leaderboards → Nyarlathotep |
+| **Faust** (server, optional) | v0.16.5 (API 19) | Server investigation & analytics → Faust |
+| **Uriel** (server, optional) | v0.20.0 (API 1) | Storage / prisons / stairs / spawning → Uriel |
+| **Nyarlathotep** (server, optional) | v0.12.0 (API 7); v0.13.0-rc.1 (API 8) | World events / leaderboards → Nyarlathotep |
 | **Eclipse** (client) | v1.3.13 | ⚠ Compatibility needs re-testing — disable while running Raphael |
 
 Newer Bloodcraft builds generally still work — the chat-command grammar is stable. If a tab does nothing on click, the server likely renamed a command.
@@ -124,7 +124,7 @@ Newer Bloodcraft builds generally still work — the chat-command grammar is sta
 
 - **Eclipse** compatibility needs re-testing (see above) — disable it to be safe.
 - **Controller** edge cases under investigation (see above).
-- **Conservative per-system detection** — Raphael may show Bloodcraft tabs for systems the server has disabled (they'll just be empty); per-system hiding is planned.
+- **Conservative per-system detection** — Raphael may show Bloodcraft tabs for systems the server has disabled (they'll just be empty); per-system hiding is on the [Roadmap](#roadmap).
 - **Limited autocomplete / pagination** — the name cache fills from chat but forms don't yet show a dropdown; only `.clan list` has prev/next widgets so far.
 
 </details>
@@ -194,6 +194,47 @@ Newer Bloodcraft builds generally still work — the chat-command grammar is sta
 </details>
 
 </details>
+
+---
+
+## Roadmap
+
+What's planned next. These are plans, not promises. Server-mod features show up in Raphael once that mod ships them.
+
+**Raphael**
+
+- Hide Bloodcraft tabs for systems your server has turned off.
+- Name autocomplete in forms, and page buttons on more long lists.
+- Re-test with the latest Eclipse so both can run together.
+- More controller / gamepad fixes.
+- UI translations: German and Spanish first, then French and Swedish.
+
+**Beelzebub**
+
+- An action-bar hover card that shows each captured ability's real name instead of "No Name".
+- An ability library with names, descriptions and when-to-use hints.
+- Each ability's effective damage multiplier in its tooltip.
+- Buttons for the remaining admin tools (unmount, raw bar view, damage stats).
+- Server side: mastery levels and set rewards, smarter summons, and more ability tuning.
+
+**Nyarlathotep**
+
+- Live operations: an event's current settings, a live event view with map pins, unit lookup with despawn and go-to, and wave-cleared updates.
+- Communications: a catch-up list of what was announced while you were offline, start warnings, and scheduled or repeating messages.
+- Stats: leaderboards, personal stats, hide / show and sharing. The tabs are ready; the server part is planned.
+- Defended zones: list, add and remove zones. The tab is ready; the server part is planned.
+
+**Faust**
+
+- A region shown for players in the open world, not only on territories.
+- A resource stats view.
+
+**Uriel**
+
+- A "current rules" panel for the container you're aiming at.
+- A "My Shares" list.
+- A stair-style picker that greys out styles you don't own.
+- Later, once Uriel adds them: coffin sharing, paid or timed door access, sharing all of a castle's storage at once, and castle rentals.
 
 ---
 

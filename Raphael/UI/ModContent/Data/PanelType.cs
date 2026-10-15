@@ -110,8 +110,10 @@ public enum PanelType
     NyarSettingsTab,        // client-side settings: diagnostics, handshake switches readout
     NyarAdminEventsTab,     // admin: api events list + start/stop/enable/disable/reload/set + test spawn
     NyarAdminZonesTab,      // admin: api zones list + add-here/remove
-    NyarAdminAnnounceTab,   // admin: announce text/digest + the five announcement switches (read-only)
+    NyarAdminAnnounceTab,   // admin: announce text + the five announcement switches (read-only)
     NyarAdminKillSwitchTab, // admin: purge (two-step) + kill-switch countdown + stats reset
+    NyarAdminTemplatesTab,  // admin (api 4): built-in templates by pillar + create
+    NyarAdminPillarsTab,    // admin (api 4): the five pillar switches
     NyarGuideTab,           // help: Nyarlathotep guide (Settings & Help group)
 
     // 0.67.2: one place for every chat-visibility + diagnostics control (Raphael, Bloodcraft and each server mod).

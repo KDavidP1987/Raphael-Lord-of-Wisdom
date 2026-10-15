@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Raphael.Services.Nyar;
 using Raphael.Utils;
 using Raphael.UI.Framework.CustomLib.Util;
@@ -11,14 +12,15 @@ using UnityEngine;
 
 namespace Raphael.UI.ModContent;
 
-// Nyarlathotep tab group (client UI for the admin-run world-event server mod). Built against the PLANNED
-// api 1/2 shapes in the Nyarlathotep repo's docs/RAPHAEL_INTEGRATION_CONTRACT.md.
+// Nyarlathotep tab group (client UI for the admin-run world-event server mod). Built against the Nyarlathotep
+// repo's docs/RAPHAEL_INTEGRATION_CONTRACT.md (api 8) and RAPHAEL_HANDOFF_API8.md.
 //
-// Players: Live Events (api status + push stream, per-wave countdown), Leaderboards (api top + Share),
-// My Stats (api me + hide/show). Admins: Events (defs + actions + field editor + test spawn), Zones,
-// Announce, Kill Switch. Admin tabs are inline-gated (BeginAdminGate); the server re-checks every command.
-// Actions send the HUMAN `.nyar …` commands (reply shows in chat) and re-read state — Raphael never parses
-// those replies (contract §5).
+// Players: Live Events (api status + push stream, region chips, per-wave countdown, the regions read),
+// Leaderboards (api top + Share), My Stats (api me + hide/show), Settings (diagnostics + notification switches).
+// Admins: Events (defs + twin actions + unstick + new/copy/delete + field editor + units/test spawn),
+// Templates, Pillars, Zones, Announce, Kill Switch. Admin tabs are inline-gated (BeginAdminGate); the server
+// re-checks every command. From api 4 admin actions go out as wire twins (one ok/err line, shown as the
+// result line); against an older server they're the human commands and the reply shows in chat.
 public partial class MainPanel
 {
     private bool _nyarSubscribed;
@@ -28,6 +30,7 @@ public partial class MainPanel
     // Live UI handles (reassigned on every tab build; Unity-null once the page is torn down).
     private GameObject _nyarEventsListGo;
     private TextMeshProUGUI _nyarEventsStatus;
+    private GameObject _nyarRegionsListGo;
     private readonly List<(TextMeshProUGUI Label, NyarEvent Ev)> _nyarCountdownLabels = new();
     private GameObject _nyarTopListGo;
     private TextMeshProUGUI _nyarTopStatus;
@@ -40,25 +43,39 @@ public partial class MainPanel
     private TextMeshProUGUI _nyarStateReadout;
     private GameObject _nyarDefsListGo;
     private InputFieldRef _nyarDefIdInput, _nyarDefFieldInput, _nyarDefValueInput;
+    private InputFieldRef _nyarNewIdInput, _nyarNewPillarInput, _nyarCopyFromInput, _nyarCopyToInput;
     private InputFieldRef _nyarSpawnUnitInput, _nyarSpawnCountInput, _nyarSpawnLevelInput, _nyarSpawnHpInput, _nyarSpawnPowerInput;
+    private InputFieldRef _nyarNearRadiusInput;
+    private GameObject _nyarTplListGo;
+    private TextMeshProUGUI _nyarTplStatus;
+    private InputFieldRef _nyarTplAsIdInput;
+    private readonly List<(ButtonRef Btn, string Value, string Label)> _nyarTplPillarBtns = new();
+    private string _nyarTplPillar = "";
+    private GameObject _nyarPillarsListGo;
     private GameObject _nyarZonesListGo;
     private InputFieldRef _nyarZoneNameInput, _nyarZoneRadiusInput;
     private InputFieldRef _nyarAnnounceInput;
     private TextMeshProUGUI _nyarAnnSwitchesLabel;
     private TextMeshProUGUI _nyarKillLabel;
+    private TextMeshProUGUI _nyarToastSecsLabel;
     private InputFieldRef _nyarResetTargetInput;
     private readonly List<TextMeshProUGUI> _nyarErrorLabels = new();
+    private readonly List<TextMeshProUGUI> _nyarResultLabels = new();
 
     private void EnsureNyarSubscribed()
     {
         if (_nyarSubscribed) return;
-        NyarState.PresenceChanged += OnNyarPresenceChanged;
-        NyarState.StatusChanged   += RebuildNyarEvents;
-        NyarState.TopChanged      += RebuildNyarTop;
-        NyarState.MeChanged       += RebuildNyarMe;
-        NyarState.DefsChanged     += RebuildNyarDefs;
-        NyarState.ZonesChanged    += RebuildNyarZones;
-        NyarState.ErrorChanged    += RefreshNyarErrors;
+        NyarState.PresenceChanged  += OnNyarPresenceChanged;
+        NyarState.StatusChanged    += RebuildNyarEvents;
+        NyarState.TopChanged       += RebuildNyarTop;
+        NyarState.MeChanged        += RebuildNyarMe;
+        NyarState.DefsChanged      += RebuildNyarDefs;
+        NyarState.ZonesChanged     += RebuildNyarZones;
+        NyarState.ErrorChanged     += RefreshNyarErrors;
+        NyarState.RegionsChanged   += RebuildNyarRegions;
+        NyarState.TemplatesChanged += RebuildNyarTemplates;
+        NyarState.PillarsChanged   += RebuildNyarPillars;
+        NyarState.ResultChanged    += RefreshNyarResults;
         NyarProtocolService.AvailabilityChanged += OnNyarPresenceChanged;
         NyarProtocolService.CountdownTick += RefreshNyarCountdowns;
         _nyarSubscribed = true;
@@ -67,13 +84,17 @@ public partial class MainPanel
     private void UnsubscribeNyar()
     {
         if (!_nyarSubscribed) return;
-        NyarState.PresenceChanged -= OnNyarPresenceChanged;
-        NyarState.StatusChanged   -= RebuildNyarEvents;
-        NyarState.TopChanged      -= RebuildNyarTop;
-        NyarState.MeChanged       -= RebuildNyarMe;
-        NyarState.DefsChanged     -= RebuildNyarDefs;
-        NyarState.ZonesChanged    -= RebuildNyarZones;
-        NyarState.ErrorChanged    -= RefreshNyarErrors;
+        NyarState.PresenceChanged  -= OnNyarPresenceChanged;
+        NyarState.StatusChanged    -= RebuildNyarEvents;
+        NyarState.TopChanged       -= RebuildNyarTop;
+        NyarState.MeChanged        -= RebuildNyarMe;
+        NyarState.DefsChanged      -= RebuildNyarDefs;
+        NyarState.ZonesChanged     -= RebuildNyarZones;
+        NyarState.ErrorChanged     -= RefreshNyarErrors;
+        NyarState.RegionsChanged   -= RebuildNyarRegions;
+        NyarState.TemplatesChanged -= RebuildNyarTemplates;
+        NyarState.PillarsChanged   -= RebuildNyarPillars;
+        NyarState.ResultChanged    -= RefreshNyarResults;
         NyarProtocolService.AvailabilityChanged -= OnNyarPresenceChanged;
         NyarProtocolService.CountdownTick -= RefreshNyarCountdowns;
         _nyarSubscribed = false;
@@ -91,8 +112,8 @@ public partial class MainPanel
     // ---------------------------------------------------------------- shared helpers
 
     // Notes shown at the top of a tab when the mod / a pillar / the reads are unavailable. Returns true
-    // when the tab can't show live data (callers still build the action controls — they're human commands).
-    private bool AddNyarGateNotes(GameObject parent, bool needStats = false, bool needZones = false)
+    // when the tab can't show live data (callers still build the action controls).
+    private bool AddNyarGateNotes(GameObject parent, bool needStats = false, bool needZones = false, bool needTwins = false)
     {
         string note = null;
         if (!NyarState.Present)
@@ -101,15 +122,19 @@ public partial class MainPanel
             note = "Nyarlathotep is switched off on this server (General.Enabled = false).";
         else if (!NyarState.SupportsReads)
             note = $"This server's Nyarlathotep (api {NyarState.ApiVersion}) doesn't send live data yet — it needs api 2. Buttons still send their commands.";
+        else if (needTwins && !NyarState.SupportsTwins)
+            note = $"This server's Nyarlathotep (api {NyarState.ApiVersion}) is too old for this tab — it needs api 4 (Nyarlathotep 0.5.2 or later).";
         else if (needStats && !NyarState.StatsOn)
-            note = "Stats are switched off on this server, so there are no leaderboards or personal stats.";
+            note = "Stats aren't available on this server, so there are no leaderboards or personal stats. (Nyarlathotep hasn't added them yet; they're planned.)";
         else if (needZones && !NyarState.Zones)
             note = "The defended-zones pillar is switched off on this server.";
         if (note == null) return false;
-        var card = AddCard(parent, "NyarGateNote");
+        var card = AddCard(page: parent, name: "NyarGateNote");
         AddBodyText(card, $"<color=#FFD75A>{note}</color>");
         return true;
     }
+
+    private GameObject AddCard(GameObject page, string name) => AddCard(page, name, null);
 
     private void AddNyarErrorLine(GameObject parent)
     {
@@ -126,6 +151,25 @@ public partial class MainPanel
               (NyarState.LastErrorCmd.Length > 0 ? $" <color={Theme.MutedBodyHex}>({NyarState.LastErrorCmd})</color>" : "");
         foreach (var l in _nyarErrorLabels) l.text = text;
     }
+
+    // The last admin twin's outcome (api 4+): green on ok, red on a refusal.
+    private void AddNyarResultLine(GameObject parent)
+    {
+        var lbl = AddBodyText(parent, "", Theme.ScaledUI(12));
+        _nyarResultLabels.Add(lbl);
+        RefreshNyarResults();
+    }
+
+    private void RefreshNyarResults()
+    {
+        _nyarResultLabels.RemoveAll(l => l == null);
+        string text = NyarState.LastResult.Length == 0 ? ""
+            : NyarState.LastResultOk ? $"<color=#90EE90>✓ {NyarState.LastResult}</color>" : $"<color=#FF8080>{NyarState.LastResult}</color>";
+        foreach (var l in _nyarResultLabels) l.text = text;
+    }
+
+    // Before an admin action: clear the old outcome so the next one is clearly its answer.
+    private static void NyarBeginAction() { NyarState.ClearError(); NyarState.SetResult(true, ""); }
 
     private InputFieldRef AddNyarInput(GameObject row, string name, string placeholder, int width)
     {
@@ -145,9 +189,40 @@ public partial class MainPanel
         return lbl.TextMesh;
     }
 
+    private GameObject AddNyarList(GameObject parent, string name)
+    {
+        var go = UIFactory.CreateVerticalGroup(parent, name, forceWidth: true, forceHeight: false,
+            childControlWidth: true, childControlHeight: true, spacing: 2, padding: new Vector4(0, 0, 0, 0));
+        UIFactory.SetLayoutElement(go, minWidth: 360, preferredWidth: 400, flexibleWidth: 1, minHeight: 20, flexibleHeight: 0);
+        return go;
+    }
+
     private static string NyarWord(string s) => string.IsNullOrEmpty(s) ? "" : char.ToUpperInvariant(s[0]) + s.Substring(1);
     private static string NyarText(string s) => (s ?? "").Replace('_', ' ');
     private static string Tok(InputFieldRef f) => (f?.Text ?? "").Trim();
+
+    // Region chips (api 5): "Cursed Forest · Farbane Woods", or "Global" for a server-wide event.
+    private static string NyarRegionChips(string[] regions)
+        => regions == null || regions.Length == 0
+            ? "<color=#888888>Global</color>"
+            : string.Join(" ", regions.Select(r => $"<color=#9FD0FF>[{NyarProtocolService.PrettyRegion(r)}]</color>"));
+
+    // Trigger values through api 8, labelled; an unknown one shows raw (contract §1).
+    private static string NyarTriggerLabel(string t) => (t ?? "").ToLowerInvariant() switch
+    {
+        "schedule"      => "Schedule",
+        "ingame"        => "In-game time",
+        "vbloodkilled"  => "V Blood killed",
+        "interval"      => "Interval",
+        "regionentered" => "Region entered",
+        "factionkills"  => "Faction kills",
+        "revenge"       => "Revenge",
+        "bossengaged"   => "Boss engaged",
+        "bosshealth"    => "Boss health",
+        "zoneactivity"  => "Zone activity",
+        "manual"        => "Manual",
+        _ => string.IsNullOrEmpty(t) ? "-" : t,
+    };
 
     // ---------------------------------------------------------------- PLAYER: LIVE EVENTS
 
@@ -158,18 +233,29 @@ public partial class MainPanel
         AddSectionHeading(intro, "Live events");
         AddBodyText(intro,
             "World events Nyarlathotep is running right now — raids, empowered enemies, boss reinforcements, " +
-            "zone alerts and sieges. Updates live; wave countdowns tick down on their own.");
+            "zone alerts and sieges. Updates live; wave countdowns tick down on their own. You also get a short " +
+            "on-screen notice when an event begins or ends (Nyarlathotep → Settings).");
         AddNyarGateNotes(page);
 
         var card = AddCard(page, "NyarEventsCard");
         var row = MakeUrielRow(card, "NyarEventsRow");
         AddUrielButton(row, "NyarEventsRefresh", "Refresh", "Re-read the active events (.nyar api status).",
-            () => { NyarState.ClearError(); NyarProtocolService.RefreshStatus(); });
+            () => { NyarState.ClearError(); NyarProtocolService.RefreshStatus(); NyarProtocolService.RefreshRegions(); });
         _nyarEventsStatus = AddNyarRowText(row, "");
-        _nyarEventsListGo = UIFactory.CreateVerticalGroup(card, "NyarEventsList", forceWidth: true, forceHeight: false,
-            childControlWidth: true, childControlHeight: true, spacing: 2, padding: new Vector4(0, 0, 0, 0));
-        UIFactory.SetLayoutElement(_nyarEventsListGo, minWidth: 360, preferredWidth: 400, flexibleWidth: 1, minHeight: 20, flexibleHeight: 0);
+        _nyarEventsListGo = AddNyarList(card, "NyarEventsList");
         AddNyarErrorLine(card);
+
+        _nyarRegionsListGo = null;
+        if (NyarState.SupportsRegions)
+        {
+            AddSpacer(page, 6);
+            var rc = AddCard(page, "NyarRegionsCard");
+            AddSectionHeading(rc, "Regions");
+            AddBodyText(rc, "How many events are active in each region of the map right now.", Theme.ScaledUI(12));
+            _nyarRegionsListGo = AddNyarList(rc, "NyarRegionsList");
+            if (!NyarState.RegionsLoaded) NyarProtocolService.RefreshRegions();
+            RebuildNyarRegions();
+        }
 
         if (!NyarState.StatusLoaded) NyarProtocolService.RefreshStatus();
         RebuildNyarEvents();
@@ -193,13 +279,30 @@ public partial class MainPanel
         {
             var box = AddCard(_nyarEventsListGo, $"NyarEv_{e.Id}", padding: 6, innerSpacing: 2);
             string faction = string.IsNullOrEmpty(e.Faction) ? "" : $"  ·  {e.Faction}";
+            string state = e.State == "ending" ? "<color=#FFD75A>ending — units leaving</color>" : e.State;
             AddInfoLabel(box, "NyarEvTitle",
-                $"<b>{NyarText(e.Name)}</b>  <color=#888888>{NyarWord(e.Kind)} · {e.State}{faction}</color>",
+                $"<b>{NyarText(e.Name)}</b>  <color=#888888>{NyarWord(e.Kind)} · {state}{faction}</color>",
                 FontStyles.Normal, Theme.ScaledUI(13));
+            if (NyarState.SupportsRegions)
+                AddInfoLabel(box, "NyarEvRegions", NyarRegionChips(e.Regions), FontStyles.Normal, Theme.ScaledUI(11));
             var cd = AddInfoLabel(box, "NyarEvCountdown", "", FontStyles.Normal, Theme.ScaledUI(12));
             _nyarCountdownLabels.Add((cd, e));
         }
         RefreshNyarCountdowns();
+    }
+
+    private void RebuildNyarRegions()
+    {
+        if (_nyarRegionsListGo == null) return;
+        ClearChildren(_nyarRegionsListGo);
+        if (!NyarState.RegionsLoaded) { AddBodyText(_nyarRegionsListGo, "Loading…"); return; }
+        if (NyarState.RegionList.Count == 0) { AddBodyText(_nyarRegionsListGo, "No regions reported."); return; }
+        foreach (var r in NyarState.RegionList)
+        {
+            string count = r.Events > 0 ? $"<color=#E6B85C><b>{r.Events}</b> active</color>" : "<color=#888888>quiet</color>";
+            AddInfoLabel(_nyarRegionsListGo, "NyarRegionRow", $"{NyarProtocolService.PrettyRegion(r.Id)}  —  {count}",
+                FontStyles.Normal, Theme.ScaledUI(12));
+        }
     }
 
     private static string NyarCountdownText(NyarEvent e)
@@ -209,7 +312,7 @@ public partial class MainPanel
         if (NyarState.TryGetWaveWarn(e.Id, out var nextWave, out var warnSecs))
             parts.Add($"<color=#FFD75A>wave {nextWave} in {NyarProtocolService.FormatSecs(warnSecs)}</color>");
         int left = e.SecondsLeftNow;
-        if (left >= 0) parts.Add($"{NyarProtocolService.FormatSecs(left)} left");
+        if (left >= 0) parts.Add(e.State == "ending" ? $"units gone in {NyarProtocolService.FormatSecs(left)}" : $"{NyarProtocolService.FormatSecs(left)} left");
         if (e.Units >= 0) parts.Add($"{e.Units} units");
         return parts.Count == 0 ? "" : string.Join("  ·  ", parts);
     }
@@ -221,10 +324,13 @@ public partial class MainPanel
         if (_nyarKillLabel != null)
         {
             int ks = NyarState.KillswitchSecondsLeft;
-            _nyarKillLabel.text = !NyarState.Killswitch
+            string counts = NyarState.SupportsTwins && NyarState.ServerAdmin
+                ? $"  <color=#888888>({NyarState.KillswitchEvents} active event(s), {NyarState.KillswitchUnits} tracked unit(s) at the last read)</color>"
+                : "";
+            _nyarKillLabel.text = (!NyarState.Killswitch
                 ? "Kill switch: <color=#90EE90>off</color> — scheduled events can start."
                 : ks > 0 ? $"Kill switch: <color=#FF8080>ON</color> — scheduled starts suppressed for {NyarProtocolService.FormatSecs(ks)}."
-                         : "Kill switch: <color=#FF8080>ON</color> — scheduled starts suppressed.";
+                         : "Kill switch: <color=#FF8080>ON</color> — scheduled starts suppressed.") + counts;
         }
     }
 
@@ -239,7 +345,7 @@ public partial class MainPanel
         var intro = AddCard(page, "NyarTopIntro");
         AddSectionHeading(intro, "Leaderboards");
         AddBodyText(intro, "Pick a stat and a time window. Your own row is highlighted. Players who hid themselves don't appear.");
-        AddNyarGateNotes(page, needStats: true);
+        if (AddNyarGateNotes(page, needStats: true) && NyarState.Present && !NyarState.StatsOn) return;   // stats are planned server-side: no dead buttons
 
         var picks = AddCard(page, "NyarTopPicks");
         _nyarStatBtns.Clear(); _nyarWindowBtns.Clear();
@@ -325,7 +431,7 @@ public partial class MainPanel
         var intro = AddCard(page, "NyarMeIntro");
         AddSectionHeading(intro, "My stats");
         AddBodyText(intro, "Your own Nyarlathotep numbers for today, this week and all time. Hiding yourself removes you from the leaderboards; you still see your own numbers.");
-        AddNyarGateNotes(page, needStats: true);
+        if (AddNyarGateNotes(page, needStats: true) && NyarState.Present && !NyarState.StatsOn) return;   // stats are planned server-side: no dead buttons
 
         var card = AddCard(page, "NyarMeCard");
         var row = MakeUrielRow(card, "NyarMeRow");
@@ -335,9 +441,7 @@ public partial class MainPanel
             () => { NyarClient.StatsHide(); NyarProtocolService.RefreshMe(); }, 100);
         AddUrielButton(row, "NyarMeShow", "Show me", "Appear on the leaderboards again (.nyar stats show).",
             () => { NyarClient.StatsShow(); NyarProtocolService.RefreshMe(); }, 100);
-        _nyarMeListGo = UIFactory.CreateVerticalGroup(card, "NyarMeList", forceWidth: true, forceHeight: false,
-            childControlWidth: true, childControlHeight: true, spacing: 2, padding: new Vector4(0, 0, 0, 0));
-        UIFactory.SetLayoutElement(_nyarMeListGo, minWidth: 360, preferredWidth: 400, flexibleWidth: 1, minHeight: 20, flexibleHeight: 0);
+        _nyarMeListGo = AddNyarList(card, "NyarMeList");
         AddNyarErrorLine(card);
 
         if (!NyarState.MeLoaded) NyarProtocolService.RefreshMe();
@@ -373,6 +477,32 @@ public partial class MainPanel
     private void BuildNyarSettingsTab(GameObject page)
     {
         EnsureNyarSubscribed();
+        var notif = AddCard(page, "NyarSettingsToastCard");
+        AddSectionHeading(notif, "Notifications");
+        AddBodyText(notif,
+            "Short on-screen notices from Nyarlathotep's live updates, shown at the top of the screen. " +
+            "They're a copy of what the server announces — chat still shows its own lines.");
+        AddUrielBoolToggle(notif, "NyarToastsToggle", "Show Nyarlathotep notifications", Config.Settings.NyarToasts,
+            Config.Settings.SetNyarToasts, "Master switch for every Nyarlathotep toast. Default on.");
+        AddUrielBoolToggle(notif, "NyarToastStartEnd", "Event begins / ends", Config.Settings.NyarToastStartEnd,
+            Config.Settings.SetNyarToastStartEnd, "\"Ashfall Raid has begun (Farbane Woods)\" and \"… is over\". Default on.");
+        AddUrielBoolToggle(notif, "NyarToastWaveWarn", "Wave warnings", Config.Settings.NyarToastWaveWarn,
+            Config.Settings.SetNyarToastWaveWarn, "\"Wave 2 in 60s\". Only sent when the server's wave warnings are on. Default on.");
+        AddUrielBoolToggle(notif, "NyarToastWave", "Wave arrived", Config.Settings.NyarToastWave,
+            Config.Settings.SetNyarToastWave, "A notice each time a wave spawns. Default off.");
+        AddUrielBoolToggle(notif, "NyarToastKill", "Kill switch", Config.Settings.NyarToastKillswitch,
+            Config.Settings.SetNyarToastKillswitch, "When an admin purges every event. Default on.");
+        AddUrielBoolToggle(notif, "NyarToastLogin", "Login summary", Config.Settings.NyarToastLogin,
+            Config.Settings.SetNyarToastLogin, "On joining, one notice listing the events already under way. Default on.");
+        var dr = MakeUrielRow(notif, "NyarToastSecsRow");
+        AddUrielButton(dr, "NyarToastSecsDown", "−", "Shorter.", () => { Config.Settings.SetNyarToastSeconds(Config.Settings.NyarToastSeconds - 1); RefreshNyarToastSecs(); }, 40);
+        _nyarToastSecsLabel = AddNyarRowText(dr, "");
+        AddUrielButton(dr, "NyarToastSecsUp", "+", "Longer.", () => { Config.Settings.SetNyarToastSeconds(Config.Settings.NyarToastSeconds + 1); RefreshNyarToastSecs(); }, 40);
+        AddUrielButton(dr, "NyarToastTest", "Test", "Show a sample notification.",
+            () => NyarToastHost.Show("<b>Ashfall Raid</b> has begun <color=#9FD0FF>(Farbane Woods)</color>"), 70);
+        RefreshNyarToastSecs();
+
+        AddSpacer(page, 6);
         var diagCard = AddCard(page, "NyarSettingsDiagCard");
         AddSectionHeading(diagCard, "Diagnostics");
         AddBodyText(diagCard,
@@ -394,6 +524,11 @@ public partial class MainPanel
         RefreshNyarStateReadout();
     }
 
+    private void RefreshNyarToastSecs()
+    {
+        if (_nyarToastSecsLabel != null) _nyarToastSecsLabel.text = $"Each notice stays up <b>{Config.Settings.NyarToastSeconds}s</b>";
+    }
+
     private static string NyarOnOff(bool b) => b ? "<color=#90EE90>on</color>" : "<color=#888888>off</color>";
 
     private void RefreshNyarStateReadout()
@@ -412,6 +547,27 @@ public partial class MainPanel
 
     // ---------------------------------------------------------------- ADMIN: EVENTS
 
+    // Design §6's settable fields (api 8). N and M are a wave / unit-entry number the admin types in.
+    private static readonly string[] NyarSettableFields =
+    {
+        "name", "durationSeconds", "location", "conditions.minPlayers", "conditions.cooldownMinutes", "conditions.chancePercent",
+        "trigger.type", "trigger.days", "trigger.times", "trigger.phase", "trigger.bosses", "trigger.minMinutes", "trigger.maxMinutes",
+        "trigger.playerCooldownMinutes", "trigger.factions", "trigger.kills", "trigger.windowSeconds", "trigger.shared",
+        "trigger.heat", "trigger.warnAt", "trigger.vbloodHeat", "trigger.scope",
+        "action.scope", "action.stats.physicalPower", "action.stats.spellPower", "action.stats.maxHealth", "action.stats.attackSpeed",
+        "action.stats.moveSpeed", "action.factions",
+        "action.waves", "action.intervalSeconds", "action.radius", "action.units", "action.modifiers.level", "action.modifiers.levelDelta",
+        "action.modifiers.maxHealth", "action.modifiers.power", "action.modifiers.moveSpeed", "action.modifiers.attackSpeed",
+        "action.loot", "action.allowTerritory", "action.behaviour", "action.units.N.chance", "action.fanOut", "action.scoreboard",
+        "action.waveList.N", "action.waveList.N.units", "action.waveList.N.afterSeconds", "action.waveList.N.whenCleared",
+        "action.waveList.N.units.M.level", "action.waveList.N.units.M.levelDelta", "action.waveList.N.units.M.maxHealth",
+        "action.waveList.N.units.M.power", "action.waveList.N.units.M.moveSpeed", "action.waveList.N.units.M.attackSpeed",
+        "action.arena", "action.winner", "action.growth", "action.growth.addUnits", "action.growth.addLevels", "action.growth.whenCleared",
+        "action.regionLock", "action.bosses",
+        "action.goal", "action.goal.radius", "action.goal.name", "action.hordes.count", "action.hordes.everyMinutes", "action.hordes.size",
+        "action.roamers.max", "action.marchSpeed",
+    };
+
     private void BuildNyarAdminEventsTab(GameObject page)
     {
         EnsureNyarSubscribed();
@@ -423,41 +579,105 @@ public partial class MainPanel
         var top = MakeUrielRow(list, "NyarDefsTop");
         AddUrielButton(top, "NyarDefsRefresh", "Refresh list", "Re-read the definitions (.nyar api events).",
             () => { NyarState.ClearError(); NyarProtocolService.RefreshDefs(); }, 120);
-        AddUrielButton(top, "NyarDefsReload", "Reload from disk", "Re-read the event JSON files on the server (.nyar event reload).",
-            () => { NyarClient.EventReload(); NyarProtocolService.RefreshDefs(); }, 140);
-        _nyarDefsListGo = UIFactory.CreateVerticalGroup(list, "NyarDefsList", forceWidth: true, forceHeight: false,
-            childControlWidth: true, childControlHeight: true, spacing: 2, padding: new Vector4(0, 0, 0, 0));
-        UIFactory.SetLayoutElement(_nyarDefsListGo, minWidth: 360, preferredWidth: 400, flexibleWidth: 1, minHeight: 20, flexibleHeight: 0);
+        AddUrielButton(top, "NyarDefsReload", "Reload from disk", "Re-read the server's events.json (event reload).",
+            () => { NyarBeginAction(); NyarClient.EventReload(); if (!NyarState.SupportsTwins) NyarProtocolService.RefreshDefs(); }, 140);
+        AddNyarResultLine(list);
         AddNyarErrorLine(list);
+        _nyarDefsListGo = AddNyarList(list, "NyarDefsList");
 
+        // New / copy (api 4 twins; the human commands on an older server).
+        AddSpacer(page, 6);
+        var nc = AddCard(page, "NyarNewCopyCard");
+        AddSectionHeading(nc, "New or copy");
+        AddBodyText(nc, "New events and copies are created <b>disabled</b>; set their fields, then enable them.", Theme.ScaledUI(12));
+        var nr = MakeUrielRow(nc, "NyarNewRow");
+        _nyarNewIdInput     = AddNyarInput(nr, "NyarNewId", "new event id", 140);
+        _nyarNewPillarInput = AddNyarInput(nr, "NyarNewPillar", "pillar (spawns…)", 130);
+        AddUrielButton(nr, "NyarNewGo", "New", "Create a skeleton definition of that pillar: empowerment, spawns, boss, zones or sieges (event new <id> <pillar>).", () =>
+        {
+            string id = Tok(_nyarNewIdInput), pillar = Tok(_nyarNewPillarInput).ToLowerInvariant();
+            if (id.Length == 0 || Array.IndexOf(NyarClient.PillarIds, pillar) < 0)
+            { NyarState.SetError("event new", $"Enter an id and a pillar ({string.Join(", ", NyarClient.PillarIds)})."); return; }
+            NyarBeginAction(); NyarClient.EventNew(id, pillar);
+        }, 70);
+        var cr = MakeUrielRow(nc, "NyarCopyRow");
+        _nyarCopyFromInput = AddNyarInput(cr, "NyarCopyFrom", "copy from id", 140);
+        _nyarCopyToInput   = AddNyarInput(cr, "NyarCopyTo", "new id", 130);
+        AddUrielButton(cr, "NyarCopyGo", "Copy", "Copy a definition under a new id (event copy <id> <newId>).", () =>
+        {
+            string from = Tok(_nyarCopyFromInput), to = Tok(_nyarCopyToInput);
+            if (from.Length == 0 || to.Length == 0) { NyarState.SetError("event copy", "Enter the id to copy and the new id."); return; }
+            NyarBeginAction(); NyarClient.EventCopy(from, to);
+        }, 70);
+
+        // Field editor.
         AddSpacer(page, 6);
         var edit = AddCard(page, "NyarDefEditCard");
         AddSectionHeading(edit, "Edit one field");
-        AddBodyText(edit, $"Sends {Mono(".nyar event set <id> <field> <value>")}. The server validates the value; a bad one disables the event and shows the reason in the list.");
+        AddBodyText(edit,
+            $"Sends {Mono("event set <id> <field> <value>")}. Pick a field from the list (replace {Mono("N")} / {Mono("M")} with a wave or unit number), " +
+            "type the value, then Set. The server validates it and echoes the stored value. A trigger field needs its trigger type, an action field its action type. " +
+            "Raphael can't read an event's current values yet — use <b>Show in chat</b> to see them.", Theme.ScaledUI(12));
+        var fr = MakeUrielRow(edit, "NyarDefFieldPickRow");
+        var fieldOpts = new[] { "Pick a field…" }.Concat(NyarSettableFields).ToArray();
+        var ddObj = UIFactory.CreateDropdown(fr, "NyarFieldPicker", out var fieldDd, fieldOpts[0], 11, i =>
+        {
+            if (i > 0 && i < fieldOpts.Length && _nyarDefFieldInput != null) _nyarDefFieldInput.Text = fieldOpts[i];
+        }, fieldOpts);
+        UIFactory.SetLayoutElement(ddObj, minWidth: Theme.ScaledWidth(260), preferredWidth: Theme.ScaledWidth(260), flexibleWidth: 0,
+            minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
+        try { Raphael.UI.Forms.FormDropdownRegistry.Register(fieldDd); } catch { }
         var er = MakeUrielRow(edit, "NyarDefEditRow");
         _nyarDefIdInput    = AddNyarInput(er, "NyarDefId", "event id", 120);
-        _nyarDefFieldInput = AddNyarInput(er, "NyarDefField", "field", 120);
-        _nyarDefValueInput = AddNyarInput(er, "NyarDefValue", "value", 140);
-        AddUrielButton(er, "NyarDefSet", "Set", "Apply this field change.", () =>
+        _nyarDefFieldInput = AddNyarInput(er, "NyarDefField", "field", 170);
+        _nyarDefValueInput = AddNyarInput(er, "NyarDefValue", "value", 150);
+        var er2 = MakeUrielRow(edit, "NyarDefEditRow2");
+        AddUrielButton(er2, "NyarDefSet", "Set", "Apply this field change.", () =>
         {
             string id = Tok(_nyarDefIdInput), field = Tok(_nyarDefFieldInput), val = Tok(_nyarDefValueInput);
             if (id.Length == 0 || field.Length == 0 || val.Length == 0) { NyarState.SetError("event set", "Fill in the event id, field and value."); return; }
-            NyarClient.EventSet(id, field, val);
-            NyarProtocolService.RefreshDefs();
+            if (field.Contains(".N") || field.Contains(".M")) { NyarState.SetError("event set", "Replace N / M in the field with a number."); return; }
+            NyarBeginAction(); NyarClient.EventSet(id, field, val);
+            if (!NyarState.SupportsTwins) NyarProtocolService.RefreshDefs();
         }, 70);
+        AddUrielButton(er2, "NyarDefLocHere", "Location here", "Set the event's location to where you stand (event set <id> location here).", () =>
+        {
+            string id = Tok(_nyarDefIdInput);
+            if (id.Length == 0) { NyarState.SetError("event set", "Enter the event id first."); return; }
+            NyarBeginAction(); NyarClient.EventSetLocationHere(id);
+        }, 120);
+        AddUrielButton(er2, "NyarDefInfo", "Show in chat", "Print this event's full definition and run state in chat (.nyar event info <id>).", () =>
+        {
+            string id = Tok(_nyarDefIdInput);
+            if (id.Length == 0) { NyarState.SetError("event info", "Enter the event id first."); return; }
+            NyarClient.EventInfo(id);
+        }, 120);
 
+        // Units (no wire read on api 8: human commands, replies in chat).
         AddSpacer(page, 6);
-        var spawn = AddCard(page, "NyarSpawnCard");
-        AddSectionHeading(spawn, "Test spawn");
-        AddBodyText(spawn, $"Spawns next to you: {Mono(".nyar spawn <unit> [count] [level] [hp×] [power×]")}. Leave optional fields blank for defaults.");
-        var sr = MakeUrielRow(spawn, "NyarSpawnRow");
+        var units = AddCard(page, "NyarUnitsCard");
+        AddSectionHeading(units, "Units");
+        AddBodyText(units, $"<b>Units near me</b> lists the tracked units around you in chat ({Mono(".nyar debug here [radius]")}). " +
+            $"<b>Test spawn</b> spawns next to you: {Mono(".nyar spawn <unit> [count] [level] [hp×] [power×]")}; leave optional fields blank for defaults.",
+            Theme.ScaledUI(12));
+        var ur = MakeUrielRow(units, "NyarNearRow");
+        _nyarNearRadiusInput = AddNyarInput(ur, "NyarNearRadius", "radius (m, optional)", 140);
+        AddUrielButton(ur, "NyarNearGo", "Units near me", "List tracked units around you in chat (.nyar debug here).", () =>
+        {
+            string r = Tok(_nyarNearRadiusInput);
+            int radius = 0;
+            if (r.Length > 0 && (!int.TryParse(r, NumberStyles.Integer, CultureInfo.InvariantCulture, out radius) || radius <= 0))
+            { NyarState.SetError("debug here", "Radius must be a whole number of metres."); return; }
+            NyarClient.DebugHere(radius);
+        }, 120);
+        var sr = MakeUrielRow(units, "NyarSpawnRow");
         _nyarSpawnUnitInput  = AddNyarInput(sr, "NyarSpawnUnit", "unit (name or GUID)", 170);
         _nyarSpawnCountInput = AddNyarInput(sr, "NyarSpawnCount", "count", 60);
         _nyarSpawnLevelInput = AddNyarInput(sr, "NyarSpawnLevel", "level", 60);
         _nyarSpawnHpInput    = AddNyarInput(sr, "NyarSpawnHp", "hp×", 55);
         _nyarSpawnPowerInput = AddNyarInput(sr, "NyarSpawnPower", "power×", 60);
-        var sr2 = MakeUrielRow(spawn, "NyarSpawnRow2");
-        AddUrielButton(sr2, "NyarSpawnGo", "Spawn", "Send the test spawn.", () =>
+        var sr2 = MakeUrielRow(units, "NyarSpawnRow2");
+        AddUrielButton(sr2, "NyarSpawnGo", "Test spawn", "Send the test spawn.", () =>
         {
             string unit = NyarClient.Tok(Tok(_nyarSpawnUnitInput));
             if (unit.Length == 0) { NyarState.SetError("spawn", "Enter a unit to spawn."); return; }
@@ -471,7 +691,7 @@ public partial class MainPanel
                 args.Add(t);
             }
             NyarClient.Spawn(string.Join(" ", args));
-        }, 100);
+        }, 110);
 
         if (!NyarState.DefsLoaded) NyarProtocolService.RefreshDefs();
         RebuildNyarDefs();
@@ -489,24 +709,160 @@ public partial class MainPanel
             string stateCol = d.State switch { "active" => "#90EE90", "disabled" => "#FF8080", "scheduled" => "#FFD75A", _ => "#AAAAAA" };
             string dur = d.Duration > 0 ? $" · {NyarProtocolService.FormatSecs(d.Duration)}" : "";
             AddInfoLabel(box, "NyarDefTitle",
-                $"<b>{NyarText(d.Name)}</b> <color=#888888>({d.Id})</color>  <color={stateCol}>{d.State}</color>  <color=#888888>{d.Trigger} → {d.Action}{dur}</color>",
+                $"<b>{NyarText(d.Name)}</b> <color=#888888>({d.Id})</color>  <color={stateCol}>{d.State}</color>  " +
+                $"<color=#888888>{NyarTriggerLabel(d.Trigger)} → {NyarWord(d.Action)}{dur}</color>",
                 FontStyles.Normal, Theme.ScaledUI(12));
+            if (NyarState.SupportsRegions)
+                AddInfoLabel(box, "NyarDefRegions", NyarRegionChips(d.Regions), FontStyles.Normal, Theme.ScaledUI(11));
             if (d.State == "disabled" && !string.IsNullOrEmpty(d.Reason))
                 AddBodyText(box, $"<color=#FF8080>Disabled: {NyarText(d.Reason)}</color>", Theme.ScaledUI(11));
             var row = MakeUrielRow(box, "NyarDefBtns");
             string id = d.Id;
-            AddUrielButton(row, "NyarDefStart", "Start", $"Start {id} now (.nyar event start {id}).",
-                () => { NyarClient.EventStart(id); NyarProtocolService.RefreshStatus(); NyarProtocolService.RefreshDefs(); }, 70);
-            AddUrielButton(row, "NyarDefStop", "Stop", $"Stop {id} (.nyar event stop {id}).",
-                () => { NyarClient.EventStop(id); NyarProtocolService.RefreshStatus(); NyarProtocolService.RefreshDefs(); }, 70);
-            if (d.Enabled)
-                AddUrielButton(row, "NyarDefDisable", "Disable", $"Stop {id} from being scheduled (.nyar event disable {id}).",
-                    () => { NyarClient.EventDisable(id); NyarProtocolService.RefreshDefs(); }, 80);
+            bool running = d.State == "active";
+            if (running)
+            {
+                AddUrielButton(row, "NyarDefStop", "Stop", $"End {id} now; its units despawn (event stop {id}).",
+                    () => { NyarBeginAction(); NyarClient.EventStop(id); if (!NyarState.SupportsTwins) { NyarProtocolService.RefreshStatus(); NyarProtocolService.RefreshDefs(); } }, 64);
+                if (NyarState.SupportsUnstick)
+                    AddUrielButton(row, "NyarDefUnstick", "Unstick", $"Move {id}'s units that haven't fought lately back into play; after two failed tries they're removed with no kill credit (event unstick {id}).",
+                        () => { NyarBeginAction(); NyarClient.EventUnstick(id); }, 74);
+            }
             else
-                AddUrielButton(row, "NyarDefEnable", "Enable", $"Allow {id} to be scheduled (.nyar event enable {id}).",
-                    () => { NyarClient.EventEnable(id); NyarProtocolService.RefreshDefs(); }, 80);
+                AddUrielButton(row, "NyarDefStart", "Start", $"Start {id} now (event start {id}).",
+                    () => { NyarBeginAction(); NyarClient.EventStart(id); if (!NyarState.SupportsTwins) { NyarProtocolService.RefreshStatus(); NyarProtocolService.RefreshDefs(); } }, 64);
+            if (d.Enabled)
+                AddUrielButton(row, "NyarDefDisable", "Disable", $"Stop {id} from being scheduled (event disable {id}).",
+                    () => { NyarBeginAction(); NyarClient.EventDisable(id); if (!NyarState.SupportsTwins) NyarProtocolService.RefreshDefs(); }, 74);
+            else
+                AddUrielButton(row, "NyarDefEnable", "Enable", $"Allow {id} to be scheduled (event enable {id}).",
+                    () => { NyarBeginAction(); NyarClient.EventEnable(id); if (!NyarState.SupportsTwins) NyarProtocolService.RefreshDefs(); }, 74);
             AddUrielButton(row, "NyarDefEdit", "Edit…", "Put this id in the field editor below.",
-                () => { if (_nyarDefIdInput != null) _nyarDefIdInput.Text = id; }, 70);
+                () => { if (_nyarDefIdInput != null) _nyarDefIdInput.Text = id; }, 60);
+            AddUrielButton(row, "NyarDefInfoBtn", "Info", $"Print {id}'s definition and run state in chat (.nyar event info {id}).",
+                () => NyarClient.EventInfo(id), 54);
+            if (NyarState.SupportsTwins)
+            {
+                AddUrielButton(row, "NyarDefCopy", "Copy…", "Put this id in the Copy box below.",
+                    () => { if (_nyarCopyFromInput != null) _nyarCopyFromInput.Text = id; }, 64);
+                if (!running)
+                    AddUrielConfirmButton(row, $"NyarDefDelete_{id}", "Delete", $"Delete {id} from events.json (event delete {id}, then confirm).",
+                        () => { NyarBeginAction(); NyarClient.EventDelete(id); }, 70, new Color(0.55f, 0.15f, 0.15f, 1f));
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- ADMIN: TEMPLATES (api 4)
+
+    private static readonly string[] NyarPillarLabels = { "Empowerment", "Spawns", "Boss", "Zones", "Sieges" };
+
+    private void BuildNyarAdminTemplatesTab(GameObject page)
+    {
+        EnsureNyarSubscribed();
+        page = BeginAdminGate(page);
+        AddNyarGateNotes(page, needTwins: true);
+
+        var intro = AddCard(page, "NyarTplIntro");
+        AddSectionHeading(intro, "Templates");
+        AddBodyText(intro,
+            "Nyarlathotep's built-in event templates. <b>Create</b> copies one into events.json, disabled, under its own " +
+            "id — or under the id you type below. Then edit and enable it on <b>Admin: Events</b>.", Theme.ScaledUI(12));
+        var pr = MakeUrielRow(intro, "NyarTplPillars");
+        _nyarTplPillarBtns.Clear();
+        var allBtn = AddUrielButton(pr, "NyarTplAll", "All", "Every template.", () => { _nyarTplPillar = ""; RequestNyarTemplates(); }, 60);
+        _nyarTplPillarBtns.Add((allBtn, "", "All"));
+        for (int i = 0; i < NyarClient.PillarIds.Length; i++)
+        {
+            string v = NyarClient.PillarIds[i], lbl = NyarPillarLabels[i];
+            var b = AddUrielButton(pr, $"NyarTpl_{v}", lbl, $"Only {lbl.ToLowerInvariant()} templates.", () => { _nyarTplPillar = v; RequestNyarTemplates(); }, 96);
+            _nyarTplPillarBtns.Add((b, v, lbl));
+        }
+        var ar = MakeUrielRow(intro, "NyarTplAsRow");
+        _nyarTplAsIdInput = AddNyarInput(ar, "NyarTplAsId", "create as id (optional)", 180);
+        _nyarTplStatus = AddNyarRowText(ar, "");
+
+        var card = AddCard(page, "NyarTplCard");
+        AddNyarResultLine(card);
+        AddNyarErrorLine(card);
+        _nyarTplListGo = AddNyarList(card, "NyarTplList");
+
+        if (!NyarState.TemplatesLoaded || NyarState.TemplatesPillar != _nyarTplPillar) RequestNyarTemplates();
+        else RebuildNyarTemplates();
+    }
+
+    private void RequestNyarTemplates()
+    {
+        NyarState.ClearError();
+        foreach (var (b, v, l) in _nyarTplPillarBtns)
+            if (b?.ButtonText != null) b.ButtonText.text = v == _nyarTplPillar ? $"<color=#E6B85C><b>{l}</b></color>" : l;
+        NyarProtocolService.BeginTemplatesRead(_nyarTplPillar);
+        if (_nyarTplStatus != null) _nyarTplStatus.text = "<color=#888888>Loading…</color>";
+    }
+
+    private void RebuildNyarTemplates()
+    {
+        foreach (var (b, v, l) in _nyarTplPillarBtns)
+            if (b?.ButtonText != null) b.ButtonText.text = v == _nyarTplPillar ? $"<color=#E6B85C><b>{l}</b></color>" : l;
+        if (_nyarTplListGo == null) return;
+        ClearChildren(_nyarTplListGo);
+        if (_nyarTplStatus != null) _nyarTplStatus.text = NyarState.TemplatesLoaded ? $"<color=#888888>{NyarState.Templates.Count} template(s)</color>" : "";
+        if (!NyarState.TemplatesLoaded) { AddBodyText(_nyarTplListGo, "Loading…"); return; }
+        if (NyarState.Templates.Count == 0) { AddBodyText(_nyarTplListGo, "No templates."); return; }
+        foreach (var t in NyarState.Templates)
+        {
+            var box = AddCard(_nyarTplListGo, $"NyarTpl_{t.Id}", padding: 6, innerSpacing: 2);
+            string dur = t.Duration > 0 ? $" · {NyarProtocolService.FormatSecs(t.Duration)}" : "";
+            AddInfoLabel(box, "NyarTplTitle",
+                $"<b>{NyarText(t.Summary)}</b> <color=#888888>({t.Id})</color>  <color=#888888>{NyarWord(t.Pillar)} · {NyarTriggerLabel(t.Trigger)}{dur}</color>",
+                FontStyles.Normal, Theme.ScaledUI(12));
+            var row = MakeUrielRow(box, "NyarTplBtns");
+            string id = t.Id;
+            AddUrielButton(row, "NyarTplUse", "Create", $"Copy {id} into events.json, disabled (template use {id} [as <id>]).",
+                () => { NyarBeginAction(); NyarClient.TemplateUse(id, Tok(_nyarTplAsIdInput)); }, 80);
+        }
+    }
+
+    // ---------------------------------------------------------------- ADMIN: PILLARS (api 4)
+
+    private void BuildNyarAdminPillarsTab(GameObject page)
+    {
+        EnsureNyarSubscribed();
+        page = BeginAdminGate(page);
+        AddNyarGateNotes(page, needTwins: true);
+
+        var card = AddCard(page, "NyarPillarsCard");
+        AddSectionHeading(card, "Pillars");
+        AddBodyText(card,
+            "Each pillar is a family of events. Switching one <b>off</b> ends its running events at once and stops new ones; " +
+            "the change is saved to the server's cfg.", Theme.ScaledUI(12));
+        var top = MakeUrielRow(card, "NyarPillarsTop");
+        AddUrielButton(top, "NyarPillarsRefresh", "Refresh", "Re-read the switches (.nyar api pillar list).",
+            () => { NyarState.ClearError(); NyarProtocolService.RefreshPillars(); }, 100);
+        AddNyarResultLine(card);
+        AddNyarErrorLine(card);
+        _nyarPillarsListGo = AddNyarList(card, "NyarPillarsList");
+
+        if (!NyarState.PillarsLoaded) NyarProtocolService.RefreshPillars();
+        RebuildNyarPillars();
+    }
+
+    private void RebuildNyarPillars()
+    {
+        if (_nyarPillarsListGo == null) return;
+        ClearChildren(_nyarPillarsListGo);
+        if (!NyarState.PillarsLoaded) { AddBodyText(_nyarPillarsListGo, "Loading…"); return; }
+        foreach (var p in NyarState.Pillars)
+        {
+            var row = MakeUrielRow(_nyarPillarsListGo, $"NyarPillar_{p.Id}");
+            int i = Array.IndexOf(NyarClient.PillarIds, p.Id);
+            string lbl = i >= 0 ? NyarPillarLabels[i] : NyarWord(p.Id);
+            AddNyarRowText(row, $"<b>{lbl}</b>  {NyarOnOff(p.On)}");
+            string id = p.Id;
+            if (p.On)
+                AddUrielConfirmButton(row, $"NyarPillarOff_{id}", "Switch off", $"Turn {lbl} off and end its running events (pillar {id} off).",
+                    () => { NyarBeginAction(); NyarClient.PillarSet(id, false); }, 110, new Color(0.55f, 0.15f, 0.15f, 1f));
+            else
+                AddUrielButton(row, $"NyarPillarOn_{id}", "Switch on", $"Turn {lbl} on (pillar {id} on).",
+                    () => { NyarBeginAction(); NyarClient.PillarSet(id, true); }, 110);
         }
     }
 
@@ -516,6 +872,18 @@ public partial class MainPanel
     {
         EnsureNyarSubscribed();
         page = BeginAdminGate(page);
+        _nyarZonesListGo = null;
+        if (!NyarState.SupportsZoneReads)
+        {
+            // Defended zones are still PLANNED in Nyarlathotep (no `zone` commands, no `zones` read on api 8),
+            // so the tab explains that instead of offering buttons the server would reject.
+            var note = AddCard(page, "NyarZonesPlanned");
+            AddSectionHeading(note, "Defended zones (planned)");
+            AddBodyText(note,
+                "Defended zones aren't in Nyarlathotep yet. When the server adds them, this tab will list the zones " +
+                "and let you add one where you stand or remove one.");
+            return;
+        }
         AddNyarGateNotes(page, needZones: true);
 
         var add = AddCard(page, "NyarZoneAddCard");
@@ -539,9 +907,7 @@ public partial class MainPanel
         var top = MakeUrielRow(list, "NyarZonesTop");
         AddUrielButton(top, "NyarZonesRefresh", "Refresh list", "Re-read the zones (.nyar api zones).",
             () => { NyarState.ClearError(); NyarProtocolService.RefreshZones(); }, 120);
-        _nyarZonesListGo = UIFactory.CreateVerticalGroup(list, "NyarZonesList", forceWidth: true, forceHeight: false,
-            childControlWidth: true, childControlHeight: true, spacing: 2, padding: new Vector4(0, 0, 0, 0));
-        UIFactory.SetLayoutElement(_nyarZonesListGo, minWidth: 360, preferredWidth: 400, flexibleWidth: 1, minHeight: 20, flexibleHeight: 0);
+        _nyarZonesListGo = AddNyarList(list, "NyarZonesList");
         AddNyarErrorLine(list);
 
         if (!NyarState.ZonesLoaded) NyarProtocolService.RefreshZones();
@@ -576,28 +942,30 @@ public partial class MainPanel
 
         var card = AddCard(page, "NyarAnnounceCard");
         AddSectionHeading(card, "Broadcast now");
-        AddBodyText(card, "Send a server-wide message (1–200 characters, no < or >), or the stats digest.");
+        AddBodyText(card,
+            "Send a server-wide message (1–200 characters, no < or >). The server's reply shows in chat. " +
+            "Scheduled and repeating messages aren't on the server yet — Raphael doesn't schedule them itself, " +
+            "because they'd stop whenever you log out.");
         var row = MakeUrielRow(card, "NyarAnnounceRow");
         _nyarAnnounceInput = AddNyarInput(row, "NyarAnnounceText", "message…", 320);
         UIFactory.SetLayoutElement(_nyarAnnounceInput.GameObject, flexibleWidth: 1);
         var row2 = MakeUrielRow(card, "NyarAnnounceRow2");
-        AddUrielButton(row2, "NyarAnnounceSend", "Announce", "Broadcast this message (.nyar announce).", () =>
+        AddUrielButton(row2, "NyarAnnounceSend", "Announce", "Broadcast this message (.nyar announce \"…\").", () =>
         {
             string t = (_nyarAnnounceInput?.Text ?? "").Trim();
-            if (t.Length == 0 || t.Length > 200 || t.IndexOf('<') >= 0 || t.IndexOf('>') >= 0)
-            { NyarState.SetError("announce", "Message must be 1–200 characters with no < or >."); return; }
+            if (t.Length == 0 || t.Length > 200 || t.IndexOf('<') >= 0 || t.IndexOf('>') >= 0 || t.Any(char.IsControl))
+            { NyarState.SetError("announce", "Message must be 1–200 characters with no <, > or control characters."); return; }
+            NyarState.ClearError();
             NyarClient.Announce(t);
             _nyarAnnounceInput.Text = "";
         }, 110);
-        AddUrielButton(row2, "NyarAnnounceDigest", "Send digest", "Broadcast the stats digest now (.nyar announce digest).",
-            NyarClient.AnnounceDigest, 120);
         AddNyarErrorLine(card);
 
         AddSpacer(page, 6);
         var sw = AddCard(page, "NyarAnnSwitchesCard");
         AddSectionHeading(sw, "Announcement switches (read-only)");
         _nyarAnnSwitchesLabel = AddBodyText(sw, "", Theme.ScaledUI(12));
-        AddBodyText(sw, "Change these in the server's kdpen.Nyarlathotep.cfg.");
+        AddBodyText(sw, "Change these in [Announcements] of the server's kdpen.Nyarlathotep.cfg.");
         RefreshNyarAnnSwitches();
     }
 
@@ -621,16 +989,20 @@ public partial class MainPanel
         AddSectionHeading(card, "Kill switch");
         AddBodyText(card,
             "Ends every running event and removes every Nyarlathotep unit, then pauses scheduled events for the " +
-            $"cooldown. Step 1 sends {Mono(".nyar purge")} (the server explains what will happen); step 2 sends " +
-            $"{Mono(".nyar purge confirm")}.");
+            "cooldown. <b>Purge…</b> asks you to click again to confirm.");
         _nyarKillLabel = AddInfoLabel(card, "NyarKillState", "", FontStyles.Normal, Theme.ScaledUI(12));
         var row = MakeUrielRow(card, "NyarKillRow");
-        AddUrielButton(row, "NyarPurge", "1. Purge…", "Ask the server to purge (.nyar purge). Nothing happens until step 2.", NyarClient.Purge, 110);
-        AddUrielConfirmButton(row, "NyarPurgeConfirm", "2. Confirm purge", "Purge now (.nyar purge confirm).",
-            () => { NyarClient.PurgeConfirm(); NyarProtocolService.RefreshStatus(); }, 150, new Color(0.55f, 0.15f, 0.15f, 1f));
+        AddUrielConfirmButton(row, "NyarPurge", "Purge…", "End every event and despawn every unit now (purge, then purge confirm).",
+            () => { NyarBeginAction(); NyarClient.Purge(); if (!NyarState.SupportsTwins) NyarProtocolService.RefreshStatus(); },
+            130, new Color(0.55f, 0.15f, 0.15f, 1f));
+        if (NyarState.SupportsTwins)
+            AddUrielButton(row, "NyarKillRefresh", "Refresh", "Re-read the kill switch (.nyar api killswitch).",
+                () => { NyarState.ClearError(); NyarProtocolService.RefreshKillswitch(); }, 90);
+        AddNyarResultLine(card);
         AddNyarErrorLine(card);
 
         AddSpacer(page, 6);
+        if (!NyarState.StatsOn) { if (NyarState.SupportsTwins) NyarProtocolService.RefreshKillswitch(); RefreshNyarCountdowns(); return; }
         var rs = AddCard(page, "NyarStatsResetCard");
         AddSectionHeading(rs, "Reset stats");
         AddBodyText(rs, $"Wipe one player's stats, or type {Mono("all")} for everyone. Step 1 asks, step 2 confirms.");
@@ -649,6 +1021,7 @@ public partial class MainPanel
             NyarClient.StatsResetConfirm(t);
         }, 110, new Color(0.55f, 0.15f, 0.15f, 1f));
 
+        if (NyarState.SupportsTwins) NyarProtocolService.RefreshKillswitch();
         RefreshNyarCountdowns();
     }
 
@@ -657,31 +1030,53 @@ public partial class MainPanel
     private void BuildNyarGuideTab(GameObject page)
     {
         AddGuideSection(page, "Nyarlathotep, Lord of Chaos",
-            "A server mod that runs world events: raids that arrive in waves, empowered enemies, boss " +
-            "reinforcements, defended zones and clan sieges. The server admin decides which of these are on. " +
+            "A server mod that stages NPC world events the base game doesn't have: empowered factions, waves " +
+            "that hunt players, swarms in an arena, hunting grounds bound to a region, faction revenge and a " +
+            "map-wide apocalypse. Every pillar and event starts off; the server admin turns them on. " +
             "The Nyarlathotep tabs appear only on servers that run it.");
+        AddCollapsibleHelpDetail(page, "How events work",
+            "• Triggers: a schedule, nightfall or daybreak, a V Blood kill, a random interval, a player entering " +
+            "a region, players killing a faction, faction revenge, or an admin command.\n" +
+            "• Actions: empower a faction with timed buffs, or spawn waves that hunt players, roam a region or " +
+            "hold an arena. A last wave can bring a boss.\n" +
+            "• Revenge: kill too many of one faction and it sends squads after you. You get private warnings in chat first.\n" +
+            "• Cleanup: when an event ends, its units leave and its buffs expire. Stuck units are moved back " +
+            "into play, or removed after two tries.\n" +
+            "• Planned, not on the server yet: boss reinforcements, defended zones, sieges and player stats.");
         AddCollapsibleHelpDetail(page, "Players",
-            "• Live Events — what's running now, with a countdown to the next wave.\n" +
-            "• Leaderboards — pick a stat (kills, events, waves, defences, boss adds, deaths) and a window " +
-            "(today, week, all time). Your row is highlighted. Share my line posts it to chat if the server allows.\n" +
-            "• My Stats — your numbers. Hide me takes you off the boards; Show me puts you back.");
+            "• Live Events: what's running now, which regions it's in, and a countdown to the next wave. The " +
+            "Regions list shows how many events are active in each part of the map.\n" +
+            "• Notifications: a short notice at the top of the screen when an event begins or ends, a wave is " +
+            "coming, or an admin uses the kill switch. On joining, one notice lists the events already under way. " +
+            "Switch each kind on or off in Nyarlathotep → Settings. Wave warnings come only if the server sends " +
+            "them. Scoreboards, revenge warnings and admin broadcasts still show in chat only.\n" +
+            "• Leaderboards and My Stats: planned. The server doesn't collect stats yet, so these tabs say " +
+            "stats are off. They fill in when Nyarlathotep's stats update ships.");
         AddCollapsibleHelpDetail(page, "Not seeing a reply?",
             "Nyarlathotep's replies to commands you send always show in chat, including errors like \"command not " +
             "found\" (`.nyar` alone lists the real commands). The tabs' Refresh buttons read data quietly and update " +
-            "the tab instead of chat. To see everything while testing, open Settings and Help → Chat & Diagnostics " +
-            "and pick Show everything.");
+            "the tab instead of chat. On newer servers, admin buttons show their result on the tab itself. To see " +
+            "everything while testing, open Settings and Help → Chat & Diagnostics and pick Show everything.");
         AddCollapsibleHelpDetail(page, "Admins",
             "Admin tabs are greyed until you run adminauth (F1 console) and press Re-check.\n" +
-            "• Events — start, stop, enable or disable each definition, reload them from disk, edit one field, " +
-            "and test-spawn units next to you.\n" +
-            "• Zones — add a defended zone where you stand, or remove one.\n" +
-            "• Announce — broadcast a message or the stats digest. The announcement switches are read-only.\n" +
-            "• Kill Switch — two steps: Purge, then Confirm. Scheduled events pause for the cooldown shown. " +
-            "Stats reset works the same way.");
+            "• Events: start, stop, enable or disable each definition. Unstick moves a running event's idle " +
+            "units back into play (the server's unit watch must be on). Create a new event or copy one; new ones " +
+            "start disabled. Delete one (click twice). Edit one field (pick it from the list), or set the location " +
+            "to where you stand. Raphael can't read a field's current value yet, so Show in chat prints the full " +
+            "definition. Units near me and Test spawn answer in chat.\n" +
+            "• Templates: browse the built-in templates by pillar and create an event from one. It starts disabled.\n" +
+            "• Pillars: switch whole families of events on or off. Off ends their running events.\n" +
+            "• Zones: planned. Defended zones aren't on the server yet, so Add and Remove do nothing for now. " +
+            "Zones can't be listed here either; remove is by name.\n" +
+            "• Announce: broadcast a message now (1 to 200 characters, no angle brackets). The announcement " +
+            "switches are read-only.\n" +
+            "• Kill Switch: Purge (click twice) ends every event and removes every Nyarlathotep unit. Scheduled " +
+            "events pause for the cooldown shown. Stats reset is for the planned stats update and does nothing yet.");
         AddCollapsibleHelpDetail(page, "Troubleshooting",
             "Tabs greyed out: the server didn't answer the handshake. Use Settings and Help → Connection → " +
             "Re-detect Nyarlathotep. Lists empty: the server's Nyarlathotep may be too old for live data (see " +
-            "Nyarlathotep → Settings). Reporting a bug: turn on diagnostic details in Nyarlathotep → Settings.");
+            "Nyarlathotep → Settings). Unstick needs Nyarlathotep 0.13.0 (api 8). A version like 0.13.0-rc.1 is a " +
+            "test build. Reporting a bug: turn on diagnostic details in Nyarlathotep → Settings.");
     }
 
     // ---------------------------------------------------------------- RAIL DIAGNOSTIC
@@ -713,7 +1108,7 @@ public partial class MainPanel
 
         AddDiagnosticActionButton(card, "NyarDiagRecheckBtn", "Re-check now",
             "Restart Nyarlathotep detection and re-probe (.nyar api version).",
-            () => { try { NyarProtocolService.Reset(); NyarClient.RequestVersion(); } catch { } RefreshAllTabGroupAvailability(); });
+            () => { try { NyarProtocolService.Reset(); NyarClient.SendProbe(); } catch { } RefreshAllTabGroupAvailability(); });
         AddDiagnosticActionButton(card, "NyarDiagForceEnableBtn", "Force-enable tabs",
             "Flip NyarAvailability to On for this session so the tabs are navigable. Live data needs a real handshake; set NyarAvailability=On in kdpen.Raphael.cfg to persist.",
             () =>

@@ -202,6 +202,7 @@ public class Plugin : BasePlugin
         // Nyarlathotep detection/handshake driver + push-stream re-read debounce + 1s countdown tick.
         // Same back-off as Faust/Uriel; gives up silently on servers without the mod.
         CoreUpdateBehavior.Actions.Add(Services.Nyar.NyarProtocolService.Tick);
+        CoreUpdateBehavior.Actions.Add(UI.ModContent.NyarToastHost.Tick);   // 0.69.0: toast fade/expiry
 
         // 0.54: boss-tracker overlay auto-refresh (opt-in, ~5s). No-op unless the overlay is open and the
         // FaustBossTrackerAutoRefresh setting is on; self-throttles + respects Faust presence/support.
