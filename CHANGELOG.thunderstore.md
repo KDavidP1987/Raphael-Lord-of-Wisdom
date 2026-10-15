@@ -4,9 +4,26 @@
 [CHANGELOG.md](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/blob/main/CHANGELOG.md).
 Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
-**Current: v0.68.1** (pre-1.0 beta).
+**Current: v0.69.0** (pre-1.0 beta).
 
 ---
+
+## 0.69.0 — Chat fixes and Nyarlathotep 0.13 support
+
+**Fixed**
+
+- Copied chat keeps text in angle brackets. Roleplay lines like `<telepathy>` are no longer cut.
+- One message's italics no longer carry into the next.
+- `/w Name` always whispers the player you typed, whatever the dropdown shows.
+
+**New (Nyarlathotep 0.13)**
+
+- Live Events shows which regions each event is in, plus a Regions list.
+- On-screen notices when events begin or end, when a wave is coming, and when you log in. Switch them off in
+  Nyarlathotep → Settings.
+- Admins see each action's result on the tab, and get Unstick, New / Copy / Delete, a field picker and Units near me.
+- New admin tabs: **Templates** and **Pillars**.
+- Purge is one confirmed click.
 
 ## 0.68.1 — Beelzebub 0.137.3-0.137.5 support
 

@@ -1,5 +1,56 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.69.0 — Chat fixes (#1, #2) and Nyarlathotep 0.13 support (API 8)
+
+### Fixed
+
+- **Copied chat keeps text in angle brackets** ([#1](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/issues/1)).
+  Copy used to delete everything from `<` to `>`, so roleplay text like `<telepathy>` was lost.
+  - Copy now removes only real formatting tags.
+  - In player chat, a `<` that isn't a style tag shows as plain text.
+  - Unclosed tags are closed, so one message's italics no longer carry into the next.
+- **Whispers go to the person you typed** ([#2](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/issues/2)).
+  Picking one player in the dropdown and typing `/w` to another used to whisper the dropdown's player.
+  - Names now resolve against the list of online players first.
+  - Message senders no longer get matched to the wrong player after a skipped duplicate.
+  - `/w Name`, the dropdown and Tab cycling now share one whisper target.
+  - The All tab remembers its own pick.
+
+### New — Nyarlathotep
+
+Needs Nyarlathotep 0.13.0-rc.1 (API 8) unless noted. Older servers keep the previous behaviour.
+
+- **Live Events:** region tags on each event (API 5+), a Regions list, and an "ending — units leaving" state.
+- **On-screen notices** for:
+  - an event beginning or ending;
+  - wave warnings;
+  - a wave arriving (off by default);
+  - the kill switch;
+  - a summary when you log in.
+
+  Turn each one on or off, and set how long notices stay up, in Nyarlathotep → Settings.
+- **Admin: Events:**
+  - Each action's result shows on the tab, with plain-language errors (API 4+).
+  - New buttons: Unstick, New, Copy, Delete, Location here, Info, Units near me.
+  - A field picker for editing one setting.
+  - Rows show the trigger, the action, the duration, the regions, and why an event is disabled.
+- **Admin: Templates** (new tab, API 4+): browse the built-in templates by pillar and create an event from one.
+- **Admin: Pillars** (new tab, API 4+): switch each pillar on or off. Switching one off asks you to confirm first.
+- **Kill Switch:** Purge is one confirmed click. The tab shows how many events and units are still active.
+
+### Changed
+
+- Background requests to Nyarlathotep now go out one at a time, at least 250 ms apart, as the server's contract asks.
+- **Stats and defended zones** aren't in Nyarlathotep yet. Leaderboards, My Stats and Admin: Zones now say so
+  instead of showing buttons the server would reject.
+- **Admin: Announce:** the "digest" button is gone. The server broadcast the literal word "digest".
+- Updated the Beelzebub and Nyarlathotep guide pages and the About tab.
+- README: added a Roadmap section and updated the tested versions (Nyarlathotep 0.13.0-rc.1, Faust 0.16.5).
+
+### Not in this release
+
+- Nyarlathotep live-ops (API 9) and in-game communications (API 10). The server hasn't finalised them yet.
+
 ## 0.68.1 — Beelzebub 0.137.3-0.137.5 support (API 35)
 
 Catches up to Beelzebub 0.137.3-0.137.5 (`ApiVersion 35`). No `[BEELZ:*]` line changed shape. New gates in
