@@ -4,9 +4,19 @@
 [CHANGELOG.md](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/blob/main/CHANGELOG.md).
 Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
-**Current: v0.69.0** (pre-1.0 beta).
+**Current: v0.70.0** (pre-1.0 beta).
 
 ---
+
+## 0.70.0 — Uriel Castle Events (alpha)
+
+Needs Uriel 0.21.0 with Castle Events turned on by the server admin.
+
+- **Castle Events** tab: drop mob and boss markers as you walk your castle, bind doors to groups, and start,
+  stop and time runs. A live readout shows the clock, groups cleared, bosses left and time left, with on-screen
+  notices as the run goes.
+- **Event Library** tab: build squads, floor templates and templates without typing commands.
+- **Admin: Units** tab: spawn, kill, despawn, clear and purge event units.
 
 ## 0.69.0 — Chat fixes and Nyarlathotep 0.13 support
 

@@ -287,6 +287,12 @@ internal static class ClientChatPatch
                     continue;
                 }
 
+                // 0.70.0: Uriel Castle Events — OBSERVE-ONLY. Uriel's run broadcasts and event replies are human
+                // text (no [URIEL:*] shape yet), so UrielEvents reads them for the run HUD, toasts and the reply
+                // echo. It never destroys the entity: the line still reaches chat and the pipelines below.
+                try { Services.Uriel.UrielEvents.Observe(text); }
+                catch (Exception ex) { LogUtils.LogDebug($"UrielEvents.Observe: {ex.Message}"); }
+
                 // 0.17.1 EXPERIMENT: in Eclipse stand-down, do NOT decode the
                 // Eclipse protocol (that's the passive layer Eclipse owns) — leave
                 // those entities entirely for Eclipse. Still fall through to the

@@ -150,6 +150,7 @@ internal static class UrielProtocolService
         _scanRequestAt = 0f; ScanNote = "";
 
         UrielState.Reset();
+        UrielEvents.Reset();
     }
 
     // ---- inbound line router (called from ClientChatPatch for every [URIEL:*] line) ----
@@ -200,6 +201,11 @@ internal static class UrielProtocolService
             total:       line.GetInt("total"),
             discoverable:line.GetInt("discoverable"),
             blocked:     line.GetInt("blocked"));
+
+        // Castle Events (handoff §7, planned): `events=` / `playerevents=` on the version line. Absent on
+        // Uriel 0.21.0 — the Castle Events tab probes with `.uriel event list` until then.
+        if (line.Has("events"))
+            UrielEvents.SetFromVersion(line.GetBool("events"), line.GetBool("playerevents"), Raphael.Services.MessageService.IsLocalAdmin());
 
         if (!ready)
         {

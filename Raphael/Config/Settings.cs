@@ -1295,6 +1295,11 @@ public class Settings
     public static bool UrielDiagnostics => (ConfigEntries.TryGetValue(nameof(UrielDiagnostics), out var eu) && eu is ConfigEntry<bool> bu) && bu.Value;
     public static void SetUrielDiagnostics(bool v) => SetBool(nameof(UrielDiagnostics), v);
 
+    // 0.70.0: Uriel Castle Events on-screen notifications (toasts from the run broadcasts: begun, clock running,
+    // group defeated, bosses down, complete, time warnings, failed, stopped). Uriel → Castle Events.
+    public static bool UrielEventToasts => GetBoolOr(nameof(UrielEventToasts), true);
+    public static void SetUrielEventToasts(bool v) => SetBool(nameof(UrielEventToasts), v);
+
     // Faust diagnostic detail (default off). When ON, Raphael writes a verbose [Faust][diag] wire trace
     // (commands sent + raw [FAUST:*] replies) to the BepInEx LogOutput.log so testers/admins can report
     // exactly which Faust queries fired and what came back. Toggled from the Faust → Settings tab; also
@@ -1741,6 +1746,7 @@ public class Settings
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(BeelzDiagnostics),            false,  "Beelzebub diagnostic details (default off). ON: the Loadout tables show each ability's ID (PrefabGUID) + raw prefab name, and Raphael writes a verbose [Beelz][diag] wire trace (commands sent + raw [BEELZ:*] replies) to the BepInEx LogOutput.log so testers/admins can report exactly which abilities work or need tuning. Toggle it from the Beelzebub → Settings tab; also implied while the global DiagnosticMode is active.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(UrielAvailability),           "Auto", "Whether the server has the Uriel mod (storage sharing / public prisons / stair swap / object spawning). Auto = present iff the server answered our `.uriel api version` handshake. On = always assume present. Off = always disable the URIEL tab group. Most servers don't have Uriel, so Auto stays disabled there.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(UrielDiagnostics),            false,  "Uriel diagnostic details (default off). ON: Raphael writes a verbose [Uriel][diag] wire trace (commands sent + raw [URIEL:*] replies) to the BepInEx LogOutput.log so testers/admins can report exactly which Uriel commands fired and what came back. Toggle it from the Uriel → Settings tab; also implied while the global DiagnosticMode is active.");
+        InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(UrielEventToasts),            true,   "Uriel Castle Events on-screen notifications (default on): short toasts when a castle event begins, its clock starts, a group is defeated, the bosses fall, it completes, time runs low, or it fails or is stopped. Uriel → Castle Events.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(FaustAvailability),           "Auto", "Whether the server has the Faust mod (investigation/information: castle/plot/player/server queries). Auto = present iff the server answered our `.faust api version` handshake. On = always assume present. Off = always disable the FAUST tab group. Most servers don't have Faust, so Auto stays disabled there.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(FaustDiagnostics),            false,  "Faust diagnostic details (default off). ON: Raphael writes a verbose [Faust][diag] wire trace (commands sent + raw [FAUST:*] replies) to the BepInEx LogOutput.log so testers/admins can report exactly which Faust queries fired and what came back. Toggle it from the Faust → Settings tab; also implied while the global DiagnosticMode is active.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(NyarAvailability),            "Auto", "Whether the server has the Nyarlathotep mod (admin-run world events: waves, empowered NPCs, boss adds, defended zones, sieges, stats). Auto = present iff the server answered our `.nyar api version` handshake. On = always assume present. Off = always disable the NYARLATHOTEP tab group.");

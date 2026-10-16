@@ -1,5 +1,37 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.70.0 — Uriel Castle Events (alpha)
+
+Needs Uriel 0.21.0 with `CastleEvents.Enabled=true` on the server. Players also need
+`CastleEvents.PlayerEvents=true`; otherwise the tabs are for admins only.
+
+### New — Uriel
+
+- **Castle Events** (new tab):
+  - **Layout builder:** type a group name, then drop mob or boss markers at your feet. Bind or unbind the
+    nearest door, set the group's squad, remove a marker by its #id or remove a whole group, and show the layout.
+  - **Marker options:** unit (with a picker of common units), count, level and containment: server default,
+    plot, room, storey, a 3-60 m leash, or room plus leash.
+  - **Run panel:** a template field and Start / Stop / Status / History. Options are built from a difficulty
+    preset, a level mode (set, shift, or auto +N), health / damage / speed / attack-speed multipliers, a time limit
+    and a keep-factions switch. The panel shows the exact command before you send it.
+  - **Live run readout:** the clock, groups cleared, bosses left and time left. Raphael reads these from Uriel's
+    run messages, and Status re-syncs them.
+  - **On-screen notices** when a run begins, its clock starts, a group falls, the bosses fall, it completes,
+    time runs low, or it fails or is stopped. Switch them off on the tab.
+- **Event Library** (new tab): create, show and delete squads, floor templates and templates. Add squad entries
+  (role, units, count, any/distinct pick, level, set), extend an entry with more units, set a set's weight, and
+  remove an entry or a set. Assign squads to groups and floor templates to floors, and set a template's default
+  run options (or copy them from the run panel).
+- **Admin: Units** (new tab): spawn units (at your feet or your aim point, with containment), kill nearby units
+  (all / bosses / mobs), despawn the nearest, list, status, and clear the plot. Purge the whole server with an
+  arm-then-confirm step. Also room / probe / door diagnostics.
+- Each of these tabs shows the server's reply to your last button, so marker #ids, floors and errors appear
+  without reading chat.
+- Raphael won't send a command longer than chat allows (about 120 characters). The game would cut it, and the
+  cut-off part would fall back to defaults.
+- On first open the Castle Events tab checks whether Castle Events are on, admin-only, or off on the server.
+
 ## 0.69.0 — Chat fixes (#1, #2) and Nyarlathotep 0.13 support (API 8)
 
 ### Fixed

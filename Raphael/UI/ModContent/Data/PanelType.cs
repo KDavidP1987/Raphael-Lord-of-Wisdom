@@ -71,10 +71,13 @@ public enum PanelType
     UrielStairsTab,         // player: live stair restyle (six same-shape styles)
     UrielObjectsTab,        // player: object-spawn palette (unlocked list) + collection progress
     UrielObjectCatalogTab,  // player: full spawnable-object catalog browse, columnar (name/category/id)
+    UrielEventsTab,         // 0.70: Castle Events — layout builder (markers/doors) + run panel + live run HUD
+    UrielEventLibraryTab,   // 0.70: Castle Events — squads / floor templates / templates editor
     UrielSettingsTab,       // client-side Uriel settings: diagnostics, availability readout
     UrielAdminSharingTab,   // admin: sharedall / unshareplayer / unshareall / sharedebug
     UrielAdminObjectsTab,   // admin: block/grant/blocklist/bossmap/purgeplot/forcedespawn
     UrielAdminConfigTab,    // admin: kill-switch status (storage / prison / stairswap / collection)
+    UrielAdminUnitsTab,     // 0.70: admin unit tools (.uriel unit spawn/list/kill/despawn/clear/purge + diagnostics)
     UrielQuickStartTab,     // help: Uriel getting-started (lives in the Settings & Help group)
     UrielModHelpTab,        // help: Uriel mechanics + command reference (Settings & Help group)
 
