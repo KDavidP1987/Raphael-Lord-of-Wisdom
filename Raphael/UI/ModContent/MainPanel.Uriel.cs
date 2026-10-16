@@ -1460,11 +1460,12 @@ public partial class MainPanel
     {
         AddGuideSection(page, "Uriel — what it is",
             "Uriel (\"Lord of Hosts\") is a SERVER-SIDE mod, separate from Bloodcraft and Beelzebub — a server " +
-            "can run any combination. When it's present it adds four things: <b>shared storage</b> (open a chest " +
+            "can run any combination. When it's present it adds five things: <b>shared storage</b> (open a chest " +
             "to everyone, with optional permissions / limits / costs), <b>public prisons</b> (shared cells anyone " +
             "can feed/extract, plus a way to take the prisoner), <b>stair restyling</b> (change a placed " +
-            "staircase's look in place), and <b>object spawning</b> (collect world-object prefabs and spawn what " +
-            "you've unlocked). Raphael is the client UI; the Uriel tab group only appears when the server " +
+            "staircase's look in place), <b>object spawning</b> (collect world-object prefabs and spawn what " +
+            "you've unlocked), and <b>Castle Events</b> (alpha, off unless the admin turns it on: lay out mob and " +
+            "boss groups in a castle and run timed clears). Raphael is the client UI; the Uriel tab group only appears when the server " +
             "actually has the mod.");
 
         AddGuideSection(page, "1. Share a chest",

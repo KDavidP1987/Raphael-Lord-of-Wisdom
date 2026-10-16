@@ -18,7 +18,7 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
 - **Standalone chat window** — tabbed per-channel chat (Global / Local / Clan / Whispers / System), whisper anyone online, custom colors, and per-channel history controls (keep conversation, drop noisy System floods). Needs no server mods.
 - **Chat & Diagnostics in one place** — choose what Raphael hides from chat and what it logs, for itself and every server mod. Presets: Quiet, Normal, Show everything. Replies to commands you send always show.
 - **In-built game guide** — a "V Rising Basics" tab explaining the base game (blood, Gear Level, V Bloods, castles, hazards) and how each mod changes it, so new players have a one-stop primer.
-- **Admin tooling** — surfaced wherever the backing mod provides it: Kindred admin, Beelzebub ability shaping and lock groups, Faust server analytics, Uriel sharing/spawning, Nyarlathotep event control.
+- **Admin tooling** — surfaced wherever the backing mod provides it: Kindred admin, Beelzebub ability shaping and lock groups, Faust server analytics, Uriel sharing/spawning and Castle Events units, Nyarlathotep event control.
 
 <details>
 <summary><b>Full feature list</b></summary>
@@ -29,6 +29,7 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
   - **Kindred** — Logistics (+ admin), Commands, Admin: Players / Server / World.
   - **Beelzebub** — Bestiary, Loadout (universal + per-weapon + per-form ability sets), Hotkeys, Transforms, Settings, admin Config / Players.
   - **Faust** — Castle Info, Open/All Plots, Decay Watch, Castle Resources, Player Info, Clans, Player Positions, Server Stats, **Boss Status**, **Leaderboards**, **World Map**, admin Control / Oversight.
+  - **Uriel** — Storage Sharing, Prisons, Stairs, Object Spawning, Object Catalog, **Castle Events** (alpha: drop mob and boss markers, bind doors, start and time runs with a live readout and on-screen notices), **Event Library** (squads, floor templates, templates), Settings, admin Sharing / Objects / Config / **Units**.
   - **Nyarlathotep** — Live Events (regions, wave countdowns, on-screen notices), Settings, admin Events / Templates / Pillars / Announce / Kill Switch. Leaderboards, My Stats and Zones are ready for when Nyarlathotep adds them.
   - **Settings & Help** — Quick Start, per-mod Help guides, **V Rising Basics** (in-built base-game guide), Game Guide (external links), Settings, **Chat & Diagnostics**, About.
 - **Secondary overlays** (toggle from the footer) — XP, Familiar, Familiar Browser, Daily Quest, Professions, Shift Spell, a Combined info overlay, Quick Actions, a Familiar Quick Spawn overlay, and a Faust Boss Tracker. Each is independently draggable/resizable with its own transparency; visibility persists across sessions.
@@ -111,7 +112,7 @@ Settings don't transfer — Raphael writes a new config, so overlay positions, c
 | **KindredLogistics** (server) | v1.6.0 | Logistics toggles → Kindred |
 | **Beelzebub** (server, optional) | v0.137.x (API 35) | Abilities / transforms → Beelzebub |
 | **Faust** (server, optional) | v0.16.5 (API 19) | Server investigation & analytics → Faust |
-| **Uriel** (server, optional) | v0.20.0 (API 1) | Storage / prisons / stairs / spawning → Uriel |
+| **Uriel** (server, optional) | v0.21.0 (API 1) | Storage / prisons / stairs / spawning / Castle Events (alpha) → Uriel |
 | **Nyarlathotep** (server, optional) | v0.12.0 (API 7); v0.13.0-rc.1 (API 8) | World events / leaderboards → Nyarlathotep |
 | **Eclipse** (client) | v1.3.13 | ⚠ Compatibility needs re-testing — disable while running Raphael |
 
@@ -234,6 +235,7 @@ What's planned next. These are plans, not promises. Server-mod features show up 
 - A "current rules" panel for the container you're aiming at.
 - A "My Shares" list.
 - A stair-style picker that greys out styles you don't own.
+- Castle Events: a separate run overlay, and a readout that no longer depends on Uriel's chat wording once Uriel sends machine-readable event data.
 - Later, once Uriel adds them: coffin sharing, paid or timed door access, sharing all of a castle's storage at once, and castle rentals.
 
 ---

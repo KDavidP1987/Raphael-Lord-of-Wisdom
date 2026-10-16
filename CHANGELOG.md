@@ -31,6 +31,15 @@ Needs Uriel 0.21.0 with `CastleEvents.Enabled=true` on the server. Players also 
 - Raphael won't send a command longer than chat allows (about 120 characters). The game would cut it, and the
   cut-off part would fall back to defaults.
 - On first open the Castle Events tab checks whether Castle Events are on, admin-only, or off on the server.
+- **Guides:** Uriel Help has a Castle Events section, and Uriel Quick Start adds a step 5 and lists Castle Events
+  among Uriel's features.
+
+### Notes
+
+- Uriel doesn't send machine-readable Castle Events data yet. Raphael reads Uriel's chat replies and run messages,
+  so the live readout depends on that wording. Raphael's answer to Uriel's proposed data format is in
+  [`docs/URIEL_CASTLE_EVENTS_API_REPLY.md`](docs/URIEL_CASTLE_EVENTS_API_REPLY.md).
+- Compatibility table updated: Uriel v0.21.0 (API 1).
 
 ## 0.69.0 — Chat fixes (#1, #2) and Nyarlathotep 0.13 support (API 8)
 

@@ -3,7 +3,7 @@
 The engineering roadmap. The short player-facing version is the **Roadmap** section of
 [`README.md`](../README.md#roadmap). This file adds the detail needed to start an item.
 
-Last reviewed: **v0.69.0** (2026-10-15).
+Last reviewed: **v0.70.0** (2026-10-15).
 
 Status: **Planned** (agreed, not started) · **Spike** (needs a prototype first) · **Waiting** (needs a
 server-mod release) · **Deferred** · **Done**.
@@ -41,6 +41,9 @@ Each item waits on the server mod named. The source docs live in that mod's repo
 | Faust | Resource stats view (`stats resources`) | Waiting | Faust `BCH_INTEGRATION_CONTRACT.md` |
 | Uriel | Rules panel for the aimed container, "My Shares", owned-style stair picker | Waiting | Needs Uriel `api info` / `api shares` / `api stairinfo` (Uriel is on API 1). Uriel handoff §6. |
 | Uriel | Coffin sharing, paid or timed doors, share-all-storage, castle rentals | Waiting | Uriel `docs/ROADMAP.md` |
+| Uriel | Castle Events: layout, run panel, live readout, Event Library, Admin: Units | Done | Shipped in 0.70.0 on Uriel 0.21.0's chat replies (`Services/Uriel/UrielEvents.cs`). Not yet tested in game: run handoff §9. |
+| Uriel | Castle Events wire API (`[URIEL:layout]`, `evrun` pushes, `err cmd=`) | Waiting | Raphael confirmed handoff §7 with six amendments: `docs/URIEL_CASTLE_EVENTS_API_REPLY.md`. Gate on Uriel's ApiVersion bump; keep the text parsing as the fallback. |
+| Uriel | Castle Events run overlay (separate from the tab) | Planned | The readout lives on the Castle Events tab and in toasts today. |
 
 ---
 
@@ -52,7 +55,7 @@ confirmed. There is a real German-speaking user base.
 **Why it's a separate track:** most of the cost is moving hardcoded strings into a lookup table, not the
 translation itself.
 
-### Current state (v0.69.0)
+### Current state (v0.70.0)
 
 - `Services/LocalizationService.cs` is a stub. Its constructor is commented out.
 - `Resources/Localization/English.json` is embedded but empty (`"strings": {}`).
@@ -64,7 +67,7 @@ translation itself.
   | `tooltip: "…"` | 206 |
   | `AddSectionHeading(…)` | 281 |
   | `AddBodyText(…)` | 244 |
-  | `AddUrielButton(…)` | 115 |
+  | `AddUrielButton(…)` | 162 |
   | Guide prose (`AddGuideSection`, `AddCollapsibleHelpDetail`) | 141 |
 
 ### Fonts
