@@ -1,5 +1,51 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.71.0 — Nyarlathotep event editor, Admin: Units, and fixes from play-testing
+
+### New — Nyarlathotep
+
+- **Event editor.** **Edit…** on an event now opens its settings right under it. Before, it only copied the id into
+  a box further down the page, so it looked like nothing happened.
+  - The editor reads the event's current definition (`.nyar event info`), shows it, and fills in the fields it can read.
+  - Each field has its own Set. Sections follow the event type: basics, conditions, where, spawn waves (waves,
+    interval, radius, units, behaviour, level / health / power), empowerment stats, or apocalypse (goal, hordes,
+    roamers, march speed, bosses). Any other field is still available from the full list.
+  - **Goal here** sets an apocalypse's goal to where you stand.
+- **Unit picker.** Every unit field has a type-to-search list of about 430 game units, showing faction, level and
+  V Blood. "Add to list" builds the `CHAR_name:count` value for you.
+  - The same list now powers Uriel's Castle Events and unit pickers, which used to offer about 90 units.
+- **Admin: Units** (new tab):
+  - scan the event units around you (5-100 m), shown as a table with event, level, health, time left and x / z position;
+  - unit counts for each running event;
+  - the test spawn, now with the unit picker.
+  - Nyarlathotep can't list every unit on the map yet. Raphael has asked for that, and the tab will use it once the
+    server adds it.
+
+### Fixed
+
+- **"[vcf] [denied] events / templates / pillar / killswitch" on login for non-admins.** Pre-building the admin tabs
+  sent admin reads for everyone. They now go out only when the server says you're an admin. Each denied read also
+  held up Live Events for 5 seconds.
+- **Admin rights gained mid-session are picked up.** After `adminauth`, Raphael re-reads Nyarlathotep's version line,
+  so the admin tabs load without a relog.
+- **"Command not found: .beelz / .uriel / .faust api version" in chat.** These are Raphael's own detection probes on
+  servers without those mods. They are now hidden even when you sent a command at the same moment.
+- **Other mods' menu groups popping open.** Changing settings in a Nyarlathotep tab (for example, a pillar) re-opened
+  the Bloodcraft, Beelzebub, Uriel and Faust "not detected" groups. They now open only once, when nothing else is
+  detected, and never after you've closed them.
+- **Event list stuck on "ending" after an event finished.** An ended event's units take about 30 seconds to leave,
+  and the server sends nothing when they're gone. Raphael now re-reads the list when that countdown runs out.
+- **Clearer start errors.**
+  - "Pillar off" now says to turn the pillar on in Admin: Pillars.
+  - The zombie apocalypse's "admin location" refusal now explains the server bug and how to work around it: stand at
+    the goal, press **Goal here**, then Start.
+
+### Notes
+
+- The zombie apocalypse start failure is a Nyarlathotep bug, reported with the cause and fix in
+  [`docs/NYAR_FEEDBACK_2026-10-15.md`](docs/NYAR_FEEDBACK_2026-10-15.md), along with requests for a map-wide units
+  read and a field read.
+
 ## 0.70.0 — Uriel Castle Events (alpha)
 
 Needs Uriel 0.21.0 with `CastleEvents.Enabled=true` on the server. Players also need

@@ -4,9 +4,18 @@
 [CHANGELOG.md](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/blob/main/CHANGELOG.md).
 Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
-**Current: v0.70.0** (pre-1.0 beta).
+**Current: v0.71.0** (pre-1.0 beta).
 
 ---
+
+## 0.71.0 — Nyarlathotep event editor and Admin: Units
+
+- **Edit…** on a Nyarlathotep event opens its settings under it, filled in from the server, with a Set per field.
+- Every unit field has a searchable list of about 430 game units (also used by Uriel's pickers).
+- New **Admin: Units** tab: the event units around you with level, health and position, unit counts per event, and
+  test spawn.
+- Fixed: "[denied]" and "Command not found" lines on login, other mods' menu groups popping open, and the event list
+  staying on "ending" after an event finished.
 
 ## 0.70.0 — Uriel Castle Events (alpha)
 
