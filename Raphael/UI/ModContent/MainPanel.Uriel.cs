@@ -1564,25 +1564,17 @@ public partial class MainPanel
 
         AddCollapsibleHelpDetail(page, "Castle Events (alpha, off by default)",
             "Everything acts on the castle plot you stand in: your own castle (clan counts), any castle for admins. " +
-            "Needs CastleEvents.Enabled; players also need CastleEvents.PlayerEvents.
-" +
+            "Needs CastleEvents.Enabled; players also need CastleEvents.PlayerEvents.\n" +
             "• .uriel event marker (group) (mob|boss) [unit|-] [count] [level] [contain|-] — a marker at your feet; the " +
-            "group's floor is the one you stand on. Contain: plot, room, storey, a leash in metres (3-60), or room,15.
-" +
-            "• .uriel event door / undoor (group) — the castle door within 6 m stays shut until the group falls.
-" +
-            "• .uriel event squad (group) (squad|-) · remove (#id|group) · list.
-" +
-            "• .uriel event start [template|-] [options] · stop · status · history.
-" +
+            "group's floor is the one you stand on. Contain: plot, room, storey, a leash in metres (3-60), or room,15.\n" +
+            "• .uriel event door / undoor (group) — the castle door within 6 m stays shut until the group falls.\n" +
+            "• .uriel event squad (group) (squad|-) · remove (#id|group) · list.\n" +
+            "• .uriel event start [template|-] [options] · stop · status · history.\n" +
             "• Options, one comma-separated word: easy|normal|hard|brutal, level=N, level+N, auto+N, hp*X, dmg*X, " +
-            "speed*X, aspd*X (0.1-10), limit=15m, faction=keep.
-" +
+            "speed*X, aspd*X (0.1-10), limit=15m, faction=keep.\n" +
             "• Library: .uriel squad create|add|extend|remove|weight|show|list|delete, .uriel floor create|assign|show|" +
-            "list|delete, .uriel template create|floor|options|show|list|delete.
-" +
-            "• Admin: .uriel unit spawn|list|kill|despawn|clear|purge|status|rooms|probe|probemap|door.
-" +
+            "list|delete, .uriel template create|floor|options|show|list|delete.\n" +
+            "• Admin: .uriel unit spawn|list|kill|despawn|clear|purge|status|rooms|probe|probemap|door.\n" +
             "• Chat cuts a line at about 120 characters; Raphael refuses to send a longer one. Use short unit names " +
             "(Foreman_VBlood works for CHAR_Bandit_Foreman_VBlood) and add long lists with extend.");
 
