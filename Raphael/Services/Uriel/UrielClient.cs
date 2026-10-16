@@ -112,5 +112,35 @@ internal static class UrielClient
     public static void RemoveStairs()          => SendUser(".uriel removestairs nearest");
     public static void ShowStairStyles()       => SendUser(".uriel stairstyles nearest");
 
+    // ---- Castle Events (Uriel 0.21.0, alpha; RAPHAEL_CASTLE_EVENTS_HANDOFF.md) ----
+    // Every `.uriel event|squad|floor|template|unit …` command goes through SendEvent: it refuses a line
+    // the game would truncate (handoff §2 — the cut-off tail silently falls back to defaults, which could
+    // spawn the wrong units) and opens UrielEvents' reply window so the tab can echo the answer.
+    // Layout commands act on the plot the caller STANDS in and the door within 6 m — no `nearest` token.
+
+    /// <summary>Send a Castle Events command (visible). Returns false, without sending, when it is too long.</summary>
+    public static bool SendEvent(string cmd)
+    {
+        cmd = (cmd ?? "").Trim();
+        if (cmd.Length == 0) return false;
+        if (cmd.Length > UrielEvents.CHAT_LIMIT)
+        {
+            UrielEvents.NoteRefusedLocally(cmd,
+                $"Not sent: {cmd.Length} characters, and the game cuts chat at about 120. Use shorter unit names " +
+                "(drop the CHAR_ prefix), GUIDs, or add long unit lists in parts with Extend.");
+            return false;
+        }
+        UrielEvents.NoteSent(cmd);
+        SendUser(cmd);
+        return true;
+    }
+
+    /// <summary>Availability probe (handoff §8): the disabled / admin-only refusals tell the tab what to show.</summary>
+    public static void ProbeEvents()
+    {
+        UrielEvents.NoteProbe();
+        Send(".uriel event list");
+    }
+
     private static string Num(int n) => n.ToString(CultureInfo.InvariantCulture);
 }

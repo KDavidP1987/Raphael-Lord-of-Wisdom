@@ -336,10 +336,13 @@ public partial class MainPanel : ResizeablePanelBase
                 (PanelType.UrielStairsTab,       "Stairs"),
                 (PanelType.UrielObjectsTab,      "Object Spawning"),
                 (PanelType.UrielObjectCatalogTab,"Object Catalog"),
+                (PanelType.UrielEventsTab,       "Castle Events"),
+                (PanelType.UrielEventLibraryTab, "Event Library"),
                 (PanelType.UrielSettingsTab,     "Settings"),
                 (PanelType.UrielAdminSharingTab, "Admin: Sharing"),
                 (PanelType.UrielAdminObjectsTab, "Admin: Objects"),
                 (PanelType.UrielAdminConfigTab,  "Admin: Config"),
+                (PanelType.UrielAdminUnitsTab,   "Admin: Units"),
             },
         },
         new TabGroupDef
@@ -2195,6 +2198,15 @@ public partial class MainPanel : ResizeablePanelBase
                 break;
             case PanelType.UrielObjectCatalogTab:
                 BuildUrielObjectCatalogTab(page);
+                break;
+            case PanelType.UrielEventsTab:
+                BuildUrielEventsTab(page);
+                break;
+            case PanelType.UrielEventLibraryTab:
+                BuildUrielEventLibraryTab(page);
+                break;
+            case PanelType.UrielAdminUnitsTab:
+                BuildUrielAdminUnitsTab(page);
                 break;
             case PanelType.UrielSettingsTab:
                 BuildUrielSettingsTab(page);

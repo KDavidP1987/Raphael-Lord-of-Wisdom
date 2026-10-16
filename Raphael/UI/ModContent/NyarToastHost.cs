@@ -33,7 +33,15 @@ internal static class NyarToastHost
     /// <summary>Show one toast. <paramref name="accentHex"/> tints the left bar (e.g. "#E6B85C").</summary>
     public static void Show(string text, string accentHex = "#B48CFF")
     {
-        if (string.IsNullOrEmpty(text) || !Settings.NyarToasts) return;
+        if (!Settings.NyarToasts) return;
+        ShowUngated(text, accentHex);
+    }
+
+    /// <summary>Show a toast without the Nyarlathotep master switch — for other integrations that gate on
+    /// their own setting (Uriel Castle Events → Settings.UrielEventToasts).</summary>
+    public static void ShowUngated(string text, string accentHex = "#B48CFF")
+    {
+        if (string.IsNullOrEmpty(text)) return;
         try
         {
             if (!EnsureStack()) return;

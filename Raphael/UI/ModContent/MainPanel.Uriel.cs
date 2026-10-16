@@ -57,6 +57,7 @@ public partial class MainPanel
         UrielProtocolService.ScanNoteChanged -= RebuildUrielCatalogRows;
         UrielProtocolService.ScanNoteChanged -= RefreshUrielStateReadout;
         UrielBuildMode.ActiveChanged -= RefreshUrielBuildToggle;
+        UnsubscribeUrielEvents();
         _urielSubscribed = false;
     }
 
@@ -1488,6 +1489,12 @@ public partial class MainPanel
             "press <b>Refresh my unlocked list</b>, and click <b>Spawn</b> next to anything you've unlocked to " +
             "place it on your plot. The progress line shows how much of the collectible set you've found.");
 
+        AddGuideSection(page, "5. Run a castle event (alpha)",
+            "If the server admin has turned Castle Events on, open <b>Castle Events</b>. Type a group name, walk to " +
+            "where units should appear and press <b>Mob marker here</b> / <b>Boss marker here</b>; stand by a door and " +
+            "press <b>Bind nearest door</b>. Build a squad on <b>Event Library</b> (or give each marker its own unit), " +
+            "then press <b>Start</b>. The run panel shows the clock, groups cleared and bosses left.");
+
         AddGuideSection(page, "Don't see the Uriel tabs?",
             "They only appear once Raphael confirms Uriel on your server — which can lag a few seconds after switching " +
             "servers. If the group is greyed or missing:\n" +
@@ -1554,6 +1561,30 @@ public partial class MainPanel
             "• Machine API (what Raphael calls): .uriel api version | catalog (page) | unlocked (page) — return " +
             "[URIEL:*] lines Raphael parses into the Object Spawning tab. Turn on Uriel → Settings → Diagnostics to " +
             "see this traffic in the log.");
+
+        AddCollapsibleHelpDetail(page, "Castle Events (alpha, off by default)",
+            "Everything acts on the castle plot you stand in: your own castle (clan counts), any castle for admins. " +
+            "Needs CastleEvents.Enabled; players also need CastleEvents.PlayerEvents.
+" +
+            "• .uriel event marker (group) (mob|boss) [unit|-] [count] [level] [contain|-] — a marker at your feet; the " +
+            "group's floor is the one you stand on. Contain: plot, room, storey, a leash in metres (3-60), or room,15.
+" +
+            "• .uriel event door / undoor (group) — the castle door within 6 m stays shut until the group falls.
+" +
+            "• .uriel event squad (group) (squad|-) · remove (#id|group) · list.
+" +
+            "• .uriel event start [template|-] [options] · stop · status · history.
+" +
+            "• Options, one comma-separated word: easy|normal|hard|brutal, level=N, level+N, auto+N, hp*X, dmg*X, " +
+            "speed*X, aspd*X (0.1-10), limit=15m, faction=keep.
+" +
+            "• Library: .uriel squad create|add|extend|remove|weight|show|list|delete, .uriel floor create|assign|show|" +
+            "list|delete, .uriel template create|floor|options|show|list|delete.
+" +
+            "• Admin: .uriel unit spawn|list|kill|despawn|clear|purge|status|rooms|probe|probemap|door.
+" +
+            "• Chat cuts a line at about 120 characters; Raphael refuses to send a longer one. Use short unit names " +
+            "(Foreman_VBlood works for CHAR_Bandit_Foreman_VBlood) and add long lists with extend.");
 
         AddGuideSection(page, "Admin commands",
             "All admin commands require V Rising admin status (the server enforces it — a non-admin just gets a " +
