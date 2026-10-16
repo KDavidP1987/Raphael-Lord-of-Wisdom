@@ -30,7 +30,7 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
   - **Beelzebub** — Bestiary, Loadout (universal + per-weapon + per-form ability sets), Hotkeys, Transforms, Settings, admin Config / Players.
   - **Faust** — Castle Info, Open/All Plots, Decay Watch, Castle Resources, Player Info, Clans, Player Positions, Server Stats, **Boss Status**, **Leaderboards**, **World Map**, admin Control / Oversight.
   - **Uriel** — Storage Sharing, Prisons, Stairs, Object Spawning, Object Catalog, **Castle Events** (alpha: drop mob and boss markers, bind doors, start and time runs with a live readout and on-screen notices), **Event Library** (squads, floor templates, templates), Settings, admin Sharing / Objects / Config / **Units**.
-  - **Nyarlathotep** — Live Events (regions, wave countdowns, on-screen notices), Settings, admin Events / Templates / Pillars / Announce / Kill Switch. Leaderboards, My Stats and Zones are ready for when Nyarlathotep adds them.
+  - **Nyarlathotep** — Live Events (regions, wave countdowns, on-screen notices), Settings, admin Events (with an inline editor per event and a searchable unit list) / **Units** (event units near you with positions) / Templates / Pillars / Announce / Kill Switch. Leaderboards, My Stats and Zones are ready for when Nyarlathotep adds them.
   - **Settings & Help** — Quick Start, per-mod Help guides, **V Rising Basics** (in-built base-game guide), Game Guide (external links), Settings, **Chat & Diagnostics**, About.
 - **Secondary overlays** (toggle from the footer) — XP, Familiar, Familiar Browser, Daily Quest, Professions, Shift Spell, a Combined info overlay, Quick Actions, a Familiar Quick Spawn overlay, and a Faust Boss Tracker. Each is independently draggable/resizable with its own transparency; visibility persists across sessions.
 - **Freeze actions while the UI is open** (opt-in) — stop moving/attacking/casting and block menu hotkeys while you click around the panel.
@@ -220,7 +220,7 @@ What's planned next. These are plans, not promises. Server-mod features show up 
 
 **Nyarlathotep**
 
-- Live operations: an event's current settings, a live event view with map pins, unit lookup with despawn and go-to, and wave-cleared updates.
+- Live operations: every event unit on the map with go-to and despawn (Admin: Units shows the ones near you today), exact current settings in the event editor, a live event view with map pins, and wave-cleared updates.
 - Communications: a catch-up list of what was announced while you were offline, start warnings, and scheduled or repeating messages.
 - Stats: leaderboards, personal stats, hide / show and sharing. The tabs are ready; the server part is planned.
 - Defended zones: list, add and remove zones. The tab is ready; the server part is planned.

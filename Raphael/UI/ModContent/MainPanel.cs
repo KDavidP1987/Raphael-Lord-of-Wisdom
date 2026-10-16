@@ -390,6 +390,7 @@ public partial class MainPanel : ResizeablePanelBase
                 (PanelType.NyarMyStatsTab,         "My Stats"),
                 (PanelType.NyarSettingsTab,        "Settings"),
                 (PanelType.NyarAdminEventsTab,     "Admin: Events"),
+                (PanelType.NyarAdminUnitsTab,      "Admin: Units"),
                 (PanelType.NyarAdminTemplatesTab,  "Admin: Templates"),
                 (PanelType.NyarAdminPillarsTab,    "Admin: Pillars"),
                 (PanelType.NyarAdminZonesTab,      "Admin: Zones"),
@@ -1855,9 +1856,13 @@ public partial class MainPanel : ResizeablePanelBase
         // fix for the reported bug: a server WITHOUT Bloodcraft used to force-open the Bloodcraft
         // "handshake failed" diagnostic over the mod that's actually active (Beelzebub). Now the active
         // mod wins, and the Bloodcraft diagnostic only auto-opens when there's nothing else to show.
+        // 0.71.0: the diagnostic fallback also yields to Uriel / Faust / Nyarlathotep — on a Nyarlathotep-only
+        // server the Bloodcraft "not detected" panel kept re-opening on every Nyarlathotep state change.
+        bool otherMod = AnyModGroupAvailable();
         string primary =
               bc   ? "Bloodcraft"
             : bz   ? "Beelzebub"
+            : otherMod ? null
             : bcDg ? "Bloodcraft"
             : bzDg ? "Beelzebub"
             : null;
@@ -1908,6 +1913,12 @@ public partial class MainPanel : ResizeablePanelBase
         return ActiveTab;   // default (FamiliarsTab) until a handshake confirms a mod
     }
 
+    private readonly System.Collections.Generic.HashSet<string> _groupWasDiagnostic = new();
+
+    private bool AnyModGroupAvailable()
+        => IsTabGroupAvailable("Bloodcraft") || IsTabGroupAvailable("Beelzebub") || IsTabGroupAvailable("Uriel")
+        || IsTabGroupAvailable("Faust") || IsTabGroupAvailable("Nyarlathotep");
+
     private void RefreshTabGroupAvailability(string title)
     {
         bool available  = IsTabGroupAvailable(title);
@@ -1918,7 +1929,13 @@ public partial class MainPanel : ResizeablePanelBase
         // 0.15.0: if we just entered diagnostic state, auto-expand the group so
         // the user sees the explanation immediately instead of staring at a
         // grayed header that gives no hint of WHY.
-        if (diagnostic && !expanded)
+        // 0.71.0: only on the actual transition into diagnostic state, never for a group the user toggled, and
+        // only when no server mod is available at all. This ran on EVERY availability refresh, and Nyarlathotep
+        // state changes (a pillar toggle re-reads version) refresh every group, so the Bloodcraft / Beelzebub /
+        // Uriel / Faust "not detected" groups kept popping open while the user worked in a Nyarlathotep tab.
+        bool enteredDiagnostic = diagnostic && _groupWasDiagnostic.Add(title);
+        if (!diagnostic) _groupWasDiagnostic.Remove(title);
+        if (enteredDiagnostic && !expanded && !_userToggledGroups.Contains(title) && !AnyModGroupAvailable())
         {
             _groupExpanded[title] = true;
             expanded = true;
@@ -1942,7 +1959,7 @@ public partial class MainPanel : ResizeablePanelBase
         {
             // Auto-expand on diagnostic, otherwise preserve user agency.
             // If currently expanded but no longer accessible, collapse it.
-            if (diagnostic && !go.activeSelf) go.SetActive(true);
+            if (diagnostic && expanded && !go.activeSelf) go.SetActive(true);
             else if (!headerInteractable && go.activeSelf) go.SetActive(false);
         }
 
@@ -2279,6 +2296,7 @@ public partial class MainPanel : ResizeablePanelBase
             case PanelType.NyarMyStatsTab:         BuildNyarMyStatsTab(page); break;
             case PanelType.NyarSettingsTab:        BuildNyarSettingsTab(page); break;
             case PanelType.NyarAdminEventsTab:     BuildNyarAdminEventsTab(page); break;
+            case PanelType.NyarAdminUnitsTab:      BuildNyarAdminUnitsTab(page); break;
             case PanelType.NyarAdminTemplatesTab:  BuildNyarAdminTemplatesTab(page); break;
             case PanelType.NyarAdminPillarsTab:    BuildNyarAdminPillarsTab(page); break;
             case PanelType.NyarAdminZonesTab:      BuildNyarAdminZonesTab(page); break;
@@ -10891,6 +10909,7 @@ public partial class MainPanel : ResizeablePanelBase
             _availabilitySubscribed = false;
         }
         _userToggledGroups.Clear(); // F1: next server re-applies the detection-based default expansion
+        _groupWasDiagnostic.Clear();
         UnsubscribeBeelz(); // 0.18: drop BeelzState handlers so they don't leak across rebuilds
         UnsubscribeUriel(); // 0.26: same, for UrielState handlers
         UnsubscribeFaust(); // drop FaustState handlers so they don't leak across rebuilds

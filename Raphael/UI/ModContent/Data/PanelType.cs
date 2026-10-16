@@ -112,6 +112,7 @@ public enum PanelType
     NyarMyStatsTab,         // player: api me (today/week/all) + hide/show + Share
     NyarSettingsTab,        // client-side settings: diagnostics, handshake switches readout
     NyarAdminEventsTab,     // admin: api events list + start/stop/enable/disable/reload/set + test spawn
+    NyarAdminUnitsTab,      // 0.71.0 admin: tracked units near you (debug here, parsed) + per-event counts + test spawn
     NyarAdminZonesTab,      // admin: api zones list + add-here/remove
     NyarAdminAnnounceTab,   // admin: announce text + the five announcement switches (read-only)
     NyarAdminKillSwitchTab, // admin: purge (two-step) + kill-switch countdown + stats reset

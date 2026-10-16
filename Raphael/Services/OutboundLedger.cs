@@ -52,6 +52,28 @@ internal static class OutboundLedger
     {
         if (!IsCommand(text)) return;
         _lastBackground = Now;
+        // 0.71.0: remember WHICH command went out, so a "Command not found: .beelz api version" reply can be matched
+        // to Raphael's own probe even when the player also sent something in the same window.
+        _recentBg[_recentBgNext] = (text.Trim(), Now);
+        _recentBgNext = (_recentBgNext + 1) % _recentBg.Length;
+    }
+
+    private static readonly (string Text, float At)[] _recentBg = new (string, float)[24];
+    private static int _recentBgNext;
+
+    /// <summary>True when <paramref name="line"/> quotes a command Raphael sent in the background within
+    /// <paramref name="seconds"/> (VCF's "Command not found: &lt;cmd&gt;" names the command it couldn't run).</summary>
+    public static bool NamesRecentBackgroundCommand(string line, float seconds)
+    {
+        if (string.IsNullOrEmpty(line)) return false;
+        string plain = System.Text.RegularExpressions.Regex.Replace(line, "<[^>]*>", "");
+        float now = Now;
+        foreach (var (text, at) in _recentBg)
+        {
+            if (string.IsNullOrEmpty(text) || now - at >= seconds) continue;
+            if (plain.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        }
+        return false;
     }
 
     public static void RecordUser(string text, string source)
@@ -76,6 +98,7 @@ internal static class OutboundLedger
     {
         _lastBackground = float.NegativeInfinity;
         _lastUser = float.NegativeInfinity;
+        Array.Clear(_recentBg, 0, _recentBg.Length); _recentBgNext = 0;
         for (int i = 0; i < _lastUserByMod.Length; i++) _lastUserByMod[i] = float.NegativeInfinity;
     }
 

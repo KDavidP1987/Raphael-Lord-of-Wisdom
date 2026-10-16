@@ -160,8 +160,14 @@ internal static class NyarClient
     internal static void PurgeConfirm()                => SendNext(".nyar api purge confirm");
 
     // Human-only on api 8 (no twin): their replies show in chat for the admin to read.
-    public static void EventInfo(string id)            => SendUser($".nyar event info {Tok(id)}");
-    public static void DebugHere(int radius)           => SendUser(radius > 0 ? $".nyar debug here {Num(radius)}" : ".nyar debug here");
+    // 0.71.0: NyarCapture reads these two replies for the event editor and the Units tab (they still show in chat).
+    public static void EventInfo(string id)            { NyarCapture.BeginInfo(Tok(id)); SendUser($".nyar event info {Tok(id)}"); }
+    public static void DebugHere(int radius)
+    {
+        NyarCapture.BeginUnits(radius);
+        SendUser(radius > 0 ? $".nyar debug here {Num(radius)}" : ".nyar debug here");
+    }
+    public static void EventSetGoalHere(string id)     => Admin($"event set {Tok(id)} action.goal here");
     public static void Spawn(string args)              => SendUser($".nyar spawn {args.Trim()}");
     public static void Announce(string text)           => SendUser($".nyar announce \"{(text ?? "").Replace('"', '\'').Trim()}\"");
     public static void ZoneAdd(string name, int radius) => SendUser($".nyar zone add {Tok(name)} {Num(radius)}");

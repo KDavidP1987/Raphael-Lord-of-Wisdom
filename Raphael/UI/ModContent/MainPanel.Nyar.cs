@@ -17,7 +17,7 @@ namespace Raphael.UI.ModContent;
 //
 // Players: Live Events (api status + push stream, region chips, per-wave countdown, the regions read),
 // Leaderboards (api top + Share), My Stats (api me + hide/show), Settings (diagnostics + notification switches).
-// Admins: Events (defs + twin actions + unstick + new/copy/delete + field editor + units/test spawn),
+// Admins: Events (defs + twin actions + unstick + new/copy/delete + inline editor, MainPanel.NyarEditor.cs), Units,
 // Templates, Pillars, Zones, Announce, Kill Switch. Admin tabs are inline-gated (BeginAdminGate); the server
 // re-checks every command. From api 4 admin actions go out as wire twins (one ok/err line, shown as the
 // result line); against an older server they're the human commands and the reply shows in chat.
@@ -42,9 +42,8 @@ public partial class MainPanel
     private GameObject _nyarMeListGo;
     private TextMeshProUGUI _nyarStateReadout;
     private GameObject _nyarDefsListGo;
-    private InputFieldRef _nyarDefIdInput, _nyarDefFieldInput, _nyarDefValueInput;
     private InputFieldRef _nyarNewIdInput, _nyarNewPillarInput, _nyarCopyFromInput, _nyarCopyToInput;
-    private InputFieldRef _nyarSpawnUnitInput, _nyarSpawnCountInput, _nyarSpawnLevelInput, _nyarSpawnHpInput, _nyarSpawnPowerInput;
+    private InputFieldRef _nyarSpawnCountInput, _nyarSpawnLevelInput, _nyarSpawnHpInput, _nyarSpawnPowerInput;
     private InputFieldRef _nyarNearRadiusInput;
     private GameObject _nyarTplListGo;
     private TextMeshProUGUI _nyarTplStatus;
@@ -78,6 +77,9 @@ public partial class MainPanel
         NyarState.ResultChanged    += RefreshNyarResults;
         NyarProtocolService.AvailabilityChanged += OnNyarPresenceChanged;
         NyarProtocolService.CountdownTick += RefreshNyarCountdowns;
+        NyarState.StatusChanged    += RebuildNyarUnitCounts;
+        NyarCapture.InfoChanged    += OnNyarInfoCaptured;
+        NyarCapture.UnitsChanged   += RebuildNyarUnits;
         _nyarSubscribed = true;
     }
 
@@ -97,6 +99,9 @@ public partial class MainPanel
         NyarState.ResultChanged    -= RefreshNyarResults;
         NyarProtocolService.AvailabilityChanged -= OnNyarPresenceChanged;
         NyarProtocolService.CountdownTick -= RefreshNyarCountdowns;
+        NyarState.StatusChanged    -= RebuildNyarUnitCounts;
+        NyarCapture.InfoChanged    -= OnNyarInfoCaptured;
+        NyarCapture.UnitsChanged   -= RebuildNyarUnits;
         _nyarSubscribed = false;
     }
 
@@ -610,88 +615,12 @@ public partial class MainPanel
             NyarBeginAction(); NyarClient.EventCopy(from, to);
         }, 70);
 
-        // Field editor.
+        // 0.71.0: field editing moved into each event's inline editor (Edit…), and units to the Admin: Units tab.
         AddSpacer(page, 6);
-        var edit = AddCard(page, "NyarDefEditCard");
-        AddSectionHeading(edit, "Edit one field");
-        AddBodyText(edit,
-            $"Sends {Mono("event set <id> <field> <value>")}. Pick a field from the list (replace {Mono("N")} / {Mono("M")} with a wave or unit number), " +
-            "type the value, then Set. The server validates it and echoes the stored value. A trigger field needs its trigger type, an action field its action type. " +
-            "Raphael can't read an event's current values yet — use <b>Show in chat</b> to see them.", Theme.ScaledUI(12));
-        var fr = MakeUrielRow(edit, "NyarDefFieldPickRow");
-        var fieldOpts = new[] { "Pick a field…" }.Concat(NyarSettableFields).ToArray();
-        var ddObj = UIFactory.CreateDropdown(fr, "NyarFieldPicker", out var fieldDd, fieldOpts[0], 11, i =>
-        {
-            if (i > 0 && i < fieldOpts.Length && _nyarDefFieldInput != null) _nyarDefFieldInput.Text = fieldOpts[i];
-        }, fieldOpts);
-        UIFactory.SetLayoutElement(ddObj, minWidth: Theme.ScaledWidth(260), preferredWidth: Theme.ScaledWidth(260), flexibleWidth: 0,
-            minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
-        try { Raphael.UI.Forms.FormDropdownRegistry.Register(fieldDd); } catch { }
-        var er = MakeUrielRow(edit, "NyarDefEditRow");
-        _nyarDefIdInput    = AddNyarInput(er, "NyarDefId", "event id", 120);
-        _nyarDefFieldInput = AddNyarInput(er, "NyarDefField", "field", 170);
-        _nyarDefValueInput = AddNyarInput(er, "NyarDefValue", "value", 150);
-        var er2 = MakeUrielRow(edit, "NyarDefEditRow2");
-        AddUrielButton(er2, "NyarDefSet", "Set", "Apply this field change.", () =>
-        {
-            string id = Tok(_nyarDefIdInput), field = Tok(_nyarDefFieldInput), val = Tok(_nyarDefValueInput);
-            if (id.Length == 0 || field.Length == 0 || val.Length == 0) { NyarState.SetError("event set", "Fill in the event id, field and value."); return; }
-            if (field.Contains(".N") || field.Contains(".M")) { NyarState.SetError("event set", "Replace N / M in the field with a number."); return; }
-            NyarBeginAction(); NyarClient.EventSet(id, field, val);
-            if (!NyarState.SupportsTwins) NyarProtocolService.RefreshDefs();
-        }, 70);
-        AddUrielButton(er2, "NyarDefLocHere", "Location here", "Set the event's location to where you stand (event set <id> location here).", () =>
-        {
-            string id = Tok(_nyarDefIdInput);
-            if (id.Length == 0) { NyarState.SetError("event set", "Enter the event id first."); return; }
-            NyarBeginAction(); NyarClient.EventSetLocationHere(id);
-        }, 120);
-        AddUrielButton(er2, "NyarDefInfo", "Show in chat", "Print this event's full definition and run state in chat (.nyar event info <id>).", () =>
-        {
-            string id = Tok(_nyarDefIdInput);
-            if (id.Length == 0) { NyarState.SetError("event info", "Enter the event id first."); return; }
-            NyarClient.EventInfo(id);
-        }, 120);
-
-        // Units (no wire read on api 8: human commands, replies in chat).
-        AddSpacer(page, 6);
-        var units = AddCard(page, "NyarUnitsCard");
-        AddSectionHeading(units, "Units");
-        AddBodyText(units, $"<b>Units near me</b> lists the tracked units around you in chat ({Mono(".nyar debug here [radius]")}). " +
-            $"<b>Test spawn</b> spawns next to you: {Mono(".nyar spawn <unit> [count] [level] [hp×] [power×]")}; leave optional fields blank for defaults.",
+        var hint = AddCard(page, "NyarEditHintCard");
+        AddBodyText(hint, "<b>To change an event</b>, press <b>Edit…</b> on it: its settings open right under it, filled in from the server. " +
+            "Unit fields have a searchable unit list. <b>Admin: Units</b> lists the event units around you and has the test spawn.",
             Theme.ScaledUI(12));
-        var ur = MakeUrielRow(units, "NyarNearRow");
-        _nyarNearRadiusInput = AddNyarInput(ur, "NyarNearRadius", "radius (m, optional)", 140);
-        AddUrielButton(ur, "NyarNearGo", "Units near me", "List tracked units around you in chat (.nyar debug here).", () =>
-        {
-            string r = Tok(_nyarNearRadiusInput);
-            int radius = 0;
-            if (r.Length > 0 && (!int.TryParse(r, NumberStyles.Integer, CultureInfo.InvariantCulture, out radius) || radius <= 0))
-            { NyarState.SetError("debug here", "Radius must be a whole number of metres."); return; }
-            NyarClient.DebugHere(radius);
-        }, 120);
-        var sr = MakeUrielRow(units, "NyarSpawnRow");
-        _nyarSpawnUnitInput  = AddNyarInput(sr, "NyarSpawnUnit", "unit (name or GUID)", 170);
-        _nyarSpawnCountInput = AddNyarInput(sr, "NyarSpawnCount", "count", 60);
-        _nyarSpawnLevelInput = AddNyarInput(sr, "NyarSpawnLevel", "level", 60);
-        _nyarSpawnHpInput    = AddNyarInput(sr, "NyarSpawnHp", "hp×", 55);
-        _nyarSpawnPowerInput = AddNyarInput(sr, "NyarSpawnPower", "power×", 60);
-        var sr2 = MakeUrielRow(units, "NyarSpawnRow2");
-        AddUrielButton(sr2, "NyarSpawnGo", "Test spawn", "Send the test spawn.", () =>
-        {
-            string unit = NyarClient.Tok(Tok(_nyarSpawnUnitInput));
-            if (unit.Length == 0) { NyarState.SetError("spawn", "Enter a unit to spawn."); return; }
-            // Optional args are positional — stop at the first blank so later ones don't shift left.
-            var args = new List<string> { unit };
-            foreach (var f in new[] { _nyarSpawnCountInput, _nyarSpawnLevelInput, _nyarSpawnHpInput, _nyarSpawnPowerInput })
-            {
-                string t = Tok(f);
-                if (t.Length == 0) break;
-                if (!float.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out _)) { NyarState.SetError("spawn", $"'{t}' isn't a number."); return; }
-                args.Add(t);
-            }
-            NyarClient.Spawn(string.Join(" ", args));
-        }, 110);
 
         if (!NyarState.DefsLoaded) NyarProtocolService.RefreshDefs();
         RebuildNyarDefs();
@@ -736,8 +665,10 @@ public partial class MainPanel
             else
                 AddUrielButton(row, "NyarDefEnable", "Enable", $"Allow {id} to be scheduled (event enable {id}).",
                     () => { NyarBeginAction(); NyarClient.EventEnable(id); if (!NyarState.SupportsTwins) NyarProtocolService.RefreshDefs(); }, 74);
-            AddUrielButton(row, "NyarDefEdit", "Edit…", "Put this id in the field editor below.",
-                () => { if (_nyarDefIdInput != null) _nyarDefIdInput.Text = id; }, 60);
+            bool editing = _nyarEditId == id;
+            AddUrielButton(row, "NyarDefEdit", editing ? "Close" : "Edit…",
+                editing ? "Close this event's editor." : $"Open {id}'s settings right under it, filled in from the server (reads .nyar event info {id}).",
+                () => OpenNyarEditor(id), 60);
             AddUrielButton(row, "NyarDefInfoBtn", "Info", $"Print {id}'s definition and run state in chat (.nyar event info {id}).",
                 () => NyarClient.EventInfo(id), 54);
             if (NyarState.SupportsTwins)
@@ -748,6 +679,7 @@ public partial class MainPanel
                     AddUrielConfirmButton(row, $"NyarDefDelete_{id}", "Delete", $"Delete {id} from events.json (event delete {id}, then confirm).",
                         () => { NyarBeginAction(); NyarClient.EventDelete(id); }, 70, new Color(0.55f, 0.15f, 0.15f, 1f));
             }
+            if (editing) BuildNyarInlineEditor(box, d);
         }
     }
 

@@ -3,7 +3,7 @@
 The engineering roadmap. The short player-facing version is the **Roadmap** section of
 [`README.md`](../README.md#roadmap). This file adds the detail needed to start an item.
 
-Last reviewed: **v0.70.0** (2026-10-15).
+Last reviewed: **v0.71.0** (2026-10-15).
 
 Status: **Planned** (agreed, not started) · **Spike** (needs a prototype first) · **Waiting** (needs a
 server-mod release) · **Deferred** · **Done**.
@@ -34,6 +34,9 @@ Each item waits on the server mod named. The source docs live in that mod's repo
 | Beelzebub | Ability library: names, descriptions, when-to-use hints, damage multiplier | Planned | Beelzebub `docs/BCH_INTEGRATION_HANDOFF.md` |
 | Beelzebub | Buttons for `unmount`, `bar-raw`, `damage-stats`, `ability-set` | Planned | Commands exist server-side; no UI yet |
 | Nyarlathotep | Live operations (api 9): field reads, live event view, unit lookup, wave-cleared pushes | Waiting | `RAPHAEL_HANDOFF_API8.md` §5 |
+| Nyarlathotep | Map-wide unit list with go-to / despawn on Admin: Units | Waiting | Needs `.nyar api units` + `api unit goto|despawn`. 0.71.0 parses `debug here` (100 m max). Asked in `docs/NYAR_FEEDBACK_2026-10-15.md` §4. |
+| Nyarlathotep | Exact pre-fill in the event editor | Waiting | Needs `.nyar api fields event <id>`. 0.71.0 parses the `event info` text. Feedback §5. |
+| Nyarlathotep | Apocalypse "goal: starting admin" can't start | Waiting | Server bug (feedback §1). Raphael shows the Goal here workaround. |
 | Nyarlathotep | Communications (api 10): notice push, catch-up read, scheduled messages | Waiting | `RAPHAEL_HANDOFF_API8.md` §6 |
 | Nyarlathotep | Stats: `me` / `top` reads, hide / show, share | Waiting | Contract: PLANNED. Raphael tabs are built and gated. |
 | Nyarlathotep | Defended zones: `zones` read, add / remove | Waiting | Contract: PLANNED. Raphael tab is built and gated (`NyarState.SupportsZoneReads`). |

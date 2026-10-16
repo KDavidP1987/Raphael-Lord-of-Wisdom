@@ -51,6 +51,16 @@ internal static class NyarProtocolService
     private static float _lastCountdownAt;
     private static bool _loginToastPending;
 
+    // 0.71.0: a follow-up status read when the soonest countdown runs out. An event that ends goes to
+    // state=ending (units leaving, ~30 s) and the server sends no push when that finishes, so without this the
+    // row lingered until the 60 s / 5 min poll.
+    private static float _statusDueAt;
+
+    // 0.71.0: admin rights can change mid-session (adminauth). The version line's admin= only updates on a re-read,
+    // so watch the local User.IsAdmin flag and re-read version when it flips.
+    private static bool _lastLocalAdmin;
+    private static float _lastAdminCheckAt;
+
     // ---- accumulators (committed on the matching [NYAR:end]) ----
     private static readonly List<NyarEvent>    _accStatus = new();
     private static readonly List<NyarMeRow>    _accMe = new();
@@ -97,6 +107,15 @@ internal static class NyarProtocolService
             && t - _lastRefetchAt >= REFETCH_DEBOUNCE_SECONDS)
             FlushRefetch();
 
+        if (t - _lastAdminCheckAt >= 2f)
+        {
+            _lastAdminCheckAt = t;
+            bool localAdmin = MessageService.IsLocalAdmin();
+            if (localAdmin != _lastLocalAdmin) { _lastLocalAdmin = localAdmin; _needVersion = true; }
+        }
+
+        if (_statusDueAt > 0f && t >= _statusDueAt) { _statusDueAt = 0f; RefreshStatus(); }
+
         if (NyarState.SupportsReads)
         {
             bool visible = false;
@@ -122,9 +141,11 @@ internal static class NyarProtocolService
         _lastRefetchAt = _lastCountdownAt = _lastStatusAt = _lastKillswitchAt = 0f;
         _needStatus = _needVersion = _needDefs = _needMe = _needPillars = _needKillswitch = _needRegions = false;
         _loginToastPending = false;
+        _statusDueAt = _lastAdminCheckAt = 0f; _lastLocalAdmin = false;
         _accStatus.Clear(); _accMe.Clear(); _accTop.Clear(); _accDefs.Clear(); _accZones.Clear();
         _accRegions.Clear(); _accTemplates.Clear(); _accPillars.Clear(); _templatesPillar = _templatesWanted = "";
         NyarClient.ResetQueue();
+        NyarCapture.Reset();
         NyarState.Reset();
     }
 
@@ -141,13 +162,15 @@ internal static class NyarProtocolService
         if (!NyarState.SupportsReads || !NyarState.StatsOn) return;
         NyarClient.RequestTop(stat, window, Math.Max(1, page));
     }
-    public static void RefreshDefs()    { if (!NyarState.SupportsReads) return; NyarClient.RequestEvents(1); }
+    // Admin reads (events, pillars, killswitch, templates) go out only when the server said admin=1. Tab pages are
+    // prewarmed for everyone, and a non-admin's read answers `[vcf] [denied] …` in chat and stalls the queue for 5 s.
+    public static void RefreshDefs()    { if (!NyarState.SupportsReads || !NyarState.ServerAdmin) return; NyarClient.RequestEvents(1); }
     public static void RefreshZones()   { if (!NyarState.SupportsZoneReads) return; NyarClient.RequestZones(1); }
     public static void RefreshRegions() { if (!NyarState.SupportsRegions) return; NyarClient.RequestRegions(1); }
-    public static void RefreshPillars() { if (!NyarState.SupportsTwins) return; NyarClient.RequestPillars(); }
+    public static void RefreshPillars() { if (!NyarState.SupportsTwins || !NyarState.ServerAdmin) return; NyarClient.RequestPillars(); }
     public static void RefreshKillswitch()
     {
-        if (!NyarState.SupportsTwins) return;
+        if (!NyarState.SupportsTwins || !NyarState.ServerAdmin) return;
         _lastKillswitchAt = Time.realtimeSinceStartup;
         NyarClient.RequestKillswitch();
     }
@@ -202,6 +225,7 @@ internal static class NyarProtocolService
             return;
         }
 
+        _lastLocalAdmin = MessageService.IsLocalAdmin();   // the version line just told us; no re-read needed
         LogUtils.LogInfo($"[Nyar] Nyarlathotep detected (api={NyarState.ApiVersion}, plugin={NyarState.PluginVersion}, admin={(NyarState.ServerAdmin ? 1 : 0)}).");
         FireAvailability();
         if (!NyarState.SupportsReads) return;   // api 1 = handshake only
@@ -277,6 +301,7 @@ internal static class NyarProtocolService
         {
             case "status":
                 NyarState.SetStatus(_accStatus.ToArray()); _accStatus.Clear(); NyarState.ClearError();
+                ScheduleStatusFollowUp();
                 if (_loginToastPending) { _loginToastPending = false; LoginToast(); }
                 break;
             case "me":     NyarState.SetMe(_accMe.ToArray()); _accMe.Clear(); break;
@@ -309,10 +334,24 @@ internal static class NyarProtocolService
         }
     }
 
+    // Re-read status 2 s after the soonest countdown ends: an "ending" row (units leaving) or an active event whose
+    // end push got lost would otherwise sit there until the next poll.
+    private static void ScheduleStatusFollowUp()
+    {
+        int soonest = int.MaxValue;
+        foreach (var e in NyarState.ActiveEvents)
+        {
+            int left = e.SecondsLeftNow;
+            if (left >= 0 && left < soonest) soonest = left;
+        }
+        // A row already at 0 (the server still reports it) is re-checked every 10 s, not in a tight loop.
+        _statusDueAt = soonest == int.MaxValue ? 0f : Time.realtimeSinceStartup + (soonest == 0 ? 10f : soonest + 2f);
+    }
+
     /// <summary>Remember which pillar filter the next templates read uses (for paging + the commit).</summary>
     public static void BeginTemplatesRead(string pillar)
     {
-        if (!NyarState.SupportsTwins) return;
+        if (!NyarState.SupportsTwins || !NyarState.ServerAdmin) return;
         _templatesWanted = NyarClient.Tok(pillar);
         NyarClient.DropQueued(".nyar api templates");
         NyarClient.RequestTemplates(_templatesWanted, 1);
@@ -430,10 +469,19 @@ internal static class NyarProtocolService
                 };
             case "confirm":   return "The confirmation window expired — try again.";
             case "limit":     return "Skipped: the server is already running its maximum number of events.";
-            case "disabled":  return reason == "pillar_off" ? "That pillar is switched off." : "That feature is switched off on this server.";
+            case "disabled":
+                if (reason == "pillar_off") return "This event's pillar is switched off on the server — turn it on in Nyarlathotep → Admin: Pillars.";
+                if (reason == "general") return "Nyarlathotep is switched off on this server (General.Enabled = false).";
+                return "That feature is switched off on this server.";
             case "notfound":  return $"Not found{(argTxt.Length > 0 ? $" ({argTxt})" : "")}.";
             case "badarg":
                 if (reason == "out_of_region") return "That location is outside the event's regions.";
+                if (reason == "no_position") return "The server couldn't read your position — try again in a moment.";
+                // Nyarlathotep 0.13.0-rc.1 bug: an apocalypse whose goal is "the starting admin" can never start
+                // (the start flow only reads the admin's position for spawn-wave events). Workaround: fix the goal.
+                if (reason == "admin_location")
+                    return "The server can't start an event that marches on the starting admin (a Nyarlathotep bug). " +
+                           "Stand where the goal should be, press Goal here in the event editor, then Start.";
                 return $"Bad argument{(argTxt.Length > 0 ? $": {argTxt}" : "")}{(reason.Length > 0 ? $" ({reason.Replace('_', ' ')})" : "")}.";
             case "noaccess":  return "Admin only.";
             default:          return $"Error '{code}'{(reason.Length > 0 ? $" ({reason})" : "")}.";

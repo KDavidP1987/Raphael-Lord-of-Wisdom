@@ -292,6 +292,9 @@ internal static class ClientChatPatch
                 // echo. It never destroys the entity: the line still reaches chat and the pipelines below.
                 try { Services.Uriel.UrielEvents.Observe(text); }
                 catch (Exception ex) { LogUtils.LogDebug($"UrielEvents.Observe: {ex.Message}"); }
+                // 0.71.0: same observe-only pattern for the Nyarlathotep `event info` / `debug here` human replies.
+                try { Services.Nyar.NyarCapture.Observe(text); }
+                catch (Exception ex) { LogUtils.LogDebug($"NyarCapture.Observe: {ex.Message}"); }
 
                 // 0.17.1 EXPERIMENT: in Eclipse stand-down, do NOT decode the
                 // Eclipse protocol (that's the passive layer Eclipse owns) — leave

@@ -1045,10 +1045,13 @@ public static partial class MessageService
     /// an admin-only command while not admin). Fails open when the vanilla send hook isn't installed, since
     /// vanilla-typed commands then can't be told apart.
     /// </summary>
-    private static bool ShouldHideCommandFrameworkNoise()
+    private static bool ShouldHideCommandFrameworkNoise(string text = null)
     {
         if (!Config.Settings.SuppressCommandFrameworkErrors) return false;
         if (!OutboundLedger.VcfSuppressionAllowed) return false;
+        // 0.71.0: the error quotes one of Raphael's own silent probes (".beelz api version" on a server without
+        // Beelzebub): hide it even if the player sent something else in the same few seconds.
+        if (text != null && OutboundLedger.NamesRecentBackgroundCommand(text, 15f)) return true;
         if (OutboundLedger.UserSentRecently(OutboundLedger.VcfWindowSeconds)) return false;
         return OutboundLedger.BackgroundSentRecently(OutboundLedger.VcfWindowSeconds);
     }
@@ -1069,7 +1072,7 @@ public static partial class MessageService
         // Those are never Raphael's structured data (Beelzebub uses [BEELZ:*]; Bloodcraft replies are
         // color-tagged human text handled by the intercepts below), so eating them is always safe.
         // Checked first + gated by the setting so a user debugging their OWN typed command can see it.
-        if (IsCommandFrameworkNoise(text) && ShouldHideCommandFrameworkNoise())
+        if (IsCommandFrameworkNoise(text) && ShouldHideCommandFrameworkNoise(text))
             return true;
 
         // 0.9.1 / 0.9.2 / 0.9.3: action-confirmation suppress.

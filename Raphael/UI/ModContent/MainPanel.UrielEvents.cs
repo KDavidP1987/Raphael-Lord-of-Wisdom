@@ -144,48 +144,15 @@ public partial class MainPanel
         return btn;
     }
 
-    // Curated unit names for the pickers (Uriel's object catalog has no units — handoff §6B). Sent without the
-    // CHAR_ prefix: any unique ending works, and an ambiguous one is refused with the matches, never guessed.
-    private static readonly string[] UrielEvUnits =
-    {
-        "CHAR_Bandit_Thug", "CHAR_Bandit_Deadeye", "CHAR_Bandit_Hunter", "CHAR_Bandit_Mugger", "CHAR_Bandit_Rascal",
-        "CHAR_Bandit_Scout", "CHAR_Bandit_Stalker", "CHAR_Bandit_Thief", "CHAR_Bandit_Trapper", "CHAR_Bandit_Bomber",
-        "CHAR_Bandit_Wolf",
-        "CHAR_Militia_Guard", "CHAR_Militia_Light", "CHAR_Militia_Heavy", "CHAR_Militia_Crossbow", "CHAR_Militia_Longbowman",
-        "CHAR_Militia_Bomber", "CHAR_Militia_Devoted", "CHAR_Militia_Nun", "CHAR_Militia_Torchbearer", "CHAR_Militia_Hound",
-        "CHAR_Militia_BellRinger",
-        "CHAR_Undead_SkeletonSoldier_Base", "CHAR_Undead_SkeletonCrossbow_Base", "CHAR_Undead_SkeletonMage",
-        "CHAR_Undead_SkeletonApprentice", "CHAR_Undead_SkeletonGolem", "CHAR_Undead_Assassin", "CHAR_Undead_Guardian",
-        "CHAR_Undead_Necromancer", "CHAR_Undead_Priest", "CHAR_Undead_RottingGhoul", "CHAR_Undead_FlyingSkull",
-        "CHAR_Undead_GhostBanshee", "CHAR_Undead_ShadowSoldier",
-        "CHAR_ChurchOfLight_Archer", "CHAR_ChurchOfLight_Cleric", "CHAR_ChurchOfLight_Footman", "CHAR_ChurchOfLight_Knight_Shield",
-        "CHAR_ChurchOfLight_Lightweaver", "CHAR_ChurchOfLight_Paladin", "CHAR_ChurchOfLight_Priest", "CHAR_ChurchOfLight_Rifleman",
-        "CHAR_Gloomrot_Pyro", "CHAR_Gloomrot_Railgunner", "CHAR_Gloomrot_Tazer", "CHAR_Gloomrot_Technician",
-        "CHAR_Gloomrot_SentryOfficer", "CHAR_Gloomrot_TractorBeamer", "CHAR_Gloomrot_Batoon",
-        "CHAR_Cursed_Wolf", "CHAR_Cursed_Bear_Standard", "CHAR_Cursed_ToadSpitter", "CHAR_Cursed_Witch", "CHAR_Cursed_Nightlurker",
-        "CHAR_Spider_Melee", "CHAR_Spider_Range", "CHAR_Spider_Broodmother", "CHAR_Forest_Wolf", "CHAR_Forest_Bear_Standard",
-        "CHAR_Harpy_Dasher", "CHAR_Harpy_Scratcher", "CHAR_Harpy_Sorceress",
-        "CHAR_Forest_Wolf_VBlood", "CHAR_Bandit_Foreman_VBlood", "CHAR_Bandit_Stalker_VBlood", "CHAR_Bandit_Bomber_VBlood",
-        "CHAR_Bandit_StoneBreaker_VBlood", "CHAR_Bandit_Tourok_VBlood", "CHAR_Bandit_Chaosarrow_VBlood",
-        "CHAR_Militia_Guard_VBlood", "CHAR_Militia_Nun_VBlood", "CHAR_Militia_Leader_VBlood", "CHAR_Militia_Glassblower_VBlood",
-        "CHAR_Undead_Priest_VBlood", "CHAR_Undead_BishopOfDeath_VBlood", "CHAR_Undead_Leader_Vblood",
-        "CHAR_Cursed_ToadKing_VBlood", "CHAR_Cursed_Witch_VBlood", "CHAR_Spider_Queen_VBlood", "CHAR_Harpy_Matriarch_VBlood",
-        "CHAR_Gloomrot_Iva_VBlood", "CHAR_Gloomrot_Voltage_VBlood", "CHAR_ChurchOfLight_Paladin_VBlood",
-        "CHAR_Vampire_BloodKnight_VBlood", "CHAR_Wendigo_VBlood",
-    };
-
+    // Unit picker (Uriel's object catalog has no units — handoff §6B). 0.71.0: searches the shared game unit list
+    // (Resources/UnitCatalog). Sent without the CHAR_ prefix: any unique ending works, and an ambiguous one is
+    // refused with the matches, never guessed.
     private static string ShortUnit(string full) => full.StartsWith("CHAR_", StringComparison.Ordinal) ? full.Substring(5) : full;
 
     private List<(string Display, string Value)> UrielEvUnitMatches(string typed)
     {
         var outl = new List<(string, string)>();
-        foreach (var u in UrielEvUnits)
-        {
-            if (!BeelzContains(u, typed)) continue;
-            var s = ShortUnit(u);
-            outl.Add(($"{s.Replace('_', ' ')}  ({s})", s));
-            if (outl.Count >= 30) break;
-        }
+        foreach (var (disp, full) in Raphael.Resources.UnitCatalog.Search(typed, 30)) outl.Add((disp, ShortUnit(full)));
         return outl;
     }
 
