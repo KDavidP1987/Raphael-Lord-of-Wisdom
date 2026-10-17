@@ -476,9 +476,8 @@ public partial class MainPanel : ResizeablePanelBase
 
     private readonly System.Collections.Generic.Dictionary<string, bool>             _groupExpanded   = new();
     private readonly System.Collections.Generic.Dictionary<string, GameObject>       _groupContent    = new();
-    // F1: groups the user manually expanded/collapsed this session — the detection-based default
-    // expansion (ApplyDetectionDefaultExpansion) leaves these alone. Cleared on a server-switch (Reset).
-    private readonly System.Collections.Generic.HashSet<string>                      _userToggledGroups = new();
+    // 0.72.0: what the user asked of each group and whether they have touched the rail live in RailMemory (static, kept
+    // across a panel rebuild, cleared at client teardown); the expand / collapse rules are RailPolicy's.
     private readonly System.Collections.Generic.Dictionary<string, TextMeshProUGUI>  _groupHeaderText = new();
     // 0.12.1: keep header ButtonRef around so the Bloodcraft handshake retry
     // (in EclipseProtocolService) can flip the group from tentative-available
@@ -1067,18 +1066,13 @@ public partial class MainPanel : ResizeablePanelBase
         foreach (var group in TabGroups)
             BuildTabGroup(stripContent, group);
 
-        // Reconcile the initial group expansion with what's actually detected RIGHT NOW (a rebuild after
-        // detection settled, or an already-connected reopen). Without this, a rebuild would honor the
-        // hard-coded StartExpanded / diagnostic-auto-expand and could open the Bloodcraft group on a
-        // server that doesn't run it. The event path (RefreshAllTabGroupAvailability) re-applies this as
-        // detection resolves during the first login's handshake window.
-        ApplyDetectionDefaultExpansion();
+        // Reconcile the restored expansion with what's detected RIGHT NOW (a rebuild after detection settled, or an
+        // already-connected reopen). The event path (RefreshAllTabGroupAvailability) re-runs it as detection resolves.
+        ReconcileRailExpansion();
     }
 
     private void BuildTabGroup(GameObject parent, TabGroupDef group)
     {
-        _groupExpanded[group.Title] = group.StartExpanded;
-
         // Resolve per-group availability. There are now THREE states for the
         // Bloodcraft group (Item 1, 0.15.0):
         //   available           — render normally with sub-tabs.
@@ -1090,11 +1084,12 @@ public partial class MainPanel : ResizeablePanelBase
         // Header is interactable when group is usable OR when we have a
         // diagnostic to show. Only the explicit-Off case fully disables it.
         bool headerInteractable = available || diagnostic;
-        bool startExpanded = group.StartExpanded && headerInteractable;
-        // 0.15.0: auto-expand the Bloodcraft group when in diagnostic state
-        // so the user immediately sees the explanation + Force-enable button.
-        if (diagnostic) startExpanded = true;
+        // 0.72.0: start from the rail memory (a rebuild keeps what was open); a diagnostic group is no longer forced
+        // open: RailPolicy opens at most one mod group, and only before the user has touched the rail.
+        bool startExpanded = (RailMemory.Expanded.TryGetValue(group.Title, out var remembered) ? remembered : group.StartExpanded)
+                             && headerInteractable;
         _groupExpanded[group.Title] = startExpanded;
+        RailMemory.Expanded[group.Title] = startExpanded;
 
         // Header button - clicking toggles the group's content visibility (when interactable).
         var header = UIFactory.CreateButton(parent, $"GroupHeader_{group.Title}",
@@ -1184,7 +1179,8 @@ public partial class MainPanel : ResizeablePanelBase
                 var captured = tab;
                 // 0.67.1: deferred — shows "Loading…" this frame and builds the page next frame if it
                 // isn't built yet, so a click never freezes the UI mid-press.
-                b.OnClick = () => ShowTabDeferred(captured);
+                var groupTitle = group.Title;
+                b.OnClick = () => { ApplyRailChanges(RailPolicy.TabClick(groupTitle)); ShowTabDeferred(captured); };
                 _tabButtons[tab] = b;
                 // 0.15.0: apply initial per-tab dimming based on the system
                 // availability detected from ProgressToClient broadcasts.
@@ -1703,32 +1699,13 @@ public partial class MainPanel : ResizeablePanelBase
 
     private void ToggleGroup(string title)
     {
-        if (!_groupExpanded.TryGetValue(title, out var current)) return;
-        _userToggledGroups.Add(title);   // F1: user took manual control — stop auto-defaulting this group
-        var next = !current;
-
+        if (!_groupExpanded.ContainsKey(title)) return;
         // Accordion (default ON): opening a group collapses every other group, so the left rail stays short
         // on small screens. Players who prefer several sections open at once disable it in Display settings.
-        if (next && Config.Settings.LeftRailAccordion)
-        {
-            foreach (var other in new System.Collections.Generic.List<string>(_groupExpanded.Keys))
-            {
-                if (string.Equals(other, title, System.StringComparison.Ordinal)) continue;
-                if (_groupExpanded.TryGetValue(other, out var oc) && oc)   // only touch currently-open ones
-                {
-                    _userToggledGroups.Add(other);     // it was deliberately closed; don't auto-reopen it
-                    SetGroupExpandedState(other, false);
-                }
-            }
-        }
-
-        _groupExpanded[title] = next;
-        if (_groupContent.TryGetValue(title, out var go))
-            go.SetActive(next);
-        if (_groupHeaderText.TryGetValue(title, out var txt))
-            txt.text = FormatGroupHeader(title, next);
+        ApplyRailChanges(RailPolicy.HeaderClick(RailSnapshot(), title, Config.Settings.LeftRailAccordion));
         AutoResizeIfEnabled();
     }
+
 
     private static string FormatGroupHeader(string title, bool expanded, bool available = true)
     {
@@ -1821,7 +1798,7 @@ public partial class MainPanel : ResizeablePanelBase
     {
         foreach (var title in new System.Collections.Generic.List<string>(_groupHeaderText.Keys))
             RefreshTabGroupAvailability(title);
-        ApplyDetectionDefaultExpansion();
+        ReconcileRailExpansion();
         AutoResizeIfEnabled();
     }
 
@@ -1838,60 +1815,64 @@ public partial class MainPanel : ResizeablePanelBase
         catch (System.Exception ex) { LogUtils.LogError($"RefreshTabGroupAvailabilityNow failed: {ex}"); }
     }
 
-    // F1: default the Bloodcraft/Beelzebub group expansion by what's detected — Bloodcraft expands when
-    // present; Beelzebub expands when present AND Bloodcraft isn't (so a Beelz-only server opens to the
-    // Beelzebub group, not an empty Bloodcraft one). Only touches EXPANSION (content + header arrow),
-    // never header interactability — so it can't lock a group closed. Skips a group the user manually
-    // toggled this session, and only acts on interactable headers. Re-applied as detection resolves.
-    private void ApplyDetectionDefaultExpansion()
+    // 0.72.0: the rail's current state as RailPolicy sees it, in rail order.
+    private System.Collections.Generic.List<RailGroup> RailSnapshot()
     {
-        bool bc   = IsTabGroupAvailable("Bloodcraft");
-        bool bz   = IsTabGroupAvailable("Beelzebub");
-        bool bcDg = IsModDiagnosticState("Bloodcraft");
-        bool bzDg = IsModDiagnosticState("Beelzebub");
-
-        // Pick the ONE mod group to auto-open. Prefer a genuinely-AVAILABLE mod (Bloodcraft wins when both
-        // are present — the user's "Bloodcraft first" rule). Only when NEITHER mod is available do we fall
-        // back to a group that's showing a diagnostic, so the recovery panel stays reachable. This is the
-        // fix for the reported bug: a server WITHOUT Bloodcraft used to force-open the Bloodcraft
-        // "handshake failed" diagnostic over the mod that's actually active (Beelzebub). Now the active
-        // mod wins, and the Bloodcraft diagnostic only auto-opens when there's nothing else to show.
-        // 0.71.0: the diagnostic fallback also yields to Uriel / Faust / Nyarlathotep — on a Nyarlathotep-only
-        // server the Bloodcraft "not detected" panel kept re-opening on every Nyarlathotep state change.
-        bool otherMod = AnyModGroupAvailable();
-        string primary =
-              bc   ? "Bloodcraft"
-            : bz   ? "Beelzebub"
-            : otherMod ? null
-            : bcDg ? "Bloodcraft"
-            : bzDg ? "Beelzebub"
-            : null;
-
-        void Apply(string title, bool desired)
+        var list = new System.Collections.Generic.List<RailGroup>(TabGroups.Length);
+        foreach (var g in TabGroups)
         {
-            if (_userToggledGroups.Contains(title)) return;
-            bool usable = IsTabGroupAvailable(title) || IsModDiagnosticState(title);
-            if (desired && !usable) return;   // never EXPAND a dead header; always allow COLLAPSE
-            if (_groupExpanded.TryGetValue(title, out var cur) && cur == desired) return;
-            _groupExpanded[title] = desired;
-            if (_groupContent.TryGetValue(title, out var go)) go.SetActive(desired);
-            if (_groupHeaderText.TryGetValue(title, out var txt)) txt.text = FormatGroupHeader(title, desired, usable);
+            if (!_groupExpanded.TryGetValue(g.Title, out var open)) continue;
+            bool mod = RailPolicy.IsModGroup(g.Title);
+            list.Add(new RailGroup
+            {
+                Title = g.Title,
+                IsMod = mod,
+                Available = IsTabGroupAvailable(g.Title),
+                Diagnostic = mod && IsModDiagnosticState(g.Title),
+                Expanded = open,
+                Intent = RailMemory.Intent.TryGetValue(g.Title, out var it) ? it : RailIntent.None,
+            });
         }
-        Apply("Bloodcraft", primary == "Bloodcraft");
-        Apply("Beelzebub",  primary == "Beelzebub");
+        return list;
+    }
+
+    // 0.72.0: the group holding the active tab (null when the active tab isn't on the rail).
+    private string ActiveTabGroupTitle()
+    {
+        foreach (var g in TabGroups)
+            foreach (var (t, _) in g.Tabs)
+                if (t == ActiveTab) return g.Title;
+        return null;
+    }
+
+    // 0.72.0: replaces ApplyDetectionDefaultExpansion and the diagnostic auto-expand. At most one mod group opens by
+    // itself (the active mod's), only before the user's first rail click, and never next to a group the user opened;
+    // groups the user opened or closed keep that across rebuilds and detection changes. Rules + tests: RailPolicy.
+    private void ReconcileRailExpansion()
+    {
+        ApplyRailChanges(RailPolicy.Reconcile(RailSnapshot(), ActiveTabGroupTitle(), Config.Settings.LeftRailAccordion,
+            RailMemory.UserTookControl));
         AutoResizeIfEnabled();
     }
 
-    // Set one tab group's expansion to an exact state (used by the first-run path to open the Settings &
-    // Help group so the Quick Start tab's rail entry is visible). Mirrors the Apply local above without
-    // the detection/primary logic; no-op if already in the requested state.
-    private void SetGroupExpandedState(string title, bool expanded)
+    // 0.72.0: the single writer of group expansion: content visibility, header arrow, and the rail memory.
+    private void ApplyRailChanges(RailChanges ch)
     {
-        if (!_groupExpanded.TryGetValue(title, out var cur) || cur == expanded) return;
+        if (ch == null) return;
+        if (ch.UserTookControl) RailMemory.UserTookControl = true;
+        foreach (var kv in ch.Intent) RailMemory.Intent[kv.Key] = kv.Value;
+        foreach (var kv in ch.Expand) ApplyExpansion(kv.Key, kv.Value);
+    }
+
+    private void ApplyExpansion(string title, bool expanded)
+    {
+        if (!_groupExpanded.ContainsKey(title)) return;
+        bool usable = IsTabGroupAvailable(title) || IsModDiagnosticState(title);
+        if (expanded && !usable) return;   // never expand a dead header
         _groupExpanded[title] = expanded;
-        if (_groupContent.TryGetValue(title, out var go)) go.SetActive(expanded);
-        if (_groupHeaderText.TryGetValue(title, out var txt))
-            txt.text = FormatGroupHeader(title, expanded, IsTabGroupAvailable(title) || IsModDiagnosticState(title));
+        RailMemory.Expanded[title] = expanded;
+        if (_groupContent.TryGetValue(title, out var go) && go != null) go.SetActive(expanded);
+        if (_groupHeaderText.TryGetValue(title, out var txt) && txt != null) txt.text = FormatGroupHeader(title, expanded, usable);
     }
 
     // 0.22 first-run onboarding + open-to-active-mod. The very first time the panel ever opens we route the
@@ -1905,19 +1886,17 @@ public partial class MainPanel : ResizeablePanelBase
         if (!Config.Settings.HasSeenWelcome)
         {
             Config.Settings.SetHasSeenWelcome(true);
-            SetGroupExpandedState("Settings and Help", true);   // reveal the Quick Start rail entry
+            // Reveal the Quick Start rail entry; it counts as the user's place, so no mod group opens next to it.
+            var firstRun = new RailChanges();
+            firstRun.Expand["Settings and Help"] = true;
+            firstRun.Intent["Settings and Help"] = RailIntent.Open;
+            ApplyRailChanges(firstRun);
             return PanelType.QuickStartTab;
         }
         if (IsTabGroupAvailable("Bloodcraft")) return PanelType.FamiliarsTab;
         if (IsTabGroupAvailable("Beelzebub"))  return PanelType.BeelzLoadoutTab;   // 0.24.8: Loadout is now the group's primary tab
         return ActiveTab;   // default (FamiliarsTab) until a handshake confirms a mod
     }
-
-    private readonly System.Collections.Generic.HashSet<string> _groupWasDiagnostic = new();
-
-    private bool AnyModGroupAvailable()
-        => IsTabGroupAvailable("Bloodcraft") || IsTabGroupAvailable("Beelzebub") || IsTabGroupAvailable("Uriel")
-        || IsTabGroupAvailable("Faust") || IsTabGroupAvailable("Nyarlathotep");
 
     private void RefreshTabGroupAvailability(string title)
     {
@@ -1926,21 +1905,8 @@ public partial class MainPanel : ResizeablePanelBase
         bool headerInteractable = available || diagnostic;
         bool expanded = _groupExpanded.TryGetValue(title, out var e) && e;
 
-        // 0.15.0: if we just entered diagnostic state, auto-expand the group so
-        // the user sees the explanation immediately instead of staring at a
-        // grayed header that gives no hint of WHY.
-        // 0.71.0: only on the actual transition into diagnostic state, never for a group the user toggled, and
-        // only when no server mod is available at all. This ran on EVERY availability refresh, and Nyarlathotep
-        // state changes (a pillar toggle re-reads version) refresh every group, so the Bloodcraft / Beelzebub /
-        // Uriel / Faust "not detected" groups kept popping open while the user worked in a Nyarlathotep tab.
-        bool enteredDiagnostic = diagnostic && _groupWasDiagnostic.Add(title);
-        if (!diagnostic) _groupWasDiagnostic.Remove(title);
-        if (enteredDiagnostic && !expanded && !_userToggledGroups.Contains(title) && !AnyModGroupAvailable())
-        {
-            _groupExpanded[title] = true;
-            expanded = true;
-        }
-
+        // 0.72.0: no expansion here. ReconcileRailExpansion (run right after by RefreshAllTabGroupAvailability) decides
+        // what opens or closes, so a "not detected" group no longer pops open on every Nyarlathotep state change.
         if (_groupHeaderText.TryGetValue(title, out var headerText))
         {
             headerText.text = FormatGroupHeader(title, expanded && headerInteractable, available || diagnostic);
@@ -1954,13 +1920,6 @@ public partial class MainPanel : ResizeablePanelBase
             // Re-wire the OnClick: a previously-unavailable header had its OnClick
             // skipped during BuildTabGroup. Assign now if it's become available.
             btn.OnClick = headerInteractable ? () => ToggleGroup(title) : null;
-        }
-        if (_groupContent.TryGetValue(title, out var go))
-        {
-            // Auto-expand on diagnostic, otherwise preserve user agency.
-            // If currently expanded but no longer accessible, collapse it.
-            if (diagnostic && expanded && !go.activeSelf) go.SetActive(true);
-            else if (!headerInteractable && go.activeSelf) go.SetActive(false);
         }
 
         // 0.15.0: swap sub-tab list ↔ diagnostic panel based on current state.
@@ -10908,8 +10867,6 @@ public partial class MainPanel : ResizeablePanelBase
             Services.Nyar.NyarState.PresenceChanged -= OnBloodcraftAvailabilityChanged;
             _availabilitySubscribed = false;
         }
-        _userToggledGroups.Clear(); // F1: next server re-applies the detection-based default expansion
-        _groupWasDiagnostic.Clear();
         UnsubscribeBeelz(); // 0.18: drop BeelzState handlers so they don't leak across rebuilds
         UnsubscribeUriel(); // 0.26: same, for UrielState handlers
         UnsubscribeFaust(); // drop FaustState handlers so they don't leak across rebuilds

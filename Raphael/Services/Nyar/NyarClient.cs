@@ -24,7 +24,39 @@ internal static class NyarClient
     public static readonly string[] PillarIds = { "empowerment", "spawns", "boss", "zones", "sieges" };
 
     private const float SEND_GAP = 0.25f;
+    // 0.72.0: admin twins (event / template / pillar / purge) go at most one per 0.30 s, so every twin together (a
+    // pool save, retries, anything else pressed) stays ≤ 3.4/s, under the server's 5 per sliding second (contract
+    // §5a) even with arrival jitter. Reads keep 0.25 s: they are not counted (§3 / §5a).
+    private const float TWIN_GAP = 0.30f;
     private const float REPLY_TIMEOUT = 5f;
+
+    // 0.72.0: after a twin went out and was never answered, no admin twin is sent for 10 s from that moment, and every
+    // twin ok / err that arrives meanwhile is stale by construction (NyarProtocolService discards it). Reads keep
+    // flowing. Session-scoped: cleared only by expiry or ResetQueue (disconnect).
+    private static readonly NyarQuarantine _quarantine = new();
+    public static bool Quarantined => _quarantine.On(Time.realtimeSinceStartup);
+    public static int QuarantineSecondsLeft => _quarantine.SecondsLeft(Time.realtimeSinceStartup);
+    public static void StartQuarantine()
+    {
+        _quarantine.Start(Time.realtimeSinceStartup);
+        NyarDiag.Log($"quarantine: no admin twin for {NyarQuarantine.Seconds:0}s (a sent command went unanswered)");
+    }
+
+    /// <summary>The command sent and not yet answered (null when idle).</summary>
+    public static string InFlight => _inFlight;
+
+    /// <summary>`.nyar api event|template|pillar|purge …`: an admin wire twin (answers ok / err, rate-limited).</summary>
+    public static bool IsTwin(string cmd)
+    {
+        if (string.IsNullOrEmpty(cmd) || !cmd.StartsWith(".nyar api ", System.StringComparison.Ordinal)) return false;
+        string rest = cmd.Substring(10);
+        return rest.StartsWith("event ", System.StringComparison.Ordinal) || rest.StartsWith("template ", System.StringComparison.Ordinal)
+            || rest.StartsWith("pillar ", System.StringComparison.Ordinal) || rest == "purge" || rest.StartsWith("purge ", System.StringComparison.Ordinal);
+    }
+
+    /// <summary>The `cmd=` of a twin's ok / err line (event, template, pillar, purge).</summary>
+    public static bool IsTwinReply(string cmd)
+        => cmd is "event" or "template" or "pillar" or "purge";
 
     private static readonly LinkedList<string> _queue = new();
     private static string _inFlight;
@@ -52,8 +84,14 @@ internal static class NyarClient
     /// <summary>Send a human command (reply visible in chat).</summary>
     public static void SendUser(string cmd) { DiagLogOut(cmd, silent: false); MessageService.EnqueueMessage(cmd); }
 
-    /// <summary>The reply to the in-flight request has ended (end/ok/err line).</summary>
-    public static void Complete() => _inFlight = null;
+    /// <summary>The reply to the in-flight request has ended (end/ok/err line). Returns the command that was in flight
+    /// (0.72.0: a pool save matches an err line to its step by it — err lines carry no id / field on api 8).</summary>
+    public static string Complete()
+    {
+        string was = _inFlight;
+        _inFlight = null;
+        return was;
+    }
 
     /// <summary>`[NYAR:version]` is a one-line answer with no [NYAR:end]; it ends a queued version re-read.</summary>
     public static void CompleteVersion() { if (_inFlight == API_VERSION) _inFlight = null; }
@@ -70,11 +108,18 @@ internal static class NyarClient
             NyarDiag.Log($"no terminator for `{_inFlight}` after {REPLY_TIMEOUT}s — moving on");
             string lost = _inFlight;
             _inFlight = null;
+            if (IsTwin(lost)) StartQuarantine();   // its late answer must not be taken for the next twin's
             onTimeout?.Invoke(lost);
         }
-        if (_queue.Count == 0 || now - _lastSendAt < SEND_GAP) return;
-        string cmd = _queue.First.Value;
-        _queue.RemoveFirst();
+        if (_queue.Count == 0) return;
+        // During a quarantine twins wait in the queue; the first read behind them may go.
+        bool hold = _quarantine.On(now);
+        LinkedListNode<string> node = _queue.First;
+        while (node != null && hold && IsTwin(node.Value)) node = node.Next;
+        if (node == null) return;
+        string cmd = node.Value;
+        if (now - _lastSendAt < (IsTwin(cmd) ? TWIN_GAP : SEND_GAP)) return;
+        _queue.Remove(node);
         _inFlight = cmd; _inFlightAt = _lastSendAt = now;
         onSend?.Invoke(cmd);
         DiagLogOut(cmd, silent: true);
@@ -92,7 +137,15 @@ internal static class NyarClient
         }
     }
 
-    public static void ResetQueue() { _queue.Clear(); _inFlight = null; _inFlightAt = _lastSendAt = 0f; }
+    public static void ResetQueue() { _queue.Clear(); _inFlight = null; _inFlightAt = _lastSendAt = 0f; _quarantine.Clear(); }
+
+    /// <summary>Drop one exact queued (not yet sent) command; true when it was still waiting.</summary>
+    public static bool DropExact(string cmd) => _queue.Remove(cmd);
+
+    /// <summary>The exact `event set` command string that <see cref="EventSet"/> sends (a pool save chunks against its
+    /// byte length).</summary>
+    public static string EventSetCommand(string id, string field, string value)
+        => NyarState.SupportsTwins ? $".nyar api event set {Tok(id)} {Tok(field)} {Quote(value)}" : $".nyar event set {Tok(id)} {Tok(field)} {Quote(value)}";
 
     internal static void DiagLogOut(string cmd, bool silent)
     {
@@ -136,6 +189,8 @@ internal static class NyarClient
     public static void EventUnstick(string id)         => Admin($"event unstick {Tok(id)}");
     public static void EventSet(string id, string field, string value)
         => Admin($"event set {Tok(id)} {Tok(field)} {Quote(value)}");
+    /// <summary>0.72.0: queue an exact twin built by <see cref="EventSetCommand"/> (NyarBatchRunner's steps).</summary>
+    internal static void SendTwin(string cmd) => Send(cmd);
     public static void EventSetLocationHere(string id) => Admin($"event set {Tok(id)} location here");
     public static void EventReload()                   => Admin("event reload");
     public static void EventNew(string id, string pillar) => Admin($"event new {Tok(id)} {Tok(pillar)}");

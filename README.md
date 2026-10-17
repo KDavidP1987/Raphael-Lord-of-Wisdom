@@ -30,7 +30,7 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
   - **Beelzebub** — Bestiary, Loadout (universal + per-weapon + per-form ability sets), Hotkeys, Transforms, Settings, admin Config / Players.
   - **Faust** — Castle Info, Open/All Plots, Decay Watch, Castle Resources, Player Info, Clans, Player Positions, Server Stats, **Boss Status**, **Leaderboards**, **World Map**, admin Control / Oversight.
   - **Uriel** — Storage Sharing, Prisons, Stairs, Object Spawning, Object Catalog, **Castle Events** (alpha: drop mob and boss markers, bind doors, start and time runs with a live readout and on-screen notices), **Event Library** (squads, floor templates, templates), Settings, admin Sharing / Objects / Config / **Units**.
-  - **Nyarlathotep** — Live Events (regions, wave countdowns, on-screen notices), Settings, admin Events (with an inline editor per event and a searchable unit list) / **Units** (event units near you with positions) / Templates / Pillars / Announce / Kill Switch. Leaderboards, My Stats and Zones are ready for when Nyarlathotep adds them.
+  - **Nyarlathotep** — Live Events (regions, wave countdowns, on-screen notices), Settings, admin Events (with an inline form editor per event: per-wave units, bosses, unit pools and pursuit, and a searchable unit list) / **Units** (event units near you with positions) / Templates / Pillars / Announce / Kill Switch. Leaderboards, My Stats and Zones are ready for when Nyarlathotep adds them.
   - **Settings & Help** — Quick Start, per-mod Help guides, **V Rising Basics** (in-built base-game guide), Game Guide (external links), Settings, **Chat & Diagnostics**, About.
 - **Secondary overlays** (toggle from the footer) — XP, Familiar, Familiar Browser, Daily Quest, Professions, Shift Spell, a Combined info overlay, Quick Actions, a Familiar Quick Spawn overlay, and a Faust Boss Tracker. Each is independently draggable/resizable with its own transparency; visibility persists across sessions.
 - **Freeze actions while the UI is open** (opt-in) — stop moving/attacking/casting and block menu hotkeys while you click around the panel.
@@ -113,7 +113,7 @@ Settings don't transfer — Raphael writes a new config, so overlay positions, c
 | **Beelzebub** (server, optional) | v0.137.x (API 35) | Abilities / transforms → Beelzebub |
 | **Faust** (server, optional) | v0.16.5 (API 19) | Server investigation & analytics → Faust |
 | **Uriel** (server, optional) | v0.21.0 (API 1) | Storage / prisons / stairs / spawning / Castle Events (alpha) → Uriel |
-| **Nyarlathotep** (server, optional) | v0.12.0 (API 7); v0.13.0-rc.1 (API 8) | World events / leaderboards → Nyarlathotep |
+| **Nyarlathotep** (server, optional) | v0.12.0 (API 7); v0.13.0-rc.3 (API 8; wave variety needs rc.3) | World events / leaderboards → Nyarlathotep |
 | **Eclipse** (client) | v1.3.13 | ⚠ Compatibility needs re-testing — disable while running Raphael |
 
 Newer Bloodcraft builds generally still work — the chat-command grammar is stable. If a tab does nothing on click, the server likely renamed a command.

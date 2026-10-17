@@ -6,6 +6,21 @@ Nyarlathotep workspace.
 
 Items 1-3 are bugs. Items 4-7 are requests, most important first.
 
+## Status (2026-10-16, Nyarlathotep 0.13.0-rc.3, still api 8)
+
+Read from Nyarlathotep's `RAPHAEL_HANDOFF_WAVE_VARIETY.md` and `RAPHAEL_INTEGRATION_CONTRACT.md` (§8, §10.5, §10.7).
+
+| # | Item | Status | Raphael 0.72.0 |
+|---|---|---|---|
+| 1 | Apocalypse at "the starting admin" never starts | **Fixed in 0.13.0-rc.2** (`d492bd5`) | The rc.1 wording (with Goal here) shows only on 0.13.0-rc.1; any other version gets the plain "couldn't read your position" text. |
+| 2 | Kill switch sends no `event-end` per event | **Handoff corrected**: a purge sends one `killswitch` push and no per-event `event-end` | No change: Raphael already re-reads status on the push. |
+| 3 | `units=0` for running wave events | Not answered yet | Still shown as sent on Admin: Units. |
+| 4 | Map-wide units read | Planned (live ops, contract §10.5) | Admin: Units keeps the 100 m scan until it ships. |
+| 5 | Field read for the editor | Planned (live ops, contract §10.5) | The editor still reads `event info`; 0.72.0 reads far more of it (waves, bosses, pools, pursuit, modifiers) and marks what it couldn't read. |
+| 6 | A push when an ending event's units are gone (R1) | Planned (contract §10.7 `units-gone`) | No change. |
+| 7 | Name the pillar in `pillar_off` (R3) | Planned (contract §10.5) | Raphael names the pillar if a `pillar=` value arrives; otherwise the old text. |
+| — | `action=apocalypse` on `[NYAR:def]` (R2) | Planned (contract §10.5) | Raphael still detects an apocalypse from the `event info` text. |
+
 ## 1. Bug: an apocalypse whose goal is "the starting admin" can never start
 
 - `zombie-apocalypse` (from the template, `goal: the living, radius 30, at the starting admin`) always answers

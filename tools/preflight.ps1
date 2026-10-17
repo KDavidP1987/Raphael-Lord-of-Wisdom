@@ -210,6 +210,22 @@ if ($Mode -eq 'Release') {
             }
         }
     }
+
+    # 11. Logic tests (0.72.0): the pure rule mirror, batch / quarantine, rail accordion, info parsing and form state.
+    #     Not part of Raphael.sln, so the mod build and the package never include them.
+    $testsDir = Join-Path $repoRoot 'tests\Raphael.Logic.Tests'
+    if (Test-Path $testsDir) {
+        Write-Host "  ..    Running logic tests (tests\Raphael.Logic.Tests)..." -ForegroundColor DarkGray
+        $testOut = & dotnet run --project $testsDir -c Release --nologo 2>&1
+        $summary = ($testOut | Select-String -Pattern 'Raphael.Logic.Tests:' -SimpleMatch | Select-Object -Last 1)
+        if ($LASTEXITCODE -eq 0) {
+            Pass "Logic tests passed ($($summary.Line.Trim()))."
+        } else {
+            Fail "Logic tests failed:`n$(($testOut | Select-String -Pattern 'FAIL' -SimpleMatch | ForEach-Object { $_.Line }) -join "`n")`n$($summary.Line)"
+        }
+    } else {
+        Warn "tests\Raphael.Logic.Tests not found — logic tests skipped."
+    }
 }
 
 # ---- Summary ----

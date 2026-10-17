@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text.RegularExpressions;
 using Raphael.Resources;
 using Raphael.Services.Nyar;
 using Raphael.UI.Framework.CustomLib.Util;
@@ -13,262 +12,965 @@ using UnityEngine;
 
 namespace Raphael.UI.ModContent;
 
-// 0.71.0: the Nyarlathotep event editor (opened by an event's Edit… button, inline under that event) and the
-// Admin: Units tab. Api 8 has no field read, so the editor sends `.nyar event info <id>`, shows the reply
-// (NyarCapture) and pre-fills what it can parse. Every field has its own Set, which sends
-// `event set <id> <field> <value>` (the api 4 wire twin; the result line shows the server's answer).
-// Unit fields get a type-to-search picker over the game's unit list (Resources/UnitCatalog).
+// The Nyarlathotep event editor (opened by an event's Edit… button, inline under that event) and the Admin: Units tab.
+// Api 8 has no field read, so the editor sends `.nyar event info <id>`, reads the reply (NyarForm.Read) and fills the
+// form from it. 0.72.0 (PLAN.md §B / §B2): every field is a control that knows the server's range (steppers, choice
+// buttons, list rows; MainPanel.NyarControls.cs); the form shows only the fields of the event's shape (units form or
+// wave list); changed fields are marked and go out one by one or with "Save all changes" through a NyarBatch (paced,
+// stops at the first refusal); pools are edited as rows and saved through the same batch.
 public partial class MainPanel
 {
     private string _nyarEditId = "";
-    private readonly Dictionary<string, string> _nyarEditVals = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _nyarEditTouched = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, InputFieldRef> _nyarEditInputs = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, string> _nyarUnitPicks = new(StringComparer.Ordinal);
-    private TextMeshProUGUI _nyarEditInfoLabel;
-    private string _nyarEditOtherField = "";
+    private readonly NyarForm _nyarForm = new();
+    private GameObject _nyarEdHost;
+    private TextMeshProUGUI _nyarEdBarLabel;
+    private ButtonRef _nyarEdSaveAllBtn, _nyarEdUndoBtn;
+    private bool _nyarEdShowInfo;
+    private int _nyarEdWave = 1;
+    private NyarBatch _nyarEdBatch;          // this editor's running save (fields or pool)
+    private bool _nyarEdBatchReread;         // re-read `event info` when it ends (waves added / removed / converted)
+    private bool _nyarEdBatchSubscribed;
+    private bool _nyarEdWasQuarantined;
+    private string _nyarEditOtherField = "", _nyarOtherN = "", _nyarOtherM = "", _nyarOtherName = "";
 
-    private static readonly Regex NyarUnitToken = new(@"^CHAR_[A-Za-z0-9_]{1,91}$", RegexOptions.Compiled);
+    // pool card
+    private string _nyarPoolSel = "";        // pool being edited; "" with _nyarPoolNew = a new one
+    private bool _nyarPoolNew;
+    private string _nyarPoolNewName = "";
+    private List<string> _nyarPoolMembers = new();
+    private List<string> _nyarPoolLoaded = new();
+    private readonly Dictionary<string, List<string>> _nyarSessionPools = new(StringComparer.Ordinal);   // null = deleted
+    private string _nyarPoolBatchName = "";
+    private List<string> _nyarPoolBatchMembers;
 
     private void OpenNyarEditor(string id)
     {
         bool closing = _nyarEditId == id;
+        CancelNyarEditorBatch();
         _nyarEditId = closing ? "" : id;
-        _nyarEditVals.Clear(); _nyarEditTouched.Clear(); _nyarEditInputs.Clear(); _nyarUnitPicks.Clear();
-        _nyarEditOtherField = "";
-        if (!closing) NyarClient.EventInfo(id);   // NyarCapture fills the "current definition" box + pre-fills
+        _nyarForm.Clear();
+        _nyarEdTextMode.Clear(); _nyarUnitPicks.Clear(); _nyarSessionPools.Clear();
+        _nyarEditOtherField = _nyarOtherN = _nyarOtherM = _nyarOtherName = "";
+        _nyarPoolSel = ""; _nyarPoolNew = false; _nyarPoolNewName = ""; _nyarPoolMembers = new(); _nyarPoolLoaded = new();
+        _nyarEdWave = 1; _nyarEdShowInfo = false;
+        if (!closing)
+        {
+            EnsureNyarBatchSubscribed();
+            NyarClient.EventInfo(id);   // NyarCapture fills the reply; OnNyarInfoCaptured loads the form
+        }
         RebuildNyarDefs();
+    }
+
+    private void EnsureNyarBatchSubscribed()
+    {
+        if (_nyarEdBatchSubscribed) return;
+        NyarBatchRunner.Changed += OnNyarBatchChanged;
+        NyarProtocolService.CountdownTick += OnNyarEdTick;
+        _nyarEdBatchSubscribed = true;
+    }
+
+    // A save still running when the editor closes is cancelled (a queued step is dropped; a sent one can't be recalled).
+    private void CancelNyarEditorBatch()
+    {
+        if (_nyarEdBatch != null && NyarBatchRunner.Current == _nyarEdBatch && NyarBatchRunner.Busy) NyarBatchRunner.Cancel();
+        _nyarEdBatch = null;
     }
 
     private void OnNyarInfoCaptured()
     {
         if (_nyarEditId.Length == 0 || !string.Equals(NyarCapture.InfoId, _nyarEditId, StringComparison.OrdinalIgnoreCase)) return;
-        PrefillNyarEditor();
+        _nyarForm.Apply(NyarForm.Read(NyarCapture.InfoLines));
+        int waves = _nyarForm.Load.Waves.Count;
+        if (_nyarEdWave > waves + 1 || _nyarEdWave < 1) _nyarEdWave = Math.Max(1, waves);
+        if (_nyarPoolSel.Length > 0 && !_nyarPoolNew) _nyarPoolLoaded = NyarPoolMembers(_nyarPoolSel) ?? new List<string>();
         RebuildNyarDefs();
+    }
+
+    private void OnNyarEdTick()
+    {
+        bool q = NyarClient.Quarantined;
+        if (q || q != _nyarEdWasQuarantined) NyarRefreshAll();
+        _nyarEdWasQuarantined = q;
+    }
+
+    private void OnNyarBatchChanged()
+    {
+        var b = NyarBatchRunner.Current;
+        if (b == null || b != _nyarEdBatch) { NyarRefreshAll(); return; }
+        if (!b.Finished) { NyarRefreshAll(); return; }
+        _nyarEdBatch = null;
+        if (b.IsPool)
+        {
+            if (b.State == NyarBatchState.Done) NyarPoolSaved(_nyarPoolBatchName, _nyarPoolBatchMembers);
+        }
+        else
+        {
+            // A form key is saved when every step it made was answered ok (a start rule makes two).
+            var stepsOf = new Dictionary<string, int>(StringComparer.Ordinal);
+            var okOf = new Dictionary<string, int>(StringComparer.Ordinal);
+            for (int i = 0; i < b.Steps.Count; i++)
+            {
+                string k = b.Steps[i].FormKey;
+                stepsOf[k] = stepsOf.TryGetValue(k, out var n) ? n + 1 : 1;
+                if (i < b.Acknowledged) okOf[k] = okOf.TryGetValue(k, out var m) ? m + 1 : 1;
+            }
+            foreach (var kv in stepsOf)
+                if (okOf.TryGetValue(kv.Key, out var ok) && ok == kv.Value) _nyarForm.MarkSaved(kv.Key);
+            if (b.State == NyarBatchState.Stopped && b.Current != null) _nyarForm.MarkRefused(b.Current.FormKey, b.RefusedMessage);
+        }
+        if (_nyarEdBatchReread && _nyarEditId.Length > 0) NyarClient.EventInfo(_nyarEditId);
+        _nyarEdBatchReread = false;
+        RedrawNyarEditor();
+    }
+
+    // ---------------------------------------------------------------- saving
+
+    private string NyarKeyLabel(string key)
+    {
+        var start = System.Text.RegularExpressions.Regex.Match(key, @"^action\.waveList\.(\d+)\.(start|units|bosses)$");
+        if (start.Success)
+            return $"wave {start.Groups[1].Value} {(start.Groups[2].Value == "start" ? "start" : start.Groups[2].Value)}";
+        switch (key)
+        {
+            case "location": return "location";
+            case "action.behaviour": return "behaviour";
+            case "action.units": return "units per wave";
+            case "action.bosses": return "final-wave bosses";
+            case "action.factions": return "factions";
+            case "action.loot": return "loot";
+            case "action.allowTerritory": return "claimed territory";
+        }
+        var s = NyarFieldRules.Spec(key);
+        return s != null ? s.Label.TrimEnd(' ', '×').ToLowerInvariant() : key;
+    }
+
+    /// <summary>The client-side check of one form key (null = fine). Same per-value rules as the server.</summary>
+    private string NyarCheckKey(string key, string value)
+    {
+        bool apo = _nyarForm.Load.Kind == NyarEventKind.Apocalypse;
+        if (key.EndsWith(".start", StringComparison.Ordinal)) return NyarForm.CheckStart(value);
+        switch (key)
+        {
+            case "location": return NyarCheckLocation(value);
+            case "action.behaviour": return NyarCheckBehaviour(value);
+            case "action.loot": case "action.allowTerritory": return value is "true" or "false" ? null : "Pick Yes or No.";
+            case "action.units": return NyarFieldRules.CheckUnitList(value, false);
+            case "action.bosses": return NyarFieldRules.CheckBossList(value, false);
+            case "action.factions": return NyarFieldRules.CheckFactions(value);
+        }
+        if (key.StartsWith("action.waveList.", StringComparison.Ordinal))
+        {
+            if (key.EndsWith(".units", StringComparison.Ordinal) && key.Split('.').Length == 4) return NyarFieldRules.CheckUnitList(value, true);
+            if (key.EndsWith(".bosses", StringComparison.Ordinal)) return NyarFieldRules.CheckBossList(value, true);
+            if (key.EndsWith(".whenCleared", StringComparison.Ordinal)) return value is "true" or "false" ? null : "Pick Yes or No.";
+        }
+        if (key.StartsWith("action.pools.", StringComparison.Ordinal))
+        {
+            if (value is "none") return null;
+            if ((value.StartsWith("+") || value.StartsWith("-")) && NyarFieldRules.IsUnitName(value.Substring(1))) return null;
+            var parts = NyarFieldRules.SplitList(value, NyarFieldRules.MaxPoolMembers, out var why);
+            return parts == null ? why : NyarFieldRules.CheckPoolMembers(parts);
+        }
+        var spec = NyarFieldRules.Spec(key, apo);
+        if (spec != null) return NyarFieldRules.CheckValue(spec, value);
+        return (value ?? "").Trim().Length == 0 ? "Type a value." : null;
+    }
+
+    private static int NyarHuntRange(string behaviour)
+    {
+        var p = (behaviour ?? "").Split(' ');
+        return p.Length == 2 && p[0] == "hunt" && int.TryParse(p[1], NumberStyles.None, CultureInfo.InvariantCulture, out var r) ? r : 0;
+    }
+
+    private string NyarCheckBehaviour(string v)
+    {
+        if (v is "none" or "regionhunt") return null;
+        var p = (v ?? "").Split(' ');
+        if (p.Length == 2 && p[0] == "hunt")
+            return NyarFieldRules.CheckValue(NyarFieldRules.Spec("behaviour.range"), p[1]);
+        return "Pick Stay put, Hunt players or Roam the region.";
+    }
+
+    private string NyarCheckLocation(string v)
+    {
+        if (v is "region" or "here") return null;
+        var p = (v ?? "").Split(' ');
+        if (p.Length != 3 || p[0] != "aroundplayer") return "Pick Whole region or Around a player (or press Use where I stand).";
+        var near = NyarFieldRules.CheckValue(NyarFieldRules.Spec("location.near"), p[1]);
+        if (near != null) return near;
+        var far = NyarFieldRules.CheckValue(NyarFieldRules.Spec("location.far"), p[2]);
+        if (far != null) return far;
+        int a = int.Parse(p[1], CultureInfo.InvariantCulture), b = int.Parse(p[2], CultureInfo.InvariantCulture);
+        if (a >= b) return $"Nearest ({a} m) must be less than farthest ({b} m).";
+        int hunt = NyarHuntRange(_nyarForm.Get("action.behaviour"));
+        if (hunt > 0 && b > hunt) return $"With Hunt players at {hunt} m, farthest can be at most {hunt} m (or raise the hunt range).";
+        return null;
+    }
+
+    /// <summary>Send the changed values of <paramref name="keys"/> (null = every change) as one paced batch, in an order
+    /// the server accepts. Refuses up front, naming the field, when a value fails its check.</summary>
+    private void NyarSaveKeys(IEnumerable<string> keys, string what, bool reread = false)
+    {
+        string id = _nyarEditId;
+        if (id.Length == 0) return;
+        if (NyarBatchRunner.Busy) { NyarState.SetError("event set", "Still saving — wait for it to finish."); return; }
+        if (NyarClient.Quarantined) { NyarState.SetError("event set", NyarBatchRunner.WaitText); return; }
+        var set = keys == null ? null : new HashSet<string>(keys, StringComparer.Ordinal);
+        var changes = _nyarForm.Changes(set == null ? null : k => set.Contains(k));
+        if (changes.Count == 0) { NyarState.SetError("event set", "Nothing changed to save."); return; }
+        foreach (var c in changes)
+        {
+            var why = NyarCheckKey(c.Key, c.Value);
+            if (why != null) { NyarState.SetError("event set", $"{NyarWordCap(NyarKeyLabel(c.Key))}: {why}"); NyarRefreshAll(); return; }
+        }
+        int waves = _nyarForm.Load.Waves.Count;
+        var expanded = new List<KeyValuePair<string, string>>();
+        var formKeyOf = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var c in changes)
+        {
+            if (c.Key == $"action.waveList.{waves + 1}.units") reread = true;     // a new wave: re-read the shape after
+            foreach (var s in NyarForm.SetsFor(c.Key, c.Value)) { expanded.Add(s); formKeyOf[s.Key] = c.Key; }
+        }
+        var ordered = NyarFieldRules.OrderForSave(expanded);
+        NyarBeginAction();
+        if (!NyarState.SupportsTwins)
+        {
+            foreach (var s in ordered) NyarClient.EventSet(id, s.Key, s.Value);
+            NyarProtocolService.RefreshDefs();
+            return;
+        }
+        var steps = ordered.Select(s => new NyarBatchStep
+        {
+            Field = s.Key, Value = s.Value, Command = NyarClient.EventSetCommand(id, s.Key, s.Value),
+            Label = NyarKeyLabel(formKeyOf[s.Key]), FormKey = formKeyOf[s.Key],
+        }).ToList();
+        var batch = new NyarBatch(id, what, false, steps);
+        _nyarEdBatch = batch;
+        _nyarEdBatchReread = reread;
+        if (!NyarBatchRunner.Start(batch)) { _nyarEdBatch = null; _nyarEdBatchReread = false; }
+        NyarRefreshAll();
+    }
+
+    /// <summary>One immediate set that is not a form value (convert, remove a wave, delete a pool): a one-step batch.</summary>
+    private void NyarSendOne(string field, string value, string label, bool reread)
+    {
+        string id = _nyarEditId;
+        if (NyarBatchRunner.Busy) { NyarState.SetError("event set", "Still saving — wait for it to finish."); return; }
+        if (NyarClient.Quarantined) { NyarState.SetError("event set", NyarBatchRunner.WaitText); return; }
+        NyarBeginAction();
+        if (!NyarState.SupportsTwins) { NyarClient.EventSet(id, field, value); NyarProtocolService.RefreshDefs(); return; }
+        var batch = new NyarBatch(id, label, false, new List<NyarBatchStep>
+        {
+            new() { Field = field, Value = value, Command = NyarClient.EventSetCommand(id, field, value), Label = label, FormKey = field },
+        });
+        _nyarEdBatch = batch;
+        _nyarEdBatchReread = reread;
+        if (!NyarBatchRunner.Start(batch)) { _nyarEdBatch = null; _nyarEdBatchReread = false; }
+        NyarRefreshAll();
     }
 
     // ---------------------------------------------------------------- inline editor
 
     private void BuildNyarInlineEditor(GameObject parent, NyarDef d)
     {
-        _nyarEditInputs.Clear();
-        string id = d.Id;
         var ed = AddCard(parent, "NyarEditor", new Color(0.16f, 0.12f, 0.22f, 0.9f), padding: 8, innerSpacing: 3);
+        _nyarEdHost = ed;
+        BuildNyarEditorBody(ed, d);
+    }
+
+    private void RedrawNyarEditor()
+    {
+        if (_nyarEdHost == null || _nyarEditId.Length == 0) return;
+        var d = NyarState.Defs.FirstOrDefault(x => x.Id == _nyarEditId);
+        if (d == null) return;
+        NyarClear(_nyarEdHost);
+        BuildNyarEditorBody(_nyarEdHost, d);
+    }
+
+    private void BuildNyarEditorBody(GameObject ed, NyarDef d)
+    {
+        _nyarEdGen++;
+        _nyarEdUis.Clear();
+        string id = d.Id;
 
         var head = MakeUrielRow(ed, "NyarEdHead");
-        AddNyarRowText(head, $"<b>Editing {NyarText(d.Name)}</b> <color=#888888>({id})</color>");
-        AddUrielButton(head, "NyarEdReload", "Reload values", $"Read {id}'s current definition again (.nyar event info {id}).",
+        AddNyarRowText(head, $"<b>Editing {NyarText(d.Name)}</b> <color=#888888>({NyarEscape(id)})</color>");
+        AddUrielButton(head, "NyarEdReload", "Reload values", $"Read {id}'s current definition again (.nyar event info {id}). Your unsaved changes stay.",
             () => NyarClient.EventInfo(id), 120);
-        AddUrielButton(head, "NyarEdClose", "Close", "Close the editor.", () => OpenNyarEditor(id), 70);
+        AddUrielButton(head, "NyarEdClose", "Close", "Close the editor (unsaved changes are dropped).", () => OpenNyarEditor(id), 70);
         AddNyarResultLine(ed);
         AddNyarErrorLine(ed);
 
-        AddSectionHeading(ed, "▸ Current definition");
+        // Still-missing reason (B7): the server saved the definition but holds it disabled until it is valid.
+        if (d.State == "disabled" && !string.IsNullOrEmpty(d.Reason) && d.Reason != "disabled")
+        {
+            var box = AddCard(ed, "NyarEdNotReady", new Color(0.35f, 0.28f, 0.05f, 0.9f), padding: 6, innerSpacing: 2);
+            AddBodyText(box, $"<color={NyarChangedHex}><b>Not ready yet:</b> {NyarText(d.Reason)}. It clears once the definition is valid; then press Enable.</color>",
+                Theme.ScaledUI(12));
+        }
+
         bool haveInfo = string.Equals(NyarCapture.InfoId, id, StringComparison.OrdinalIgnoreCase) && NyarCapture.InfoLines.Count > 0;
-        _nyarEditInfoLabel = AddBodyText(ed, haveInfo
-            ? $"<color=#CCCCCC>{string.Join("\n", NyarCapture.InfoLines.Select(NyarEscape))}</color>"
-            : "<color=#888888>Reading the definition from the server…  (it also shows in chat)</color>", Theme.ScaledUI(11));
-        AddBodyText(ed, "Fields below are filled from this where Raphael can read them. Change one, then press its <b>Set</b>. " +
-            "The server checks each value and the result shows above. New and copied events start disabled — Enable them from the list.",
-            Theme.ScaledUI(11));
+        if (!haveInfo || !_nyarForm.HaveLoad)
+        {
+            AddBodyText(ed, "<color=#888888>Reading the definition from the server…  (it also shows in chat)</color>", Theme.ScaledUI(12));
+            return;
+        }
 
-        bool apocalypse = haveInfo && NyarCapture.InfoMentions("action: apocalypse");
-        bool empower = string.Equals(d.Action, "empower", StringComparison.OrdinalIgnoreCase);
+        // Changes bar: count, Save all, Undo.
+        var bar = MakeUrielRow(ed, "NyarEdBar");
+        _nyarEdBarLabel = AddNyarRowText(bar, "");
+        _nyarEdSaveAllBtn = AddUrielButton(bar, "NyarEdSaveAll", "Save all changes",
+            "Send every changed field, one at a time, in an order the server accepts. It stops at the first refusal and says which.",
+            () => NyarSaveKeys(null, "all changes"), 150);
+        _nyarEdUndoBtn = AddUrielConfirmButton(bar, "NyarEdUndo", "Undo changes", "Put every field back to the value the server has.",
+            () => { _nyarForm.Undo(); RedrawNyarEditor(); }, 110);
 
+        var load = _nyarForm.Load;
+        var showRow = MakeUrielRow(ed, "NyarEdInfoToggle");
+        AddUrielButton(showRow, "NyarEdInfoBtn", _nyarEdShowInfo ? "Hide server text" : "Show server text",
+            "The definition exactly as the server describes it (.nyar event info).", () => { _nyarEdShowInfo = !_nyarEdShowInfo; RedrawNyarEditor(); }, 130);
+        AddNyarRowText(showRow, Muted(NyarKindText(load.Kind)));
+        if (_nyarEdShowInfo)
+            AddBodyText(ed, $"<color=#CCCCCC>{string.Join("\n", NyarCapture.InfoLines.Select(NyarEscape))}</color>", Theme.ScaledUI(11));
+        if (load.Unread.Count > 0)
+            NyarNote(ed, $"<color={NyarChangedHex}>Some values couldn't be read from the server's reply (its line was shortened to fit chat). " +
+                         "Those fields are empty and say so — pick a value, or leave them alone to keep the server's.</color>");
+        NyarNote(ed, Muted("Each field shows the server's range; - / + and the quick picks stay inside it. A changed field is marked " +
+                           "<color=#FFD75A>• changed</color>: press its <b>Set</b>, or <b>Save all changes</b>. The server checks every value."));
+
+        bool apo = load.Kind == NyarEventKind.Apocalypse;
         AddSectionHeading(ed, "▸ Basics");
-        NyarEditField(ed, id, "Name", "name", "display name", "The name players see in banners (name).");
-        NyarEditField(ed, id, "Duration (seconds)", "durationSeconds", "e.g. 600",
-            apocalypse ? "How long the event runs, 600-604800 s (durationSeconds)." : "How long the event runs, in seconds (durationSeconds).");
+        NyarTextField(ed, "name", 240, "the name players see", "The name in banners and the event list.");
+        NyarFieldStepper(ed, "durationSeconds", apo, "How long the event runs.");
 
         AddSectionHeading(ed, "▸ Conditions");
-        NyarEditField(ed, id, "Min players online", "conditions.minPlayers", "0 = any", "Players that must be online for it to start (conditions.minPlayers).");
-        NyarEditField(ed, id, "Cooldown (minutes)", "conditions.cooldownMinutes", "0 = none", "Minutes before it can run again (conditions.cooldownMinutes).");
-        NyarEditField(ed, id, "Chance (%)", "conditions.chancePercent", "1-100", "Chance it starts when triggered (conditions.chancePercent).");
+        NyarFieldStepper(ed, "conditions.minPlayers", hint: "Players that must be online for it to start (0 = any).");
+        NyarFieldStepper(ed, "conditions.cooldownMinutes", hint: "Minutes before it can run again (0 = no cooldown).");
+        NyarFieldStepper(ed, "conditions.chancePercent", hint: "Chance it starts each time it's triggered.");
 
-        if (empower)
+        switch (load.Kind)
         {
-            AddSectionHeading(ed, "▸ Empowerment");
-            NyarEditField(ed, id, "Factions", "action.factions", "Faction_Bandits,…", "Factions to empower, comma-separated (action.factions).", 220);
-            NyarEditField(ed, id, "Physical power ×", "action.stats.physicalPower", "e.g. 1.5", "action.stats.physicalPower");
-            NyarEditField(ed, id, "Spell power ×", "action.stats.spellPower", "e.g. 1.5", "action.stats.spellPower");
-            NyarEditField(ed, id, "Max health ×", "action.stats.maxHealth", "e.g. 2", "action.stats.maxHealth");
-            NyarEditField(ed, id, "Attack speed ×", "action.stats.attackSpeed", "e.g. 1.2", "action.stats.attackSpeed");
-            NyarEditField(ed, id, "Move speed ×", "action.stats.moveSpeed", "e.g. 1.2", "action.stats.moveSpeed");
-        }
-        else if (apocalypse)
-        {
-            AddSectionHeading(ed, "▸ Apocalypse");
-            var gr = MakeUrielRow(ed, "NyarEdGoalRow");
-            AddUrielButton(gr, "NyarEdGoalHere", "Goal here",
-                $"Make the spot you stand on the goal the horde marches to (event set {id} action.goal here). " +
-                "Needed before Start while the goal is \"the starting admin\" — Nyarlathotep can't start that yet.",
-                () => { NyarBeginAction(); NyarClient.EventSetGoalHere(id); }, 110);
-            AddNyarRowText(gr, "<color=#888888>Stand where the horde should march, then press.</color>");
-            NyarEditField(ed, id, "Goal radius (m)", "action.goal.radius", "10-100", "action.goal.radius");
-            NyarEditField(ed, id, "Goal name", "action.goal.name", "e.g. the village", "What the banners call the goal (action.goal.name).");
-            NyarEditField(ed, id, "Hordes", "action.hordes.count", "1-10", "action.hordes.count");
-            NyarEditField(ed, id, "Horde every (min)", "action.hordes.everyMinutes", "5-1440", "action.hordes.everyMinutes");
-            NyarEditField(ed, id, "Horde size", "action.hordes.size", "5-50", "action.hordes.size");
-            NyarEditField(ed, id, "Max roamers", "action.roamers.max", "1-100", "action.roamers.max");
-            NyarEditField(ed, id, "March speed (m/s)", "action.marchSpeed", "0.5-5", "action.marchSpeed");
-            AddSectionHeading(ed, "Bosses (last horde)");
-            NyarEditField(ed, id, "Bosses", "action.bosses", "CHAR_X_VBlood:1 or none", "Up to 3 bosses, CHAR_name[:1-3] comma-separated, or none (action.bosses).", 260);
-            NyarUnitListBuilder(ed, "bosses", "action.bosses", 3, vbloodFirst: true);
-            AddBodyText(ed, "<color=#888888>The apocalypse's units, faction and hotspots aren't settable by command — they live in events.json (edit it, then Reload from disk).</color>",
-                Theme.ScaledUI(11));
-        }
-        else
-        {
-            AddSectionHeading(ed, "▸ Where");
-            var lr = MakeUrielRow(ed, "NyarEdLocRow");
-            AddUrielButton(lr, "NyarEdLocHere", "Location here", $"Spawn at the spot you stand on (event set {id} location here).",
-                () => { NyarBeginAction(); NyarClient.EventSetLocationHere(id); }, 120);
-            AddUrielButton(lr, "NyarEdLocRegion", "Whole region", $"Spawn anywhere in the event's regions (event set {id} location region).",
-                () => { NyarBeginAction(); NyarClient.EventSet(id, "location", "region"); }, 120);
-            NyarEditField(ed, id, "Around a player (m)", "location", "aroundplayer 20 40",
-                "Spawn around a random player, MIN to MAX metres away: type aroundplayer MIN MAX (location).", 180);
-
-            AddSectionHeading(ed, "▸ Spawn waves");
-            NyarEditField(ed, id, "Waves", "action.waves", "e.g. 3", "Number of waves (action.waves).");
-            NyarEditField(ed, id, "Seconds between waves", "action.intervalSeconds", "e.g. 60", "action.intervalSeconds");
-            NyarEditField(ed, id, "Spawn radius (m)", "action.radius", "e.g. 10", "How far from the spot units appear (action.radius).");
-            NyarEditField(ed, id, "Units per wave", "action.units", "CHAR_Bandit_Thug:4,…",
-                "1-10 entries of CHAR_name:count (count 1-50), comma-separated. Build it with the picker below (action.units).", 260);
-            NyarUnitListBuilder(ed, "units", "action.units", 50, vbloodFirst: false);
-            NyarEditField(ed, id, "Behaviour", "action.behaviour", "none / hunt 30 / regionhunt",
-                "none = stay put; hunt R = chase players within R m; regionhunt = roam the region hunting (action.behaviour).", 180);
-            NyarEditField(ed, id, "Level", "action.modifiers.level", "e.g. 40", "Fixed unit level (action.modifiers.level).");
-            NyarEditField(ed, id, "Level shift", "action.modifiers.levelDelta", "e.g. +5", "Added to each unit's own level (action.modifiers.levelDelta).");
-            NyarEditField(ed, id, "Health ×", "action.modifiers.maxHealth", "e.g. 1.5", "action.modifiers.maxHealth");
-            NyarEditField(ed, id, "Power ×", "action.modifiers.power", "e.g. 1.2", "action.modifiers.power");
-            NyarEditField(ed, id, "Bosses", "action.bosses", "CHAR_X_VBlood:1 or none", "Up to 3 bosses with the last wave (action.bosses).", 260);
-            NyarUnitListBuilder(ed, "bosses", "action.bosses", 3, vbloodFirst: true);
+            case NyarEventKind.Empower: BuildNyarEmpowerSection(ed); break;
+            case NyarEventKind.Apocalypse: BuildNyarApocalypseSection(ed, id); break;
+            case NyarEventKind.UnitsForm:
+            case NyarEventKind.WaveList: BuildNyarSpawnSections(ed, id); break;
+            default:
+                AddBodyText(ed, Muted("This event's action has no form fields here — use Any other field below."), Theme.ScaledUI(12));
+                break;
         }
 
-        // Anything else from the full list.
-        AddSectionHeading(ed, "▸ Any other field");
-        var fr = MakeUrielRow(ed, "NyarEdOtherPick");
-        var fieldOpts = new[] { "Pick a field…" }.Concat(NyarSettableFields).ToArray();
-        var ddObj = UIFactory.CreateDropdown(fr, "NyarEdFieldPicker", out var fieldDd, fieldOpts[0], 11, i =>
-        {
-            if (i <= 0 || i >= fieldOpts.Length) return;
-            _nyarEditOtherField = fieldOpts[i];
-            if (_nyarEditInputs.TryGetValue("__otherField", out var f) && f != null) f.Text = fieldOpts[i];
-        }, fieldOpts);
-        UIFactory.SetLayoutElement(ddObj, minWidth: Theme.ScaledWidth(260), preferredWidth: Theme.ScaledWidth(260), flexibleWidth: 0,
-            minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
-        try { Raphael.UI.Forms.FormDropdownRegistry.Register(fieldDd); } catch { }
-        var or = MakeUrielRow(ed, "NyarEdOtherRow");
-        var fieldIn = AddNyarInput(or, "NyarEdOtherField", "field (replace N / M)", 200);
-        fieldIn.Text = _nyarEditOtherField;
-        fieldIn.OnValueChanged += t => _nyarEditOtherField = t ?? "";
-        _nyarEditInputs["__otherField"] = fieldIn;
-        var valIn = AddNyarInput(or, "NyarEdOtherValue", "value", 200);
-        if (_nyarEditVals.TryGetValue("__other", out var ov)) valIn.Text = ov;
-        valIn.OnValueChanged += t => _nyarEditVals["__other"] = t ?? "";
-        _nyarEditInputs["__other"] = valIn;
-        AddUrielButton(or, "NyarEdOtherSet", "Set", "Send event set <id> <field> <value>.", () =>
-        {
-            string field = (_nyarEditOtherField ?? "").Trim();
-            string val = _nyarEditVals.TryGetValue("__other", out var v) ? v.Trim() : "";
-            if (field.Length == 0 || val.Length == 0) { NyarState.SetError("event set", "Pick a field and type a value."); return; }
-            if (field.Contains(".N") || field.Contains(".M")) { NyarState.SetError("event set", "Replace N / M in the field with a number."); return; }
-            NyarBeginAction(); NyarClient.EventSet(id, field, val);
-            if (!NyarState.SupportsTwins) NyarProtocolService.RefreshDefs();
-        }, 56);
-        AddBodyText(ed, "<color=#888888>For a unit field (action.waveList.N.units, trigger.bosses) add units to the value with this picker:</color>", Theme.ScaledUI(11));
-        NyarUnitListBuilder(ed, "other", "__other", 50, vbloodFirst: false);
+        BuildNyarOtherField(ed, id);
+        NyarRefreshAll();
     }
 
-    // One "label  [value]  Set" row bound to an event field.
-    private void NyarEditField(GameObject parent, string id, string label, string field, string placeholder, string tip, int width = 150)
+    private static string NyarKindText(NyarEventKind k) => k switch
     {
-        var row = MakeUrielRow(parent, "NyarEd_" + field);
-        var lbl = UIFactory.CreateLabel(row, "NyarEdLbl", label, TextAlignmentOptions.MidlineLeft, color: null, fontSize: Theme.ScaledUI(12));
-        UIFactory.SetLayoutElement(lbl.GameObject, minWidth: Theme.ScaledWidth(160), preferredWidth: Theme.ScaledWidth(160), flexibleWidth: 0,
-            minHeight: Theme.ScaledHeight(22), flexibleHeight: 0);
-        lbl.TextMesh.enableWordWrapping = false;
-        TooltipHover.Attach(lbl.GameObject, tip);
-        var input = AddNyarInput(row, "NyarEdIn_" + field, placeholder, width);
-        if (_nyarEditVals.TryGetValue(field, out var v)) input.Text = v;
-        input.OnValueChanged += t => { _nyarEditVals[field] = t ?? ""; _nyarEditTouched.Add(field); };
-        _nyarEditInputs[field] = input;
-        AddUrielButton(row, "NyarEdSet_" + field, "Set", $"{tip}\nSends: event set {id} {field} <value>", () =>
+        NyarEventKind.UnitsForm => "Spawn waves — the same units every wave",
+        NyarEventKind.WaveList => "Spawn waves — each wave has its own units",
+        NyarEventKind.Empower => "Empowerment",
+        NyarEventKind.Apocalypse => "Apocalypse",
+        _ => "",
+    };
+
+    private void RefreshNyarChangesBar()
+    {
+        if (_nyarEdBarLabel == null) return;
+        int n = _nyarForm.ChangeCount();
+        string state = NyarBatchRunner.Busy && NyarBatchRunner.Current == _nyarEdBatch && _nyarEdBatch != null ? $"<color={NyarChangedHex}>{_nyarEdBatch.Progress}</color>"
+            : NyarClient.Quarantined ? $"<color={NyarChangedHex}>{NyarBatchRunner.WaitText}</color>"
+            : n == 0 ? Muted("No unsaved changes.")
+            : $"<color={NyarChangedHex}><b>{n}</b> unsaved change{(n == 1 ? "" : "s")}</color>";
+        _nyarEdBarLabel.text = state;
+        if (_nyarEdSaveAllBtn != null)
         {
-            string val = _nyarEditVals.TryGetValue(field, out var x) ? x.Trim() : "";
-            if (val.Length == 0) { NyarState.SetError("event set", $"Type a value for {label} first."); return; }
-            NyarBeginAction(); NyarClient.EventSet(id, field, val);
-            if (!NyarState.SupportsTwins) NyarProtocolService.RefreshDefs();
-        }, 56);
+            bool can = n > 0 && NyarCanSend;
+            _nyarEdSaveAllBtn.SetEnabled(can);
+            if (_nyarEdSaveAllBtn.ButtonText != null)
+                _nyarEdSaveAllBtn.ButtonText.text = can ? $"<b>Save all changes ({n})</b>" : Muted(n > 0 ? $"Save all changes ({n})" : "Save all changes");
+        }
+        _nyarEdUndoBtn?.SetEnabled(n > 0);
     }
 
-    // "Find a unit…" picker + count + Add: appends CHAR_name:count to the bound value (comma list).
-    private void NyarUnitListBuilder(GameObject parent, string key, string valueField, int maxCount, bool vbloodFirst)
+    // ---------------------------------------------------------------- empowerment
+
+    private void BuildNyarEmpowerSection(GameObject ed)
     {
-        AddBeelzSearchableField(parent, "NyarEdPick_" + key, vbloodFirst ? "Find a boss (type vblood to list them)…" : "Find a unit to add (name or faction)…",
-            "", t => UnitCatalog.Search(t, 30), v => _nyarUnitPicks[key] = v ?? "");
-        var r = MakeUrielRow(parent, "NyarEdPickRow_" + key);
-        var cnt = AddNyarInput(r, "NyarEdPickCount_" + key, $"count (1-{maxCount})", 100);
-        AddUrielButton(r, "NyarEdPickAdd_" + key, "Add to list", "Append the picked unit with this count to the value above.", () =>
+        AddSectionHeading(ed, "▸ Empowerment");
+        const string field = "action.factions";
+        var cur = _nyarForm.Get(field).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        var head = NyarRow(ed, "NyarFacHead");
+        NyarCell(head, "Factions", 150, tip: "1-5 factions whose units get stronger (action.factions).");
+        NyarCell(head, Muted($"{cur.Count} / {NyarFieldRules.MaxFactions} picked"), 120, flex: true);
+        var ui = NyarTail(head, "factions", "Click a faction to add or remove it.", field);
+        var known = NyarCatalogFactions();
+        foreach (var f in cur.Select(c => c.StartsWith("Faction_", StringComparison.Ordinal) ? c.Substring(8) : c))
+            if (!known.Contains(f)) known.Insert(0, f);
+        var fchips = new List<(string, bool, string, Action, int)>();
+        foreach (var f0 in known)
         {
-            string unit = _nyarUnitPicks.TryGetValue(key, out var u) ? u.Trim() : "";
-            if (!unit.StartsWith("CHAR_", StringComparison.OrdinalIgnoreCase) && unit.Length > 0) unit = "CHAR_" + unit;
-            if (!NyarUnitToken.IsMatch(unit)) { NyarState.SetError("unit", "Pick a unit from the list (CHAR_…)."); return; }
-            int n = 1;
-            string c = Tok(cnt);
-            if (c.Length > 0 && (!int.TryParse(c, NumberStyles.Integer, CultureInfo.InvariantCulture, out n) || n < 1 || n > maxCount))
-            { NyarState.SetError("unit", $"Count must be 1-{maxCount}."); return; }
-            string cur = _nyarEditVals.TryGetValue(valueField, out var x) ? x.Trim() : "";
-            if (cur.Equals("none", StringComparison.OrdinalIgnoreCase)) cur = "";
-            string next = (cur.Length > 0 ? cur.TrimEnd(',') + "," : "") + $"{unit}:{n}";
-            _nyarEditVals[valueField] = next; _nyarEditTouched.Add(valueField);
-            if (_nyarEditInputs.TryGetValue(valueField, out var f) && f != null) f.Text = next;
-            NyarState.ClearError();
+            string f = f0;
+            {
+                string full = "Faction_" + f;
+                bool on = cur.Contains(full);
+                fchips.Add((f, on, on ? $"Remove {f}." : $"Add {f}.", () =>
+                {
+                    var l = _nyarForm.Get(field).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                    if (!l.Remove(full))
+                    {
+                        if (l.Count >= NyarFieldRules.MaxFactions) { NyarState.SetError("factions", $"At most {NyarFieldRules.MaxFactions} factions — remove one first."); return; }
+                        l.Add(full);
+                    }
+                    NyarState.ClearError();
+                    _nyarForm.Set(field, string.Join(",", l));
+                    RedrawNyarEditor();
+                }, 0));
+            }
+        }
+        NyarChipRows(ed, "NyarFacRow", "", fchips, 4);
+        ui.Msg = NyarNote(ed);
+        NyarRefreshUi(ui);
+        foreach (var k in NyarForm.StatKeys)
+            NyarFieldStepper(ed, "action.stats." + k, hint: k == "physicalPower" ? "×1.0 leaves a stat as it is." : null);
+    }
+
+    // ---------------------------------------------------------------- apocalypse
+
+    private void BuildNyarApocalypseSection(GameObject ed, string id)
+    {
+        AddSectionHeading(ed, "▸ Apocalypse");
+        var gr = MakeUrielRow(ed, "NyarEdGoalRow");
+        NyarCell(gr, "Goal", 150);
+        var goalBtn = AddUrielButton(gr, "NyarEdGoalHere", "Goal here",
+            $"Make the spot you stand on the goal the horde marches to (event set {id} action.goal here). Sent at once.",
+            () => NyarSendOne("action.goal", "here", "goal", reread: true), 110);
+        goalBtn.SetEnabled(NyarCanSend);
+        AddNyarRowText(gr, Muted("Stand where the horde should march, then press. Sent at once."));
+        NyarTextField(ed, "action.goal.name", 220, "e.g. the village", "What the banners call the goal.");
+        NyarFieldStepper(ed, "action.goal.radius");
+        NyarFieldStepper(ed, "action.hordes.count");
+        NyarFieldStepper(ed, "action.hordes.everyMinutes");
+        NyarFieldStepper(ed, "action.hordes.size");
+        NyarFieldStepper(ed, "action.roamers.max");
+        NyarFieldStepper(ed, "action.marchSpeed");
+        AddSectionHeading(ed, "▸ Bosses with the last horde");
+        NyarListEditor(ed, "action.bosses", bosses: true, waveList: false, "Bosses", "Up to 3 bosses, 1-3 of each.", allowPools: false);
+        NyarNote(ed, Muted("The apocalypse's units, faction and hotspots aren't settable by command — they live in events.json (edit it, then Reload from disk)."));
+    }
+
+    // ---------------------------------------------------------------- spawn waves
+
+    private void BuildNyarSpawnSections(GameObject ed, string id)
+    {
+        var load = _nyarForm.Load;
+        AddSectionHeading(ed, "▸ Where and how");
+        BuildNyarLocation(ed, id);
+        NyarFieldStepper(ed, "action.radius", hint: "How far from the spot the units appear.");
+        BuildNyarBehaviour(ed);
+        NyarFieldStepper(ed, "action.pursuit",
+            hint: "If no player is near the units for this long, they come after the nearest one. Needs Hunt players.",
+            advice: () =>
+            {
+                string p = _nyarForm.Get("action.pursuit");
+                return p.Length > 0 && p != "none" && NyarHuntRange(_nyarForm.Get("action.behaviour")) == 0
+                    ? "pursuit needs Behaviour: Hunt players — the server disables the event otherwise." : null;
+            });
+        NyarYesNo(ed, "action.loot", "Drops loot", "Whether event units drop loot.");
+        NyarYesNo(ed, "action.allowTerritory", "Claimed territory", "Whether units may spawn on claimed castle territory.");
+
+        if (load.Kind == NyarEventKind.UnitsForm) BuildNyarUnitsForm(ed);
+        else BuildNyarWaveList(ed);
+
+        AddSectionHeading(ed, "▸ Final-wave bosses");
+        NyarListEditor(ed, "action.bosses", bosses: true, waveList: false, "Bosses",
+            "Up to 3 entries: a boss (1-3 of it) or a roll from a pool (1-5). With a roll, 5 bosses at most in all.");
+        if (load.Kind == NyarEventKind.WaveList)
+            NyarNote(ed, Muted("These come with the last wave. Don't also give the last wave its own bosses — the server disables the event if both are set."));
+
+        BuildNyarPoolsCard(ed);
+    }
+
+    private void BuildNyarLocation(GameObject ed, string id)
+    {
+        string loc = _nyarForm.Get("location");
+        string kind = loc.StartsWith("aroundplayer", StringComparison.Ordinal) ? "aroundplayer" : loc == "region" ? "region" : "";
+        string now = _nyarForm.Load.LocationKind switch { "admin" => "the spot where an admin starts it", "point" => "a set spot on the map", _ => "" };
+        var ui = NyarChoice(ed, "location", "Location", "Where units spawn (location).",
+            new[]
+            {
+                ("Whole region", "region", "Anywhere in the event's regions (location region)."),
+                ("Around a player", "aroundplayer", "Around a random player in range, between a nearest and a farthest distance."),
+            }, kind, v =>
+            {
+                if (v == "region") _nyarForm.Set("location", "region");
+                else if (!_nyarForm.Get("location").StartsWith("aroundplayer", StringComparison.Ordinal)) _nyarForm.Set("location", "aroundplayer 20 40");
+            }, new[] { "location" },
+            kind.Length == 0 && now.Length > 0 ? $"Now: {now}." : null);
+        var hr = NyarRow(ed, "NyarEdLocHere");
+        NyarCell(hr, "", 150);
+        var here = AddUrielButton(hr, "NyarEdLocHereBtn", "Use where I stand", $"Spawn at the spot you stand on (event set {id} location here). Sent at once.",
+            () => NyarSendOne("location", "here", "location", reread: true), 140);
+        here.SetEnabled(NyarCanSend);
+        NyarCell(hr, Muted("sent at once"), 100, flex: true);
+        if (kind == "aroundplayer")
+        {
+            var p = loc.Split(' ');
+            string Near() => p.Length == 3 ? p[1] : "";
+            string Far() => p.Length == 3 ? p[2] : "";
+            void Put(string a, string b) { p = new[] { "aroundplayer", a, b }; _nyarForm.Set("location", $"aroundplayer {a} {b}"); }
+            NyarStepper(ed, NyarFieldRules.Spec("location.near"), Near, v => Put(v, Far()), null, "Nearest distance from the player.");
+            int hunt = NyarHuntRange(_nyarForm.Get("action.behaviour"));
+            NyarStepper(ed, NyarFieldRules.Spec("location.far"), Far, v => Put(Near(), v), null,
+                hunt > 0 ? $"Farthest distance — at most the hunt range ({hunt} m)." : "Farthest distance, more than the nearest.");
+        }
+    }
+
+    private void BuildNyarBehaviour(GameObject ed)
+    {
+        string b = _nyarForm.Get("action.behaviour");
+        string kind = b.StartsWith("hunt ", StringComparison.Ordinal) ? "hunt" : b;
+        NyarChoice(ed, "behaviour", "Behaviour", "What the units do (action.behaviour).",
+            new[]
+            {
+                ("Stay put", "none", "Units stay where they spawn."),
+                ("Hunt players", "hunt", "Units chase players within a range."),
+                ("Roam the region", "regionhunt", "Units hunt the nearest player anywhere in the regions."),
+            }, kind, v => _nyarForm.Set("action.behaviour", v == "hunt" ? (b.StartsWith("hunt ", StringComparison.Ordinal) ? b : "hunt 30") : v),
+            new[] { "action.behaviour" });
+        if (kind == "hunt")
+            NyarStepper(ed, NyarFieldRules.Spec("behaviour.range"), () => b.Length > 5 ? b.Substring(5) : "",
+                v => { b = "hunt " + v; _nyarForm.Set("action.behaviour", b); }, null, "How far they look for players.");
+    }
+
+    private void BuildNyarUnitsForm(GameObject ed)
+    {
+        AddSectionHeading(ed, "▸ Waves (the same units every wave)");
+        NyarFieldStepper(ed, "action.waves");
+        NyarFieldStepper(ed, "action.intervalSeconds", hint: "Time from one wave to the next.");
+        NyarListEditor(ed, "action.units", bosses: false, waveList: false, "Units per wave",
+            "1-10 entries, 1-50 of each. A unit already in the list gets its count raised.");
+        BuildNyarLevel(ed);
+        foreach (var k in NyarForm.ModifierKeys) NyarFieldStepper(ed, "action.modifiers." + k);
+
+        AddSectionHeading(ed, "▸ Different units per wave");
+        NyarNote(ed, Muted("Turn this event into a per-wave list to give each wave its own units, bosses and start time. " +
+                           "Wave 1 gets the units above; Units per wave, Waves and Seconds between waves are removed; " +
+                           "the level and multipliers above are copied onto wave 1's units."));
+        var cr = NyarRow(ed, "NyarEdConvert");
+        NyarCell(cr, "", 150);
+        string units = _nyarForm.Get("action.units");
+        var btn = AddUrielConfirmButton(cr, "NyarEdConvertBtn", "Turn into a per-wave list…",
+            "Sends action.waveList.1.units with the units above; the server converts the event.", () =>
+            {
+                var why = NyarFieldRules.CheckUnitList(_nyarForm.Get("action.units"), true);
+                if (why != null) { NyarState.SetError("convert", "Units per wave: " + why); return; }
+                // The server copies its saved level / multipliers onto wave 1, so unsaved ones would be lost.
+                var pendingMods = NyarForm.UnitsFormKeys.Where(k => k.StartsWith("action.modifiers.", StringComparison.Ordinal) && _nyarForm.IsChanged(k)).ToList();
+                if (pendingMods.Count > 0)
+                {
+                    NyarState.SetError("convert", $"Save or undo your changes to {string.Join(", ", pendingMods.Select(NyarKeyLabel))} first — the server copies its saved values onto wave 1.");
+                    return;
+                }
+                string v = _nyarForm.Get("action.units");
+                _nyarEdWave = 1;
+                NyarSendOne("action.waveList.1.units", v, "wave 1 units (converts the event)", reread: true);
+            }, 200);
+        btn.SetEnabled(NyarCanSend && units.Length > 0);
+    }
+
+    private void BuildNyarLevel(GameObject ed)
+    {
+        string lv = _nyarForm.Get("action.modifiers.level"), ld = _nyarForm.Get("action.modifiers.levelDelta");
+        string mode = lv.Length > 0 && lv != "none" ? "fixed" : ld.Length > 0 && ld != "none" ? "shift" : "own";
+        NyarChoice(ed, "level", "Level", "Units' level: their own, a fixed level, or their own shifted (action.modifiers.level / levelDelta — never both).",
+            new[]
+            {
+                ("Units' own", "own", "Each unit keeps its own level."),
+                ("Fixed level", "fixed", "Every unit gets the same level (1-120)."),
+                ("Shift level", "shift", "Each unit's own level, raised or lowered by up to 5."),
+            }, mode, v =>
+            {
+                if (v == "fixed") { _nyarForm.Set("action.modifiers.level", lv.Length > 0 && lv != "none" ? lv : "40"); _nyarForm.Set("action.modifiers.levelDelta", "none"); }
+                else if (v == "shift") { _nyarForm.Set("action.modifiers.levelDelta", ld.Length > 0 && ld != "none" ? ld : "+2"); _nyarForm.Set("action.modifiers.level", "none"); }
+                else { _nyarForm.Set("action.modifiers.level", "none"); _nyarForm.Set("action.modifiers.levelDelta", "none"); }
+            }, new[] { "action.modifiers.level", "action.modifiers.levelDelta" });
+        var lvSpec = NyarFieldRules.Spec("action.modifiers.level"); lvSpec.NoneAllowed = false;
+        var ldSpec = NyarFieldRules.Spec("action.modifiers.levelDelta"); ldSpec.NoneAllowed = false;
+        if (mode == "fixed")
+            NyarStepper(ed, lvSpec, () => _nyarForm.Get("action.modifiers.level"),
+                v => _nyarForm.Set("action.modifiers.level", v), null);
+        else if (mode == "shift")
+            NyarStepper(ed, ldSpec, () => _nyarForm.Get("action.modifiers.levelDelta"),
+                v => _nyarForm.Set("action.modifiers.levelDelta", v), null);
+    }
+
+    private void BuildNyarWaveList(GameObject ed)
+    {
+        var waves = _nyarForm.Load.Waves;
+        int count = waves.Count;
+        AddSectionHeading(ed, "▸ Waves (each has its own units)");
+        var chips = new List<(string, bool, string, Action, int)>();
+        foreach (var w in waves)
+        {
+            int n = w.N;
+            bool dirty = _nyarForm.IsChanged($"action.waveList.{n}.units") || _nyarForm.IsChanged($"action.waveList.{n}.bosses") || _nyarForm.IsChanged(NyarForm.StartKey(n));
+            chips.Add(($"Wave {n}{(dirty ? " •" : "")}", n == _nyarEdWave, $"Wave {n}: {w.Total} units, {w.Rule}.", () => { _nyarEdWave = n; RedrawNyarEditor(); }, 74));
+        }
+        if (count < NyarFieldRules.MaxWave)
+            chips.Add(($"+ Wave {count + 1}", _nyarEdWave == count + 1, $"Add wave {count + 1}: set its units first.", () => { _nyarEdWave = count + 1; RedrawNyarEditor(); }, 84));
+        NyarChipRows(ed, "NyarEdWaveSel", "Edit wave", chips, 5);
+
+        int sw = _nyarEdWave;
+        if (sw == count + 1)
+        {
+            NyarNote(ed, Muted($"New wave {sw}: pick its units and press Set (or Save all). Its bosses and start time can be set once it exists. " +
+                               "It starts when the wave before it is cleared until you change that."));
+            NyarListEditor(ed, $"action.waveList.{sw}.units", bosses: false, waveList: true, $"Wave {sw} units", "1-10 entries, 1-50 of each; a unit may appear twice.");
+            return;
+        }
+        var info = waves.FirstOrDefault(x => x.N == sw);
+        if (info == null) return;
+        if (sw > 1)
+        {
+            string key = NyarForm.StartKey(sw);
+            string cur = _nyarForm.Get(key);
+            var p = cur.Split(' ');
+            string kind = p[0];
+            string secs = p.Length > 1 ? p[1] : "";
+            NyarChoice(ed, "start" + sw, "Starts", $"When wave {sw} starts (action.waveList.{sw}.afterSeconds / whenCleared).",
+                new[]
+                {
+                    ("When cleared", "cleared", "As soon as every unit of the wave before is dead."),
+                    ("After time", "after", "A set time after the wave before, cleared or not."),
+                    ("Time or cleared", "afterOrCleared", "After the time, or earlier if the wave before is cleared."),
+                }, kind, v => _nyarForm.Set(key, v == "cleared" ? "cleared" : $"{v} {(secs.Length > 0 ? secs : "60")}"), new[] { key },
+                kind switch
+                {
+                    "cleared" => "Starts as soon as every unit of the wave before is dead.",
+                    "after" => "Starts a set time after the wave before, cleared or not.",
+                    "afterOrCleared" => "Starts after the time, or sooner if the wave before is cleared.",
+                    _ => null,
+                });
+            var secSpec = NyarFieldRules.Spec($"action.waveList.{sw}.afterSeconds");
+            secSpec.NoneAllowed = false;   // "no timer" is the When-cleared choice above
+            if (kind is "after" or "afterOrCleared")
+                NyarStepper(ed, secSpec, () => secs, v => { secs = v; _nyarForm.Set(key, $"{kind} {v}"); }, null,
+                    "Seconds after the wave before starts.", label: "Seconds");
+        }
+        else NyarNote(ed, Muted("Wave 1 starts with the event."));
+        if (info.HasExtras)
+            NyarNote(ed, $"<color={NyarChangedHex}>Some units in this wave have their own level, multipliers or chance. Saving this wave's units replaces " +
+                         "them — set those again under Any other field (action.waveList.N.units.M.…).</color>");
+        NyarListEditor(ed, $"action.waveList.{sw}.units", bosses: false, waveList: true, $"Wave {sw} units", "1-10 entries, 1-50 of each; a unit may appear twice.");
+        NyarListEditor(ed, $"action.waveList.{sw}.bosses", bosses: true, waveList: true, $"Wave {sw} bosses",
+            "This wave's own bosses: up to 3 entries, 5 bosses at most in all.");
+        if (count > 1)
+        {
+            var rr = NyarRow(ed, "NyarEdWaveRemove");
+            NyarCell(rr, "", 150);
+            if (sw == count)
+            {
+                var rb = AddUrielConfirmButton(rr, "NyarEdWaveRemoveBtn", $"Remove wave {sw}", $"Delete wave {sw} (event set … action.waveList.{sw} none).",
+                    () => { _nyarForm.Undo(k => k.StartsWith($"action.waveList.{sw}.", StringComparison.Ordinal)); _nyarEdWave = sw - 1;
+                            NyarSendOne($"action.waveList.{sw}", "none", $"remove wave {sw}", reread: true); }, 140, new Color(0.55f, 0.15f, 0.15f, 1f));
+                rb.SetEnabled(NyarCanSend);
+            }
+            else NyarCell(rr, Muted($"Only the last wave (wave {count}) can be removed here, so the others keep their numbers."), 300, flex: true);
+        }
+    }
+
+    // ---------------------------------------------------------------- unit pools
+
+    /// <summary>The event's pools: the server's (event info) with this session's saves on top; deleted ones dropped.</summary>
+    private List<string> NyarPoolNames()
+    {
+        var names = new List<string>();
+        foreach (var kv in _nyarForm.Load.Pools) if (!_nyarSessionPools.TryGetValue(kv.Key, out var s) || s != null) names.Add(kv.Key);
+        foreach (var kv in _nyarSessionPools) if (kv.Value != null && !names.Contains(kv.Key)) names.Add(kv.Key);
+        return names;
+    }
+
+    private List<string> NyarPoolMembers(string name)
+    {
+        if (_nyarSessionPools.TryGetValue(name, out var s)) return s == null ? null : new List<string>(s);
+        foreach (var kv in _nyarForm.Load.Pools) if (kv.Key == name) return new List<string>(kv.Value);
+        return null;
+    }
+
+    private void NyarPoolSaved(string name, List<string> members)
+    {
+        _nyarSessionPools[name] = members == null ? null : new List<string>(members);
+        if (members == null) { _nyarPoolSel = ""; _nyarPoolMembers = new(); _nyarPoolLoaded = new(); }
+        else { _nyarPoolSel = name; _nyarPoolNew = false; _nyarPoolNewName = ""; _nyarPoolLoaded = new List<string>(members); _nyarPoolMembers = new List<string>(members); }
+    }
+
+    private void BuildNyarPoolsCard(GameObject ed)
+    {
+        AddSectionHeading(ed, "▸ Unit pools");
+        NyarNote(ed, Muted("A pool is a named mix of up to 30 units. A units entry \"from pool\" draws its units from it at random, and a boss roll " +
+                           "picks 1-5 bosses from it. Save a pool before a list names it. The server allows 8 pools per event and refuses " +
+                           "deleting one a list still uses."));
+        if (!_nyarForm.Load.PoolsComplete)
+            NyarNote(ed, $"<color={NyarChangedHex}>A pool's member list couldn't be read whole — press Reload values before editing it.</color>");
+        var names = NyarPoolNames();
+        var pchips = new List<(string, bool, string, Action, int)>();
+        foreach (var n in names)
+        {
+            string pn = n;
+            int k = NyarPoolMembers(pn)?.Count ?? 0;
+            pchips.Add(($"{pn} ({k})", !_nyarPoolNew && _nyarPoolSel == pn, $"Edit pool {pn} ({k} units).", () =>
+            {
+                _nyarPoolSel = pn; _nyarPoolNew = false;
+                _nyarPoolLoaded = NyarPoolMembers(pn) ?? new List<string>();
+                _nyarPoolMembers = new List<string>(_nyarPoolLoaded);
+                RedrawNyarEditor();
+            }, 0));
+        }
+        if (names.Count < NyarFieldRules.MaxPools)
+            pchips.Add(("New pool…", _nyarPoolNew, "Start a new pool.", () =>
+            {
+                _nyarPoolNew = true; _nyarPoolSel = ""; _nyarPoolMembers = new(); _nyarPoolLoaded = new(); RedrawNyarEditor();
+            }, 90));
+        NyarChipRows(ed, "NyarPoolSel", "Pool", pchips, 4);
+        if (!_nyarPoolNew && _nyarPoolSel.Length == 0)
+        {
+            NyarNote(ed, Muted(names.Count == 0 ? "This event has no pools. Press New pool… to make one." : "Pick a pool to edit it, or press New pool…."));
+            return;
+        }
+
+        int gen = _nyarEdGen;
+        string name = _nyarPoolSel;
+        var members = _nyarPoolMembers;
+        TextMeshProUGUI note = null;           // set below; the name box's handler refreshes it while typing
+        // A server pool read from an incomplete reply: saving would replace it with only the members Raphael saw.
+        bool partial = !_nyarPoolNew && !_nyarForm.Load.PoolsComplete && !_nyarSessionPools.ContainsKey(_nyarPoolSel);
+        if (_nyarPoolNew)
+        {
+            var nr = NyarRow(ed, "NyarPoolName");
+            NyarCell(nr, "Name", 150, tip: "a-z, 0-9 and -, up to 24 characters.");
+            var input = AddNyarInput(nr, "NyarPoolNameIn", "e.g. troops", 160);
+            input.Text = _nyarPoolNewName;
+            var echo = NyarCell(nr, "", 160, flex: true);
+            void Echo(string t)
+            {
+                string norm = NyarFieldRules.NormalizePoolName(t);
+                echo.text = norm.Length == 0 ? Muted("letters, digits and -") : norm == t ? $"<color={NyarSavedHex}>✓ {norm}</color>" : Muted($"saved as <b>{norm}</b>");
+            }
+            Echo(_nyarPoolNewName);
+            input.OnValueChanged += t => { if (gen != _nyarEdGen) return; _nyarPoolNewName = t ?? ""; Echo(_nyarPoolNewName); RefreshPoolNote(); };
+        }
+
+        var head = NyarRow(ed, "NyarPoolHead");
+        NyarCell(head, $"<b>Members</b>", 150);
+        NyarCell(head, Muted($"units {members.Count} / {NyarFieldRules.MaxPoolMembers}"), 140, flex: true);
+        bool dirty = !members.SequenceEqual(_nyarPoolLoaded);
+        NyarCell(head, dirty ? $"<color={NyarChangedHex}>• changed</color>" : "", 64);
+        for (int i = 0; i < members.Count; i++)
+        {
+            int idx = i;
+            var r = NyarRow(ed, "NyarPoolRow" + i);
+            NyarCell(r, $"{i + 1}. {NyarUnitDisplay(members[i])}", 260, flex: true, tip: members[i]);
+            AddUrielButton(r, "NyarPoolRemove", "Remove", "Take this unit out of the pool (press Save pool to send).",
+                () => { _nyarPoolMembers.RemoveAt(idx); RedrawNyarEditor(); }, 70);
+        }
+        if (members.Count < NyarFieldRules.MaxPoolMembers)
+        {
+            AddBeelzSearchableField(ed, "NyarPoolPick", "Find a unit to add to the pool…", "", t => UnitCatalog.Search(t, 30), v => _nyarUnitPicks["__pool"] = v ?? "");
+            var ar = NyarRow(ed, "NyarPoolAdd");
+            NyarCell(ar, "", 150);
+            AddUrielButton(ar, "NyarPoolAddBtn", "Add to pool", "Add the unit picked above.", () =>
+            {
+                string unit = NyarResolveUnit(_nyarUnitPicks.TryGetValue("__pool", out var u) ? u : "");
+                if (unit == null) { NyarState.SetError("pool", "Pick a unit from the list under the search box (or type its full CHAR_ name)."); return; }
+                if (_nyarPoolMembers.Contains(unit)) { NyarState.SetError("pool", "That unit is already in the pool."); return; }
+                _nyarPoolMembers.Add(unit); _nyarUnitPicks.Remove("__pool"); NyarState.ClearError(); RedrawNyarEditor();
+            }, 110);
+        }
+        else NyarNote(ed, Muted($"The pool is full ({NyarFieldRules.MaxPoolMembers} units)."));
+
+        var factions = members.Select(NyarFactionOf).Where(f => f.Length > 0).Distinct().ToList();
+        if (factions.Count > 1)
+            NyarNote(ed, $"<color={NyarChangedHex}>Check: these units come from {string.Join(", ", factions)}. Units of rival factions may fight each other; " +
+                         "the server refuses some mixes.</color>");
+
+        string PoolName() => _nyarPoolNew ? NyarFieldRules.NormalizePoolName(_nyarPoolNewName) : _nyarPoolSel;
+        string Problem(string nm) => partial ? "This pool couldn't be read whole, so saving it could drop units. Press Reload values first."
+            : !NyarFieldRules.IsPoolName(nm) ? "Give the pool a name (a-z, 0-9 and -)."
+            : _nyarPoolNew && names.Contains(nm) ? $"There's already a pool called {nm} — pick it above to edit it."
+            : NyarFieldRules.CheckPoolMembers(members);
+        note = NyarNote(ed);
+        void RefreshPoolNote()
+        {
+            string nm = PoolName(), problem = Problem(nm);
+            if (problem != null) NyarSetNote(note, partial || members.Count > 0 || _nyarPoolNewName.Length > 0 ? $"<color={NyarBadHex}>{problem}</color>" : "");
+            else
+            {
+                int n = NyarPoolSteps(nm, members).Count;
+                NyarSetNote(note, n > 1 ? $"<color={NyarChangedHex}>This pool takes {n} commands; if one is refused the pool stops there — fix it and Save again (Save replaces the whole pool).</color>" : "");
+            }
+        }
+        RefreshPoolNote();
+
+        var br = NyarRow(ed, "NyarPoolBtns");
+        NyarCell(br, "", 150);
+        var save = AddUrielButton(br, "NyarPoolSave", "Save pool", "Send this pool to the server (it replaces the pool's members).", () =>
+        {
+            string nm = PoolName(), problem = Problem(nm);
+            if (problem != null) { NyarState.SetError("pool", problem); return; }
+            var steps = NyarPoolSteps(nm, members);
+            if (!NyarCanSend) { NyarState.SetError("pool", NyarBatchRunner.Busy ? "Still saving — wait for it to finish." : NyarBatchRunner.WaitText); return; }
+            NyarBeginAction();
+            if (!NyarState.SupportsTwins) { NyarState.SetError("pool", "Pools need Nyarlathotep api 4 or later."); return; }
+            var batch = new NyarBatch(_nyarEditId, nm, true, steps);
+            _nyarPoolBatchName = nm; _nyarPoolBatchMembers = new List<string>(members);
+            _nyarEdBatch = batch; _nyarEdBatchReread = false;
+            if (!NyarBatchRunner.Start(batch)) _nyarEdBatch = null;
+            NyarRefreshAll();
         }, 100);
-        AddUrielButton(r, "NyarEdPickClear_" + key, "Clear list", "Empty the value above.", () =>
+        save.SetEnabled(!partial && members.Count > 0 && (dirty || _nyarPoolNew) && NyarCanSend);
+        if (dirty) AddUrielButton(br, "NyarPoolUndo", "Undo", "Put the members back as the server has them.", () => { _nyarPoolMembers = new List<string>(_nyarPoolLoaded); RedrawNyarEditor(); }, 64);
+        if (!_nyarPoolNew)
         {
-            _nyarEditVals[valueField] = ""; _nyarEditTouched.Add(valueField);
-            if (_nyarEditInputs.TryGetValue(valueField, out var f) && f != null) f.Text = "";
-        }, 90);
+            var del = AddUrielConfirmButton(br, "NyarPoolDelete", "Delete pool", $"Remove pool {name} (event set … action.pools.{name} none). The server refuses while a list uses it.",
+                () =>
+                {
+                    _nyarPoolBatchName = name; _nyarPoolBatchMembers = null;
+                    NyarSendPoolDelete(name);
+                }, 110, new Color(0.55f, 0.15f, 0.15f, 1f));
+            del.SetEnabled(NyarCanSend);
+        }
     }
 
-    // Fill untouched fields from the captured `event info` reply (best effort — the reply is human text).
-    private void PrefillNyarEditor()
+    /// <summary>The steps of a pool save: always the whole member list (chunked under the chat limit, then "+name" for the
+    /// rest). A full replace is safe to send again after a lost answer; a lone "+x" / "-x" is not.</summary>
+    private List<NyarBatchStep> NyarPoolSteps(string name, List<string> members)
     {
-        var lines = NyarCapture.InfoLines;
-        if (lines.Count == 0) return;
-        string all = string.Join("\n", lines);
-        string Line(string prefix) => lines.FirstOrDefault(l => l.StartsWith(prefix, StringComparison.Ordinal)) ?? "";
-        string M(string text, string rx) { var m = Regex.Match(text, rx); return m.Success ? m.Groups[1].Value : ""; }
-        void Put(string field, string value)
+        string field = "action.pools." + name;
+        string id = _nyarEditId;
+        NyarBatchStep Step(string value, string[] covers, string label)
+            => new() { Field = field, Value = value, Command = NyarClient.EventSetCommand(id, field, value), Label = label, FormKey = field, Covers = covers };
+        return NyarFieldRules.PoolSaveSteps(members, v => NyarClient.EventSetCommand(id, field, v))
+            .Select((s, i) => Step(s.Value, s.Covers, i == 0 ? (s.Covers.Length == 1 ? s.Covers[0] : $"the first {s.Covers.Length} units") : s.Covers[0])).ToList();
+    }
+
+    private void NyarSendPoolDelete(string name)
+    {
+        if (!NyarCanSend) { NyarState.SetError("pool", NyarBatchRunner.Busy ? "Still saving — wait for it to finish." : NyarBatchRunner.WaitText); return; }
+        if (!NyarState.SupportsTwins) { NyarState.SetError("pool", "Pools need Nyarlathotep api 4 or later."); return; }
+        NyarBeginAction();
+        string field = "action.pools." + name;
+        var batch = new NyarBatch(_nyarEditId, name, true, new List<NyarBatchStep>
         {
-            if (string.IsNullOrEmpty(value) || _nyarEditTouched.Contains(field)) return;
-            _nyarEditVals[field] = value;
+            new() { Field = field, Value = "none", Command = NyarClient.EventSetCommand(_nyarEditId, field, "none"), Label = $"delete pool {name}", FormKey = field },
+        });
+        _nyarEdBatch = batch; _nyarEdBatchReread = false;
+        if (!NyarBatchRunner.Start(batch)) _nyarEdBatch = null;
+        NyarRefreshAll();
+    }
+
+    // ---------------------------------------------------------------- any other field
+
+    private static readonly System.Text.RegularExpressions.Regex NyarSeg = new(@"\.N(?=\.|$)");
+
+    private static readonly HashSet<string> NyarBoolFields = new(StringComparer.Ordinal)
+    {
+        "action.loot", "action.allowTerritory", "action.waveList.N.whenCleared", "action.scoreboard", "action.regionLock",
+        "action.growth.whenCleared", "action.fanOut", "trigger.shared",
+    };
+
+    private void BuildNyarOtherField(GameObject ed, string id)
+    {
+        AddSectionHeading(ed, "▸ Any other field");
+        NyarNote(ed, Muted("Every field the server takes. Pick one; its value control follows the field's type and range."));
+        var fr = MakeUrielRow(ed, "NyarEdOtherPick");
+        NyarCell(fr, "Field", 150);
+        var fieldOpts = new[] { "Pick a field…" }.Concat(NyarSettableFields).ToArray();
+        int picked = Math.Max(0, Array.IndexOf(fieldOpts, _nyarEditOtherField));
+        int ddGen = _nyarEdGen;
+        var ddObj = UIFactory.CreateDropdown(fr, "NyarEdFieldPicker", out var fieldDd, fieldOpts[picked], 11, i =>
+        {
+            // Setting the shown value below fires this too: only a real pick, on the live editor, redraws.
+            if (ddGen != _nyarEdGen || i <= 0 || i >= fieldOpts.Length || fieldOpts[i] == _nyarEditOtherField) return;
+            _nyarEditOtherField = fieldOpts[i];
+            _nyarOtherN = _nyarOtherM = "";
+            RedrawNyarEditor();
+        }, fieldOpts);
+        UIFactory.SetLayoutElement(ddObj, minWidth: Theme.ScaledWidth(300), preferredWidth: Theme.ScaledWidth(300), flexibleWidth: 0,
+            minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
+        try { fieldDd.value = picked; } catch { }
+        try { Raphael.UI.Forms.FormDropdownRegistry.Register(fieldDd); } catch { }
+        string g = _nyarEditOtherField;
+        if (g.Length == 0) return;
+
+        // N / M / NAME chosen from chips, never typed over.
+        int waves = _nyarForm.Load.Waves.Count;
+        bool hasN = NyarSeg.IsMatch(g.Replace(".M", "")), hasM = g.Contains(".M.") || g.EndsWith(".M", StringComparison.Ordinal);
+        if (hasN)
+        {
+            var r = NyarRow(ed, "NyarOtherN");
+            NyarCell(r, g.StartsWith("action.units.N", StringComparison.Ordinal) ? "Entry" : "Wave", 150);
+            int top = g.StartsWith("action.units.N", StringComparison.Ordinal) ? NyarFieldRules.MaxUnitEntries : Math.Min(NyarFieldRules.MaxWave, Math.Max(1, waves + 1));
+            for (int n = 1; n <= top; n++)
+            {
+                string s = n.ToString(CultureInfo.InvariantCulture);
+                NyarChip(r, "NyarOtherNChip", s, _nyarOtherN == s, $"Use {s}.", () => { _nyarOtherN = s; RedrawNyarEditor(); }, 34);
+            }
+            NyarCell(r, "", 10, flex: true);
         }
+        if (hasM)
+        {
+            var r = NyarRow(ed, "NyarOtherM");
+            NyarCell(r, "Unit entry", 150);
+            for (int n = 1; n <= NyarFieldRules.MaxUnitEntries; n++)
+            {
+                string s = n.ToString(CultureInfo.InvariantCulture);
+                NyarChip(r, "NyarOtherMChip", s, _nyarOtherM == s, $"Entry {s} of the wave's units list.", () => { _nyarOtherM = s; RedrawNyarEditor(); }, 34);
+            }
+            NyarCell(r, "", 10, flex: true);
+        }
+        if (g.Contains("NAME"))
+        {
+            var r = NyarRow(ed, "NyarOtherName");
+            NyarCell(r, "Pool", 150);
+            foreach (var p in NyarPoolNames())
+            {
+                string pn = p;
+                NyarChip(r, "NyarOtherNameChip", pn, _nyarOtherName == pn, $"Pool {pn}.", () => { _nyarOtherName = pn; RedrawNyarEditor(); });
+            }
+            var input = AddNyarInput(r, "NyarOtherNameIn", "or type a name", 130);
+            input.Text = _nyarOtherName;
+            int gen = _nyarEdGen;
+            input.OnValueChanged += t => { if (gen == _nyarEdGen) _nyarOtherName = NyarFieldRules.NormalizePoolName(t); };
+            AddUrielButton(r, "NyarOtherNameUse", "Use", "Use the typed name.", RedrawNyarEditor, 50);
+        }
+        string field = g;
+        if (hasN) { if (_nyarOtherN.Length == 0) { NyarNote(ed, Muted("Pick the number above.")); return; } field = NyarSeg.Replace(field, "." + _nyarOtherN, 1); }
+        if (hasM) { if (_nyarOtherM.Length == 0) { NyarNote(ed, Muted("Pick the unit entry above.")); return; } field = System.Text.RegularExpressions.Regex.Replace(field, @"\.M(?=\.|$)", "." + _nyarOtherM); }
+        if (field.Contains("NAME")) { if (!NyarFieldRules.IsPoolName(_nyarOtherName)) { NyarNote(ed, Muted("Pick or type a pool name above.")); return; } field = field.Replace("NAME", _nyarOtherName); }
 
-        Put("name", NyarCapture.InfoName());
-        Put("durationSeconds", M(lines[0], @"\bduration (\d+)s"));
-        string cond = Line("conditions:");
-        Put("conditions.minPlayers", M(cond, @"minPlayers (\d+)"));
-        Put("conditions.cooldownMinutes", M(cond, @"cooldown (\d+) min"));
-        Put("conditions.chancePercent", M(cond, @"chance (\d+)%"));
-
-        string act = Line("action:");
-        Put("action.waves", M(act, @"(\d+) waves?"));
-        Put("action.intervalSeconds", M(act, @"every (\d+)s"));
-        Put("action.radius", M(act, @"radius (\d+)"));
-        Put("action.units", NyarCapture.InfoUnitsSetForm());
-        Put("action.marchSpeed", M(act, @"march ([\d.]+)"));
-
-        string goal = Line("goal:");
-        Put("action.goal.radius", M(goal, @"radius (\d+)"));
-        string hordes = Line("hordes:");
-        Put("action.hordes.count", M(hordes, @"hordes: (\d+)"));
-        Put("action.hordes.everyMinutes", M(hordes, @"every (\d+) min"));
-        Put("action.hordes.size", M(hordes, @"size (\d+)"));
-        Put("action.roamers.max", M(Line("roamers:"), @"max (\d+)"));
-        string boss = M(all, @"last horde adds: (CHAR_[A-Za-z0-9_]+) x(\d)");
-        if (boss.Length > 0) Put("action.bosses", $"{boss}:{M(all, @"last horde adds: CHAR_[A-Za-z0-9_]+ x(\d)")}");
+        var spec = NyarFieldRules.Spec(field, _nyarForm.Load.Kind == NyarEventKind.Apocalypse);
+        if (spec != null && spec.Kind != NyarKind.Text) { NyarFieldStepper(ed, field, _nyarForm.Load.Kind == NyarEventKind.Apocalypse); return; }
+        if (NyarBoolFields.Contains(NyarFieldRules.Generic(field))) { NyarYesNo(ed, field, NyarText(field), field); return; }
+        string gen2 = NyarFieldRules.Generic(field);
+        if (gen2 == "action.units" || gen2 == "action.waveList.N.units")
+        { NyarListEditor(ed, field, false, gen2 != "action.units", "Units", "1-10 entries, 1-50 of each."); return; }
+        if (gen2 == "action.bosses" || gen2 == "action.waveList.N.bosses")
+        { NyarListEditor(ed, field, true, gen2 != "action.bosses", "Bosses", "Up to 3 entries."); return; }
+        if (gen2 == "action.waveList.N")
+        {
+            NyarNote(ed, Muted("This field only takes none (remove that wave). Use Remove wave in the Waves section."));
+            return;
+        }
+        // Free text, checked by the server.
+        int g3 = _nyarEdGen;
+        var vr = NyarRow(ed, "NyarOtherValue");
+        NyarCell(vr, "Value", 150, tip: field);
+        var vin = AddNyarInput(vr, "NyarOtherValueIn", "value", 260);
+        vin.Text = _nyarForm.Get(field);
+        NyarCell(vr, "", 10, flex: true);
+        var ui = NyarTail(vr, field, "The server checks this value; its answer shows at the top.", field);
+        vin.OnValueChanged += t => { if (g3 != _nyarEdGen) return; _nyarForm.Set(field, (t ?? "").Trim()); NyarRefreshUi(ui); RefreshNyarChangesBar(); };
+        ui.Msg = NyarNote(ed);
+        NyarRefreshUi(ui);
     }
 
     private static string NyarEscape(string s) => (s ?? "").Replace("<", "<​");

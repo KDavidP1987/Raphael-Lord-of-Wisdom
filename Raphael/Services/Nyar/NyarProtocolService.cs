@@ -100,6 +100,7 @@ internal static class NyarProtocolService
         }
 
         NyarClient.Pump(OnSending, OnTimedOut);
+        NyarBatchRunner.Tick();
         NyarState.ExpireKillswitch();
 
         float t = Time.realtimeSinceStartup;
@@ -144,6 +145,7 @@ internal static class NyarProtocolService
         _statusDueAt = _lastAdminCheckAt = 0f; _lastLocalAdmin = false;
         _accStatus.Clear(); _accMe.Clear(); _accTop.Clear(); _accDefs.Clear(); _accZones.Clear();
         _accRegions.Clear(); _accTemplates.Clear(); _accPillars.Clear(); _templatesPillar = _templatesWanted = "";
+        NyarBatchRunner.Reset();
         NyarClient.ResetQueue();
         NyarCapture.Reset();
         NyarState.Reset();
@@ -205,11 +207,30 @@ internal static class NyarProtocolService
             case "pillar":  _accPillars.Add(new NyarPillar(line.Get("id"), line.GetBool("on"))); break;
             case "ks":      NyarState.SetKillswitchRead(line.GetBool("on"), line.GetInt("secs"), line.GetInt("events"), line.GetInt("units")); break;
             case "end":     NyarClient.Complete(); OnEnd(line); break;
-            case "ok":      NyarClient.Complete(); OnOk(line); break;
-            case "err":     NyarClient.Complete(); OnErr(line); break;
+            case "ok":
+                if (StaleTwinReply(line)) break;
+                NyarClient.Complete();
+                if (NyarBatchRunner.OnOk(line)) { _needDefs = true; break; }   // a batch step: the batch writes the result line
+                OnOk(line);
+                break;
+            case "err":
+                if (StaleTwinReply(line)) break;
+                OnErr(line, NyarClient.Complete());
+                break;
             case "ev":      OnEv(line); break;
             default:        LogUtils.LogDiagnostic($"[Nyar] unhandled tag '{line.Tag}': {line.Raw}"); break;
         }
+    }
+
+    // 0.72.0: during NyarClient's quarantine no twin is sent, so a twin ok / err arriving then belongs to the abandoned
+    // command: log it and drop it (from the batch and from the result line), and free the client if that command is
+    // still the one in flight.
+    private static bool StaleTwinReply(NyarLine line)
+    {
+        if (!NyarClient.Quarantined || !NyarClient.IsTwinReply(line.Get("cmd").ToLowerInvariant())) return false;
+        if (NyarClient.IsTwin(NyarClient.InFlight)) NyarClient.Complete();
+        NyarDiag.Log($"stale twin reply discarded during quarantine: {line.Raw}");
+        return true;
     }
 
     private static void OnVersion(NyarLine line)
@@ -412,7 +433,7 @@ internal static class NyarProtocolService
         NyarState.SetResult(true, msg);
     }
 
-    private static void OnErr(NyarLine line)
+    private static void OnErr(NyarLine line, string inFlight)
     {
         string cmd = line.Get("cmd"), code = line.Get("code").ToLowerInvariant(), verb = line.Get("verb");
         string reason = line.Get("reason").ToLowerInvariant(), arg = line.Get("arg");
@@ -425,68 +446,16 @@ internal static class NyarProtocolService
         // io internal (contract §5a): the action may be partly applied — re-read state before acting on it.
         if (code == "io" && reason == "internal") RefreshAllAdmin();
 
-        string message = ErrorText(code, reason, arg, secs);
+        string message = ErrorText(code, reason, arg, secs, line.Get("pillar"));
+        if (NyarBatchRunner.OnErr(line, inFlight, message)) return;   // a batch step: the batch writes one result line
         string where = string.IsNullOrEmpty(verb) || verb == "-" ? cmd : $"{cmd} {verb}";
         NyarState.SetError(where, message);
         if (!string.IsNullOrEmpty(verb)) NyarState.SetResult(false, message);
     }
 
-    // Contract §4 codes + §5a reasons → one short sentence.
-    internal static string ErrorText(string code, string reason, string arg, int secs)
-    {
-        string argTxt = string.IsNullOrEmpty(arg) || arg == "-" ? "" : arg;
-        switch (code)
-        {
-            case "state":
-                return reason switch
-                {
-                    "already_active"      => "Already running.",
-                    "not_active"          => "Not running.",
-                    "running"             => "Can't delete a running event — stop it first.",
-                    "disabled"            => "That event is disabled — enable it first.",
-                    "empower_clash"       => "Clashes with an empowerment that's already running.",
-                    "nothing_to_purge"    => "Nothing to purge.",
-                    "no_player_in_region" => "No online player is in the event's trigger regions.",
-                    "out_of_region"       => "Outside the event's trigger regions.",
-                    // §5a: unstick answers a bare `code=state arg=id` when the event has no live unit.
-                    "" when argTxt == "id" => "That event has no live units.",
-                    _ => $"Wrong state{(reason.Length > 0 ? $" ({reason.Replace('_', ' ')})" : "")}.",
-                };
-            case "cooldown":  return $"Kill-switch cooldown: {FormatSecs(secs)} left.";
-            case "ratelimit": return $"Too fast — try again in {FormatSecs(Math.Max(1, secs))}.";
-            case "invalid":
-                if (reason == "watch_off") return "Unit watch is off on this server ([UnitWatch] Enabled = false).";
-                return $"{(argTxt.Length > 0 ? argTxt : "Value")} is not valid{(reason.Length > 0 ? $": {reason.Replace('_', ' ')}" : "")}.";
-            case "exists":    return $"That {(argTxt.Length > 0 ? argTxt : "id")} is already taken.";
-            case "full":      return reason == "size" ? "The definitions file would pass 1 MB." : "The definitions file already holds 200 events.";
-            case "io":
-                return reason switch
-                {
-                    "internal" => "Server error: re-reading state.",
-                    "stale"    => "The file changed on disk — reload and try again.",
-                    "read_only" => "The server's events file is read-only.",
-                    _ => $"Server file error ({(reason.Length > 0 ? reason.Replace('_', ' ') : "io")}).",
-                };
-            case "confirm":   return "The confirmation window expired — try again.";
-            case "limit":     return "Skipped: the server is already running its maximum number of events.";
-            case "disabled":
-                if (reason == "pillar_off") return "This event's pillar is switched off on the server — turn it on in Nyarlathotep → Admin: Pillars.";
-                if (reason == "general") return "Nyarlathotep is switched off on this server (General.Enabled = false).";
-                return "That feature is switched off on this server.";
-            case "notfound":  return $"Not found{(argTxt.Length > 0 ? $" ({argTxt})" : "")}.";
-            case "badarg":
-                if (reason == "out_of_region") return "That location is outside the event's regions.";
-                if (reason == "no_position") return "The server couldn't read your position — try again in a moment.";
-                // Nyarlathotep 0.13.0-rc.1 bug: an apocalypse whose goal is "the starting admin" can never start
-                // (the start flow only reads the admin's position for spawn-wave events). Workaround: fix the goal.
-                if (reason == "admin_location")
-                    return "The server can't start an event that marches on the starting admin (a Nyarlathotep bug). " +
-                           "Stand where the goal should be, press Goal here in the event editor, then Start.";
-                return $"Bad argument{(argTxt.Length > 0 ? $": {argTxt}" : "")}{(reason.Length > 0 ? $" ({reason.Replace('_', ' ')})" : "")}.";
-            case "noaccess":  return "Admin only.";
-            default:          return $"Error '{code}'{(reason.Length > 0 ? $" ({reason})" : "")}.";
-        }
-    }
+    // Contract §4 codes + §5a reasons → one short sentence (pure, unit-tested: NyarMessages).
+    internal static string ErrorText(string code, string reason, string arg, int secs, string pillar = "")
+        => NyarMessages.ErrorText(code, reason, arg, secs, pillar, NyarState.PluginVersion);
 
     // Push stream (after `api sub on`). Map each type to the read(s) it invalidates, and toast.
     private static void OnEv(NyarLine line)
@@ -610,13 +579,7 @@ internal static class NyarProtocolService
         if (cur < 1) cur = 1; if (total < 1) total = 1;
     }
 
-    internal static string FormatSecs(int secs)
-    {
-        if (secs <= 0) return "0s";
-        if (secs < 60) return $"{secs}s";
-        if (secs < 3600) return $"{secs / 60}m {secs % 60:00}s";
-        return $"{secs / 3600}h {(secs % 3600) / 60:00}m";
-    }
+    internal static string FormatSecs(int secs) => NyarMessages.FormatSecs(secs);
 
     private static string FormatMinutes(int secs)
         => secs < 60 ? $"{secs} s" : secs < 3600 ? $"{(secs + 59) / 60} min" : $"{secs / 3600} h {(secs % 3600) / 60:00} min";

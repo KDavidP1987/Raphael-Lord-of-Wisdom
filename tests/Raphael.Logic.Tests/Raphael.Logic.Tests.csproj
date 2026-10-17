@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 0.72.0: logic tests for the pure parts of Raphael (no Unity, no game). Not in Raphael.sln, so the mod build and the
+       release package are untouched. Run: dotnet run -c Release (tools/preflight.ps1 -Mode Release runs it). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RollForward>Major</RollForward>
+    <Nullable>disable</Nullable>
+    <RootNamespace>Raphael.Logic.Tests</RootNamespace>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Raphael\Services\Nyar\NyarFieldRules.cs" Link="Linked\NyarFieldRules.cs" />
+    <Compile Include="..\..\Raphael\Services\Nyar\NyarBatch.cs" Link="Linked\NyarBatch.cs" />
+    <Compile Include="..\..\Raphael\Services\Nyar\NyarVersion.cs" Link="Linked\NyarVersion.cs" />
+    <Compile Include="..\..\Raphael\Services\Nyar\NyarInfoParse.cs" Link="Linked\NyarInfoParse.cs" />
+    <Compile Include="..\..\Raphael\Services\Nyar\NyarMessages.cs" Link="Linked\NyarMessages.cs" />
+    <Compile Include="..\..\Raphael\Services\Nyar\NyarForm.cs" Link="Linked\NyarForm.cs" />
+    <Compile Include="..\..\Raphael\UI\ModContent\RailPolicy.cs" Link="Linked\RailPolicy.cs" />
+  </ItemGroup>
+</Project>

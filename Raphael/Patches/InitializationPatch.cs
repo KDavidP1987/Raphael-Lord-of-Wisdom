@@ -130,6 +130,7 @@ public static class InitializationPatch
             Services.Uriel.UrielProtocolService.Reset(); // 0.26: same, for Uriel — re-detect on relog/server-switch
             Services.Faust.FaustProtocolService.Reset(); // same, for Faust — re-detect + drop query state on relog/server-switch
             Services.Nyar.NyarProtocolService.Reset();   // same, for Nyarlathotep — re-detect + re-subscribe on relog/server-switch
+            Raphael.UI.ModContent.RailMemory.Clear(); // 0.72.0: the left rail's open groups live as long as detection does (PURE static clear)
             Services.Uriel.UrielBuildMode.Reset(); // 0.26: build-mode hotkeys always start OFF on a new session
             Services.ChatRelayService.Clear(); // 0.18.3: drop the previous server's chat scrollback/compose state (PURE static-collection clear — safe in teardown; the chat WINDOW is repainted on relog via ResetForServerSwitch)
             // 0.18.4 CRASH FIX (server-switch): drop cached ECS EntityQueries created in THIS (now-disposing)

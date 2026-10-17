@@ -102,6 +102,12 @@ public partial class MainPanel
         NyarState.StatusChanged    -= RebuildNyarUnitCounts;
         NyarCapture.InfoChanged    -= OnNyarInfoCaptured;
         NyarCapture.UnitsChanged   -= RebuildNyarUnits;
+        if (_nyarEdBatchSubscribed)
+        {
+            NyarBatchRunner.Changed -= OnNyarBatchChanged;
+            NyarProtocolService.CountdownTick -= OnNyarEdTick;
+            _nyarEdBatchSubscribed = false;
+        }
         _nyarSubscribed = false;
     }
 
@@ -112,6 +118,7 @@ public partial class MainPanel
         RefreshNyarCountdowns();
         RefreshNyarTopButtons();
         RefreshConnectionReadout();
+        RebuildNyarTemplates();   // the Spawns-pillar reminder follows the handshake's waves= flag
     }
 
     // ---------------------------------------------------------------- shared helpers
@@ -203,7 +210,8 @@ public partial class MainPanel
     }
 
     private static string NyarWord(string s) => string.IsNullOrEmpty(s) ? "" : char.ToUpperInvariant(s[0]) + s.Substring(1);
-    private static string NyarText(string s) => (s ?? "").Replace('_', ' ');
+    // 0.72.0: server-derived names also go through the TMP rich-text escape (PLAN §B11).
+    private static string NyarText(string s) => NyarEscape((s ?? "").Replace('_', ' '));
     private static string Tok(InputFieldRef f) => (f?.Text ?? "").Trim();
 
     // Region chips (api 5): "Cursed Forest · Farbane Woods", or "Global" for a server-wide event.
@@ -552,7 +560,7 @@ public partial class MainPanel
 
     // ---------------------------------------------------------------- ADMIN: EVENTS
 
-    // Design §6's settable fields (api 8). N and M are a wave / unit-entry number the admin types in.
+    // Design §6's settable fields (api 8). N / M (a wave / unit-entry number) and NAME (a pool) are picked from chips.
     private static readonly string[] NyarSettableFields =
     {
         "name", "durationSeconds", "location", "conditions.minPlayers", "conditions.cooldownMinutes", "conditions.chancePercent",
@@ -568,7 +576,7 @@ public partial class MainPanel
         "action.waveList.N.units.M.level", "action.waveList.N.units.M.levelDelta", "action.waveList.N.units.M.maxHealth",
         "action.waveList.N.units.M.power", "action.waveList.N.units.M.moveSpeed", "action.waveList.N.units.M.attackSpeed",
         "action.arena", "action.winner", "action.growth", "action.growth.addUnits", "action.growth.addLevels", "action.growth.whenCleared",
-        "action.regionLock", "action.bosses",
+        "action.regionLock", "action.bosses", "action.waveList.N.bosses", "action.pursuit", "action.pools.NAME",
         "action.goal", "action.goal.radius", "action.goal.name", "action.hordes.count", "action.hordes.everyMinutes", "action.hordes.size",
         "action.roamers.max", "action.marchSpeed",
     };
@@ -738,13 +746,35 @@ public partial class MainPanel
         ClearChildren(_nyarTplListGo);
         if (_nyarTplStatus != null) _nyarTplStatus.text = NyarState.TemplatesLoaded ? $"<color=#888888>{NyarState.Templates.Count} template(s)</color>" : "";
         if (!NyarState.TemplatesLoaded) { AddBodyText(_nyarTplListGo, "Loading…"); return; }
-        if (NyarState.Templates.Count == 0) { AddBodyText(_nyarTplListGo, "No templates."); return; }
-        foreach (var t in NyarState.Templates)
+        // 0.72.0 (§C2): Spawns templates need the Spawns pillar on; templates start where the admin stands.
+        bool showsSpawns = _nyarTplPillar.Length == 0 || _nyarTplPillar == "spawns";
+        if (showsSpawns && NyarState.Present && !NyarState.Waves)
         {
+            var warn = AddCard(_nyarTplListGo, "NyarTplSpawnsOff", new Color(0.35f, 0.28f, 0.05f, 0.9f), padding: 6, innerSpacing: 2);
+            AddBodyText(warn, "<color=#FFD75A>The <b>Spawns</b> pillar is off on this server, so Spawns templates can be created but won't start.</color>", Theme.ScaledUI(12));
+            var wr = MakeUrielRow(warn, "NyarTplSpawnsOn");
+            AddUrielButton(wr, "NyarTplSpawnsOnBtn", "Turn Spawns on", "Switch the Spawns pillar on (pillar spawns on).",
+                () => { NyarBeginAction(); NyarClient.PillarSet("spawns", true); }, 130);
+        }
+        AddBodyText(_nyarTplListGo, "<color=#888888>A created event starts where the admin stands: go where the fight should happen, then press Start on Admin: Events.</color>",
+            Theme.ScaledUI(11));
+        if (NyarState.Templates.Count == 0) { AddBodyText(_nyarTplListGo, "No templates."); return; }
+        var grouped = NyarState.Templates
+            .Select((t, i) => (t, i, g: NyarMessages.TemplateGroup(t.Pillar, t.Id)))
+            .OrderBy(x => x.g.Order).ThenBy(x => x.i).ToList();
+        string lastHeading = null;
+        foreach (var (t, _, g) in grouped)
+        {
+            if (g.Heading != lastHeading)
+            {
+                lastHeading = g.Heading;
+                AddSectionHeading(_nyarTplListGo, g.Heading);
+                if (g.Blurb.Length > 0) AddBodyText(_nyarTplListGo, g.Blurb, Theme.ScaledUI(11));
+            }
             var box = AddCard(_nyarTplListGo, $"NyarTpl_{t.Id}", padding: 6, innerSpacing: 2);
             string dur = t.Duration > 0 ? $" · {NyarProtocolService.FormatSecs(t.Duration)}" : "";
             AddInfoLabel(box, "NyarTplTitle",
-                $"<b>{NyarText(t.Summary)}</b> <color=#888888>({t.Id})</color>  <color=#888888>{NyarWord(t.Pillar)} · {NyarTriggerLabel(t.Trigger)}{dur}</color>",
+                $"<b>{NyarText(t.Summary)}</b> <color=#888888>({NyarEscape(t.Id)})</color>  <color=#888888>{NyarWord(t.Pillar)} · {NyarTriggerLabel(t.Trigger)}{dur}</color>",
                 FontStyles.Normal, Theme.ScaledUI(12));
             var row = MakeUrielRow(box, "NyarTplBtns");
             string id = t.Id;
