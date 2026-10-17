@@ -4,9 +4,23 @@
 [CHANGELOG.md](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/blob/main/CHANGELOG.md).
 Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
-**Current: v0.71.0** (pre-1.0 beta).
+**Current: v0.72.0** (pre-1.0 beta).
 
 ---
+
+## 0.72.0 — Nyarlathotep wave variety and a friendlier event editor
+
+Works with Nyarlathotep 0.13.0-rc.3.
+
+- The event editor is now a form: values are filled in from the server; you pick numbers with - / + and presets within
+  the allowed range, and choices with buttons. Changed fields turn gold, saved ones get a ✓, and refused ones show
+  why. **Save all changes** and **Undo** sit at the top.
+- New in rc.3: a different unit list, bosses and start rule for each wave; named unit pools; fixed and rolled bosses;
+  pursuit.
+- Templates are grouped, with the new Timed waves and Onslaught sections, and a **Turn Spawns on** button when the
+  Spawns pillar is off.
+- Fixed: left-rail groups opening by themselves after a text-size change, a late mod detection or a Nyarlathotep
+  setting change.
 
 ## 0.71.0 — Nyarlathotep event editor and Admin: Units
 

@@ -1,5 +1,50 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.72.0 — Nyarlathotep wave variety, a friendlier event editor, and a steadier left rail
+
+Works with Nyarlathotep 0.13.0-rc.3 (api 8). Older 0.13 builds still work; the new fields need rc.3.
+
+### New — Nyarlathotep event editor
+
+- **The editor is now a form, not a list of text boxes.** Every field you can read is filled in from the server, and
+  you pick values instead of typing them:
+  - numbers have - / + buttons, the allowed range, and one-click presets; a value outside the range can't be sent;
+  - choices (where, behaviour, level, wave start, yes / no) are buttons;
+  - unit lists are rows with a count, a unit picker and Remove. "Edit as text" is still there.
+- **Change, then save.** Changed fields turn gold, saved ones show ✓, and a refused one turns red with the server's
+  reason. Each field keeps its own **Set**. The bar at the top shows **Save all changes (n)** and **Undo**.
+  Saves are paced, one at a time, and stop at the first refusal.
+- **Per-wave lists (new in rc.3).** An event can have a different unit list for each wave, its own bosses per wave,
+  and a start rule per wave (when cleared, after a time, or whichever comes first). **Turn into a per-wave list…**
+  converts a units-form event; you can add a wave or remove the last one.
+- **Unit pools (new in rc.3).** Create, edit and delete named pools of units, and add a pool to any unit list as a
+  rolled entry ("2-4 from pool X").
+- **Bosses.** Fixed and rolled bosses for the final wave and for each wave.
+- **Pursuit (new in rc.3)**: how far units chase before giving up, or no limit.
+- **Where.** Whole region or around a player, with near / far distances and **Use where I stand**.
+- Marks what it couldn't read from the server's text, instead of guessing.
+
+### New — Nyarlathotep templates
+
+- Templates are grouped by pillar, with the new **Timed waves** and **Onslaught** spawn templates in their own
+  sections and a one-line description of each.
+- If the Spawns pillar is off, the Templates tab says so, with a **Turn Spawns on** button.
+
+### Fixed
+
+- **Left-rail groups opening by themselves.** Changing UI text size, a mod being detected late, or a Nyarlathotep
+  setting changing could open groups you had closed (and with accordion mode on, open a second group). The rail now
+  remembers what you opened and closed for the whole session, and opens a group by itself only before you've touched
+  the rail.
+- Unread server text with a `<` in it no longer breaks the formatting of the editor.
+- Texts updated for the Nyarlathotep fixes since rc.1 (the zombie apocalypse "admin location" refusal is fixed
+  server-side in rc.2).
+
+### Behind the scenes
+
+- A logic test project (`tests/Raphael.Logic.Tests`, 430 checks) covers the server-rule mirror, batch saves, the
+  rail policy, `event info` parsing and the form state. `preflight -Mode Release` now runs it.
+
 ## 0.71.0 — Nyarlathotep event editor, Admin: Units, and fixes from play-testing
 
 ### New — Nyarlathotep
