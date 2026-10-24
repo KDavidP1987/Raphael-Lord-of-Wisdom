@@ -4,11 +4,11 @@
 [CHANGELOG.md](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/blob/main/CHANGELOG.md).
 Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
-**Current: v0.73.0** (pre-1.0 beta).
+**Current: v0.74.0** (pre-1.0 beta).
 
 ---
 
-## 0.74.0 — In progress (not released)
+## 0.74.0 — Nyarlathotep 0.15.0, explained settings, and a Units & Objects reference
 
 Works with Nyarlathotep 0.15.0 (0.14.0 still works), Bloodcraft 1.13.26 and Uriel 0.22.0.
 
@@ -19,6 +19,9 @@ Works with Nyarlathotep 0.15.0 (0.14.0 still works), Bloodcraft 1.13.26 and Urie
 - New **Reference: Units & Objects** (Settings and Help): every unit and world object in the game, searchable and
   filterable, also as a floating panel. **Browse…** beside unit and object fields in the Nyarlathotep, Beelzebub and
   Uriel forms fills the field for you.
+- Every setting an admin can change in game now has a Raphael control, including Faust's world scan and more of
+  Beelzebub's ability config. Each mod guide marks every setting **In game** or **Server file only**, and a
+  **Server-side** box explains how to change the file-only ones.
 - Admins: the **Reset Bloodcraft progress** report no longer overlaps itself. The summary, buttons, step log and notes
   each get their own space, and the log sits in its own box.
 - **Start a new reset** (formerly New reset) sits under the summary and returns to the form with the player name

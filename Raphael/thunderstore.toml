@@ -11,7 +11,7 @@ v-rising = ["mods", "client"]
 [package]
 namespace = "kdpen"
 name = "Raphael"
-versionNumber = "0.73.0"
+versionNumber = "0.74.0"
 description = "Unified client UI for V Rising server mods (Bloodcraft, Beelzebub, Uriel, Faust, Nyarlathotep, Kindred) plus a standalone chat window. Commands, stats and reports as buttons, forms and overlays. (Formerly BloodCraftHub.)"
 websiteUrl = "https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom"
 containsNsfwContent = false

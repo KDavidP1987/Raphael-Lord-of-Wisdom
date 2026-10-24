@@ -1,6 +1,6 @@
 # Changelog — Raphael, Lord of Wisdom
 
-## 0.74.0 — In progress (not released): Nyarlathotep 0.15.0, explained Nyar settings, a Units & Objects reference
+## 0.74.0 — Nyarlathotep 0.15.0, explained settings, and a Units & Objects reference
 
 Works with Nyarlathotep 0.15.0 (0.14.0 still works without the 0.15.0 features), Bloodcraft 1.13.26 and Uriel 0.22.0.
 
@@ -55,15 +55,20 @@ Works with Nyarlathotep 0.15.0 (0.14.0 still works without the 0.15.0 features),
 - Unit names come from the game's own text, in your game language. Object names come from the game's blueprint text
   where it has one; the rest show a readable form of the prefab name.
 
-### New — the guides say which settings only the server file changes
+### New — every in-game setting has a Raphael control; the rest is explained
 
+- **Faust:** the Live config editor can now target the **worldscan** feature, and Global settings include
+  **worldscaninterval**.
+- **Beelzebub:** an ability's full config (Admin: Abilities, expand a row) adds summon power, edit shared parts,
+  transform only, allow if denied, difficulty, phase, category, use condition, review status and review tag. Admin: Config has a
+  **Defaults ×** row for the server-wide damage and cooldown multipliers (`.beelz admin default`).
 - Each full mod guide (Bloodcraft, Beelzebub, Faust, Uriel, Nyarlathotep) now opens its **Server configuration**
   section with a **Server-side** callout. It explains why these settings stay on the server, so a server is not open
   to every in-game admin and its performance stays safe. It then lists where the files are, how to change a
   server-file setting (restart or the mod's reload command), and what an admin can change in game.
 - Every settings row is marked **In game: applies at once**, **Server file only: restart to apply** or **Server file
   only: reload to apply**.
-- Corrected against each mod's source:
+- Guide text corrected against each mod's source:
   - Beelzebub: ability_metadata_overrides.json needs a restart, not a reload. DropRateOverrides, SlotTemplate and lock
     notes are file only. Two settings shown without a tag can be set in game.
   - Uriel: RespawnGapFrames is used by every stair restyle. Admin: Controls only reads the switches.
