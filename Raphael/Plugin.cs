@@ -15,6 +15,8 @@ using UnityEngine;
 namespace Raphael;
 
 [BepInProcess("VRising.exe")]
+// 0.73.0: load after Emberglass when it is installed (optional; the Bloodcraft bridge finds it by reflection).
+[BepInDependency("io.zfolmt.Emberglass", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 public class Plugin : BasePlugin
 {
@@ -79,6 +81,9 @@ public class Plugin : BasePlugin
         // until MessageService.SetCharacter/SetUser get called (by InitializationPatch
         // once the player is in-world), so this is safe at Load time.
         CoreUpdateBehavior.Actions.Add(MessageService.ProcessAllMessages);
+
+        // 0.73.0: opt-in Emberglass receiver for Bloodcraft data. Reads the setting now; decides on the first frame.
+        Services.Emberglass.EmberglassBloodcraftBridge.Schedule(Raphael.Config.Settings.UseEmberglassBridge);
 
         // Per-frame timeout flush for the inbound intercept buffers (box list,
         // box content). Without this the parsed list sits in a buffer until

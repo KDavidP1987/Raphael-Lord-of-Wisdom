@@ -341,7 +341,7 @@ public partial class MainPanel : ResizeablePanelBase
                 (PanelType.UrielSettingsTab,     "Settings"),
                 (PanelType.UrielAdminSharingTab, "Admin: Sharing"),
                 (PanelType.UrielAdminObjectsTab, "Admin: Objects"),
-                (PanelType.UrielAdminConfigTab,  "Admin: Config"),
+                (PanelType.UrielAdminConfigTab,  "Admin: Controls"),   // 0.73.0: was Admin: Config (same PanelType)
                 (PanelType.UrielAdminUnitsTab,   "Admin: Units"),
             },
         },
@@ -422,29 +422,15 @@ public partial class MainPanel : ResizeablePanelBase
             Tabs = new[]
             {
                 (PanelType.QuickStartTab,    "Quick Start"),
-                // 0.19: Bloodcraft-specific getting-started, parallel to the Beelzebub Quick Start.
-                (PanelType.BloodcraftQuickStartTab, "Bloodcraft Quick Start"),
-                // 0.13.0: Bloodcraft mechanics deep-dive (classes /
-                // prestige / EXO / professions / quests). 0.18: relabeled
-                // "Bloodcraft Help" now that there's a parallel Beelzebub
-                // guide below — the old "Mod Help" read as generic.
-                (PanelType.ModHelpTab,       "Bloodcraft Help"),
-                // 0.18: parallel getting-started + mechanics guides for the
-                // Beelzebub ability-capture/transform mod (sibling to the
-                // Bloodcraft ones above).
-                (PanelType.BeelzQuickStartTab, "Beelzebub Quick Start"),
-                (PanelType.BeelzModHelpTab,    "Beelzebub Help"),
-                // 0.26: parallel getting-started + reference guides for the Uriel
-                // mod (sibling to the Bloodcraft / Beelzebub ones above).
-                (PanelType.UrielQuickStartTab, "Uriel Quick Start"),
-                (PanelType.UrielModHelpTab,    "Uriel Help"),
-                // Faust is informational-only and lighter than Bloodcraft/Beelzebub/Uriel, so its
-                // getting-started + command reference are merged into ONE guide tab (rather than the
-                // separate Quick Start / Help pair the other mods get). FaustModHelpTab's content is
-                // appended under the quick start in the FaustQuickStartTab dispatch below.
+                // 0.73.0: one complete guide per mod (Services/Guides, rendered by MainPanel.GuideKit). The old
+                // per-mod "Help" tab ids (ModHelpTab, BeelzModHelpTab, UrielModHelpTab, FaustModHelpTab) are no longer
+                // listed but still route to the same merged guide in the dispatch below.
+                (PanelType.BloodcraftQuickStartTab, "Bloodcraft Guide"),
+                (PanelType.BeelzQuickStartTab, "Beelzebub Guide"),
+                (PanelType.UrielQuickStartTab, "Uriel Guide"),
                 (PanelType.FaustQuickStartTab, "Faust Guide"),
-                // Nyarlathotep is mostly admin-run, so one merged guide tab like Faust's.
                 (PanelType.NyarGuideTab,       "Nyarlathotep Guide"),
+                (PanelType.KindredGuideTab,    "Kindred Guide"),
                 // In-built base-game guide: explains vanilla V Rising mechanics (leveling, blood, combat,
                 // castles, V Bloods…) and how each server mod changes them — so Raphael works as a
                 // one-stop reference even for players new to the game. Sits beside the external Game Guide.
@@ -2097,27 +2083,15 @@ public partial class MainPanel : ResizeablePanelBase
             case PanelType.KindredAdminWorldTab:
                 BuildKindredAdminWorldTab(page);
                 break;
-            case PanelType.QuickStartTab:
-                BuildQuickStartTab(page);
-                break;
+            // 0.73.0: every guide tab renders its Services/Guides page; old Help ids are aliases.
+            case PanelType.QuickStartTab:           RenderGuide(page, Raphael.Services.Guides.Guides.Get("quickstart")); break;
             case PanelType.BloodcraftQuickStartTab:
-                BuildBloodcraftQuickStartTab(page);
-                break;
-            case PanelType.ModHelpTab:
-                BuildModHelpTab(page);
-                break;
+            case PanelType.ModHelpTab:              RenderGuide(page, Raphael.Services.Guides.Guides.Get("bloodcraft")); break;
             case PanelType.BeelzQuickStartTab:
-                BuildBeelzQuickStartTab(page);
-                break;
-            case PanelType.BeelzModHelpTab:
-                BuildBeelzModHelpTab(page);
-                break;
-            case PanelType.VRisingBasicsTab:
-                BuildVRisingBasicsTab(page);
-                break;
-            case PanelType.GameGuideTab:
-                BuildGameGuideTab(page);
-                break;
+            case PanelType.BeelzModHelpTab:         RenderGuide(page, Raphael.Services.Guides.Guides.Get("beelzebub")); break;
+            case PanelType.KindredGuideTab:         RenderGuide(page, Raphael.Services.Guides.Guides.Get("kindred")); break;
+            case PanelType.VRisingBasicsTab:        RenderGuide(page, Raphael.Services.Guides.Guides.Get("vrisingbasics")); break;
+            case PanelType.GameGuideTab:            RenderGuide(page, Raphael.Services.Guides.Guides.Get("gameguide")); break;
             case PanelType.SettingsTab:
                 BuildSettingsTab(page);
                 break;
@@ -2197,11 +2171,7 @@ public partial class MainPanel : ResizeablePanelBase
                 BuildUrielAdminConfigTab(page);
                 break;
             case PanelType.UrielQuickStartTab:
-                BuildUrielQuickStartTab(page);
-                break;
-            case PanelType.UrielModHelpTab:
-                BuildUrielModHelpTab(page);
-                break;
+            case PanelType.UrielModHelpTab:         RenderGuide(page, Raphael.Services.Guides.Guides.Get("uriel")); break;
             case PanelType.FaustCastleInfoTab:
                 BuildFaustCastleInfoTab(page);
                 break;
@@ -2261,18 +2231,9 @@ public partial class MainPanel : ResizeablePanelBase
             case PanelType.NyarAdminZonesTab:      BuildNyarAdminZonesTab(page); break;
             case PanelType.NyarAdminAnnounceTab:   BuildNyarAdminAnnounceTab(page); break;
             case PanelType.NyarAdminKillSwitchTab: BuildNyarAdminKillSwitchTab(page); break;
-            case PanelType.NyarGuideTab:           BuildNyarGuideTab(page); break;
+            case PanelType.NyarGuideTab:           RenderGuide(page, Raphael.Services.Guides.Guides.Get("nyarlathotep")); break;
             case PanelType.FaustQuickStartTab:
-                // Combined "Faust Guide" tab — quick start followed by the full command/feature
-                // reference (these used to be two tabs; merged because Faust is informational-only).
-                BuildFaustQuickStartTab(page);
-                AddSpacer(page, 8);
-                BuildFaustModHelpTab(page);
-                break;
-            case PanelType.FaustModHelpTab:
-                // Retained for back-compat; no longer listed in TabGroups (folded into Faust Guide).
-                BuildFaustModHelpTab(page);
-                break;
+            case PanelType.FaustModHelpTab:        RenderGuide(page, Raphael.Services.Guides.Guides.Get("faust")); break;
             default:
                 AddComingSoonBody(page, label);
                 break;
@@ -3555,26 +3516,41 @@ public partial class MainPanel : ResizeablePanelBase
 
         var changeCard = AddCard(page, "ClassChangeCard");
         AddSectionHeading(changeCard, "Change Class");
+        // 0.73.0: Bloodcraft's `.class s` only works when you have NO class yet (ClassCommands.SelectClass);
+        // changing an existing class is `.class c`, which costs ChangeClassItem × ChangeClassQuantity
+        // (default 750× Greater Stygian Shards). Two forms, one per command.
         CollapsibleSection.Build(changeCard,
-            title: "Select / change your class (.class s)",
+            title: "Select first class (.class s)",
             startExpanded: false,
-            tooltip: "Pick a class from the dropdown and Submit. Some servers may rate-limit class changes or require a cost — Bloodcraft replies in chat with success or the rejection reason.",
+            tooltip: "Pick your FIRST class from the dropdown and Submit. Only works while you have no class yet — to switch later, use Change class (.class c) below. Bloodcraft replies in chat with success or the rejection reason.",
             buildContent: c => FormBuilder.Build(c,
-                title: "Select class",
+                title: "Select first class",
                 commandTemplate: ".class s {class}",
                 new EnumField<PlayerStateService.BloodcraftClassChoice>("class", "Class",
                     defaultValue: PlayerStateService.BloodcraftClassChoice.BloodKnight,
                     tooltip: "The class you want active. Bloodcraft's six built-in classes are listed.")));
 
         CollapsibleSection.Build(changeCard,
+            title: "Change class (.class c)",
+            startExpanded: false,
+            tooltip: "Switch from your current class to another. Costs 750× Greater Stygian Shards by default (the server can change the item and amount). Bloodcraft replies in chat with success or the rejection reason.",
+            buildContent: c => FormBuilder.Build(c,
+                title: "Change class",
+                commandTemplate: MessageService.BCCOM_CLASS_CHANGE_FORMAT.Replace("{0}", "{class}"),
+                new EnumField<PlayerStateService.BloodcraftClassChoice>("class", "Class",
+                    defaultValue: PlayerStateService.BloodcraftClassChoice.BloodKnight,
+                    tooltip: "The class to change to. Costs 750× Greater Stygian Shards by default.")));
+
+        CollapsibleSection.Build(changeCard,
             title: "Choose class shift spell (.class csp)",
             startExpanded: false,
-            tooltip: "Set which of your class's spells occupies your shift slot. Use 'List Spells' above to see the available spells (numbered) for your current class, then enter the spell's 1-based index here.",
+            tooltip: "Set which spell occupies your shift slot. 0 = default spell (Veil of Shadow); 1..N = class spells as numbered by List Spells. Needs Toggle Shift on.",
             buildContent: c => FormBuilder.Build(c,
-                title: "Choose shift spell",
+                title: "Choose class shift spell",
                 commandTemplate: ".class csp {index}",
-                new IntField("index", "Spell #", min: 1, max: 32,
-                    tooltip: "1-based index of the class spell. Run 'List Spells' to see what each number maps to before submitting.")));
+                // 0.73.0: min 0 — Bloodcraft's `.class csp 0` picks the default class spell (ClassCommands.ChooseClassSpell).
+                new IntField("index", "Spell #", min: 0, max: 32,
+                    tooltip: "0 = default spell (Veil of Shadow); 1..N = class spells as numbered by List Spells. Needs Toggle Shift on.")));
 
         AddDivider(changeCard);
         AddBodyText(changeCard,
@@ -3592,7 +3568,7 @@ public partial class MainPanel : ResizeablePanelBase
             buildContent: c =>
             {
                 AddContextBodyLabel(c, "ClassCompareIntro",
-                    "<i>Each class grants a 1.5× cap multiplier on its synergized weapon + blood stats, an on-hit debuff at 7.5% proc chance (default), and a class-specific spell school. Class change costs 750× Shattered Bone by default.</i>",
+                    "<i>Each class grants a 1.5× cap multiplier on its synergized weapon + blood stats, an on-hit debuff at 7.5% proc chance (default), and a class-specific spell school. Class change costs 750× Greater Stygian Shards by default.</i>",
                     fontSize: 12);
                 AddDivider(c);
                 AddClassComparisonBlock(c, PlayerStateService.PlayerClass.BloodKnight);
@@ -4508,8 +4484,8 @@ public partial class MainPanel : ResizeablePanelBase
                     "  • Physical / Spell Crit Damage: <b>+50%</b>\n" +
                     "  • Physical / Spell Life Leech: <b>+10%</b>\n" +
                     "  • Primary Life Leech: <b>+15%</b>\n\n" +
-                    "Each weapon expertise prestige tier (max 10): <b>−10%</b> XP rate, <b>+10%</b> stat-cap boost. " +
-                    "Reset a weapon's chosen stats with <b>.wep rst</b> (default cost: 500× Shattered Bone).",
+                    "Each weapon expertise prestige tier (max 10): <b>-10%</b> XP rate, <b>+10%</b> stat-cap boost. " +
+                    "Reset a weapon's chosen stats with <b>.wep rst</b> (default cost: 500× Greater Stygian Shards).",
                     fontSize: 12);
             });
         AddServerDisclaimer(classHintCard);
@@ -4684,8 +4660,8 @@ public partial class MainPanel : ResizeablePanelBase
                     "  • Minion Damage: <b>+25%</b>\n" +
                     "  • Ability Attack Speed: <b>+10%</b>\n" +
                     "  • Corruption Damage Reduction: <b>+10%</b>\n\n" +
-                    "Each blood legacy prestige tier (max 10): <b>−10%</b> gain rate, <b>+10%</b> stat-cap boost. " +
-                    "Reset a blood's chosen stats with <b>.bl rst</b> (default cost: 500× Shattered Bone — same item as expertise reset).",
+                    "Each blood legacy prestige tier (max 10): <b>-10%</b> gain rate, <b>+10%</b> stat-cap boost. " +
+                    "Reset a blood's chosen stats with <b>.bl rst</b> (default cost: 500× Greater Stygian Shards — same item as expertise reset).",
                     fontSize: 12);
             });
         AddServerDisclaimer(classHintCard);
@@ -4930,7 +4906,8 @@ public partial class MainPanel : ResizeablePanelBase
 
         AddDivider(actionsCard);
         AddBodyText(actionsCard,
-            $"Choosing which class spell goes in the shift slot takes a number ({Mono(".class csp <#>")}). Use chat for now; a spell picker arrives in a later phase.");
+            $"Choosing which class spell goes in the shift slot takes a number ({Mono(".class csp <#>")}). Use the " +
+            "<b>Class</b> tab → <b>Choose class shift spell (.class csp)</b> form (0 = default spell, 1..N as listed by List Spells).");
 
         RenderUnarmedShift(PlayerStateService.Expertise, PlayerStateService.ShiftSpell);
         if (!_shiftSubscribed)
@@ -5105,13 +5082,13 @@ public partial class MainPanel : ResizeablePanelBase
             {
                 AddContextBodyLabel(c, "LevelingPrestigeBody",
                     "Per tier (max 10):\n" +
-                    "  • Resets character level back to <b>10</b>.\n" +
+                    "  • Resets character level back to <b>0</b>.\n" +
                     "  • Permanent leveling buff (server-tunable; varies by Bloodcraft version).\n" +
-                    "  • <b>−5%</b> XP gain from kills (LevelingPrestigeReducer = 0.05).\n" +
+                    "  • <b>-5%</b> XP gain from kills (LevelingPrestigeReducer = 0.05).\n" +
                     "  • <b>+10%</b> rate boost to weapon expertise + blood legacy XP (PrestigeRateMultiplier = 0.10).\n" +
                     "  • Unlocks one additional class-spell slot (PrestigeLevelsToUnlockClassSpells = 0..5, one per tier).\n\n" +
                     "Net: each tier slows your raw level XP slightly but accelerates expertise / legacy gain. " +
-                    "By tier 10 you've traded <b>−50%</b> XP for <b>+100%</b> expertise + legacy gain rate.",
+                    "By tier 10 you've traded <b>-50%</b> XP for <b>+100%</b> expertise + legacy gain rate.",
                     fontSize: 12);
             });
         CollapsibleSection.Build(progressionCard,
@@ -5122,8 +5099,8 @@ public partial class MainPanel : ResizeablePanelBase
             {
                 AddContextBodyLabel(c, "ExpLegPrestigeBody",
                     "Per tier (max 10 per weapon, 10 per blood):\n" +
-                    "  • Resets that specific system's level back to <b>1</b>.\n" +
-                    "  • <b>−10%</b> XP rate for THAT weapon / blood (PrestigeRatesReducer = 0.10).\n" +
+                    "  • Resets that specific system's level back to <b>0</b>.\n" +
+                    "  • <b>-10%</b> XP rate for THAT weapon / blood (PrestigeRatesReducer = 0.10).\n" +
                     "  • <b>+10%</b> stat-bonus cap boost for THAT weapon's / blood's chosen stats (PrestigeStatMultiplier = 0.10).\n\n" +
                     "By tier 10: stat caps are <b>×2.0</b> their baseline for that weapon / blood, but levelling that weapon / blood takes about twice as long.",
                     fontSize: 12);
@@ -5695,7 +5672,11 @@ public partial class MainPanel : ResizeablePanelBase
             "Show the Bloodcraft server's startup readiness summary in chat (.misc health). Admin only.");
 
         AddSpacer(page, 6);
+        BuildBcResetCard(page);   // 0.73.0: Reset Bloodcraft progress
+
+        AddSpacer(page, 6);
         AddSectionHeading(page, "Admin forms");
+        page = BeginBcResetFormsLock(page);   // 0.73.0: the forms below are disabled while a reset runs
 
         // Collapsible form: header click toggles the form's content visibility.
         // Many forms collapsed by default keeps the Admin tab compact even after
@@ -7279,7 +7260,7 @@ public partial class MainPanel : ResizeablePanelBase
             minWidth: 60, preferredWidth: 70, flexibleWidth: 0,
             minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
 
-        var minusBtn = UIFactory.CreateButton(row, $"SizePosMinus_{label}", "−");
+        var minusBtn = UIFactory.CreateButton(row, $"SizePosMinus_{label}", "-");
         UIFactory.SetLayoutElement(minusBtn.GameObject,
             minWidth: 32, preferredWidth: 32, flexibleWidth: 0,
             minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
@@ -7532,7 +7513,7 @@ public partial class MainPanel : ResizeablePanelBase
             minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
 
         // Decrement
-        var minus = UIFactory.CreateButton(row, "ProgressBarHeightMinus", "−");
+        var minus = UIFactory.CreateButton(row, "ProgressBarHeightMinus", "-");
         UIFactory.SetLayoutElement(minus.Component.gameObject,
             minWidth: 30, preferredWidth: 30, flexibleWidth: 0,
             minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
@@ -7610,7 +7591,7 @@ public partial class MainPanel : ResizeablePanelBase
             minWidth: 160, preferredWidth: 180, flexibleWidth: 0,
             minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
 
-        var minus = UIFactory.CreateButton(row, "OverlayEdgePadMinus", "−");
+        var minus = UIFactory.CreateButton(row, "OverlayEdgePadMinus", "-");
         UIFactory.SetLayoutElement(minus.Component.gameObject,
             minWidth: 30, preferredWidth: 30, flexibleWidth: 0,
             minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
@@ -8605,796 +8586,6 @@ public partial class MainPanel : ResizeablePanelBase
             catch (System.Exception ex) { LogUtils.LogWarning($"OpenURL('{url}') threw: {ex.Message}"); }
         };
         TooltipHover.Attach(btn.GameObject, $"Open {url} in your default browser.");
-    }
-
-    // 0.12.1: Game Guide tab — V Rising itself (separate from the Raphael-focused
-    // QuickStartTab and the upcoming mod-mechanics help tab). Surface official
-    // homepage + community-maintained resources so new players can find
-    // mechanics docs, maps, and the official Discord without leaving the UI.
-    // In-built base-game guide. Explains VANILLA V Rising mechanics for players new to the game, then
-    // summarizes how each server mod layers on top — so Raphael reads as a one-stop reference. Deliberately
-    // does NOT duplicate the per-mod command references (those live in the Bloodcraft / Beelzebub / Uriel /
-    // Faust Help tabs); the "with the mods" notes here point there so the two don't drift. Base-game details
-    // can shift with Stunlock patches and many specifics are server-configurable, so the text hedges numbers
-    // and points players at their server admin / the external Game Guide links for authoritative detail.
-    //
-    // Structure mirrors BuildModHelpTab: AddGuideSection for the always-visible overview, AddCollapsibleHelpDetail
-    // for the deeper "Details" / "With the mods" blocks the reader can expand on demand.
-    private void BuildVRisingBasicsTab(GameObject page)
-    {
-        AddGuideSection(page,
-            "V Rising — how the game works",
-            "New to V Rising? This is a plain-language guide to the base game — what blood, gear level, " +
-            "V Bloods and castles actually do — followed by a summary of how the server mods Raphael " +
-            "supports change the experience. Raphael itself is a UI mod: it does not change the game, it " +
-            "just gives you a nicer interface for it and the mods.\n\n" +
-            "Heads-up: Stunlock patch the game over time and most servers tweak their settings, so treat the " +
-            "numbers below as defaults/typical values. When something seems off for your server, ask your " +
-            "admin or check the official wiki on the Game Guide tab.");
-
-        // ─────────────────────────────────────────────────────────────────
-        AddSectionHeading(page, "Vampire survival");
-        AddGuideSection(page,
-            "Blood, sunlight, and staying alive",
-            "You are a vampire. Two things matter from minute one: blood keeps you powered, and the sun " +
-            "kills you. Daylight burns you fast in the open — travel in shade, under cover, or via the world's " +
-            "shadow paths, and build a roof over your base early. Garlic exposure, holy ground, and silver all " +
-            "hurt vampires too (see The world, below).");
-        AddCollapsibleHelpDetail(page, "Details — Blood types & quality",
-            "• Feeding on a creature gives you its BLOOD TYPE — Warrior, Rogue, Brute, Scholar, Worker, " +
-            "Creature, Draculin, Scholar, and more — each granting a different set of combat bonuses while " +
-            "you carry it.\n" +
-            "• Blood has a QUALITY percentage (0–100%). Higher quality = stronger bonuses, and at high " +
-            "quality you unlock extra bonus tiers for that blood type. Feeding from a higher-quality victim " +
-            "raises your blood; taking hits and time lower it.\n" +
-            "• Your BLOOD POOL is also your resource bar for some abilities and your sustain — it drains in " +
-            "sunlight and over time, so keep topped up by feeding.\n" +
-            "• Match your blood type to your playstyle: e.g. Warrior for melee damage, Rogue for crit/move " +
-            "speed, Brute for sustain, Scholar for spell power. The right blood at high quality is a real " +
-            "power spike, separate from your gear.");
-        AddCollapsibleHelpDetail(page, "With the mods — Blood",
-            "• BLOODCRAFT adds Blood Legacies: each blood type levels up the more you use it, granting " +
-            "permanent stat bonuses on top of vanilla blood bonuses, plus prestige on each legacy. See the " +
-            "Blood Legacy tab and the Bloodcraft Help tab for the full breakdown.");
-
-        // ─────────────────────────────────────────────────────────────────
-        AddSectionHeading(page, "Combat & power");
-        AddGuideSection(page,
-            "Gear Level is your \"level\"",
-            "Vanilla V Rising has NO experience bar or character levels. Your power is your GEAR LEVEL — a " +
-            "single number computed from the tier of your equipped weapon, armor, and the spells/jewels you " +
-            "have slotted. Better gear = higher gear level = you hit harder and take less from same-level " +
-            "enemies.\n\n" +
-            "Every enemy and boss has a level too. Fighting something far above your gear level means your " +
-            "hits are heavily reduced and theirs are amplified — so the loop is: beat content near your " +
-            "level, craft the better gear it unlocks, raise your gear level, move to the next tier.");
-        AddCollapsibleHelpDetail(page, "Details — Weapons, spells & vampire powers",
-            "• WEAPONS: each weapon type (mace, sword, spear, crossbow, slashers, greatsword, pistols, " +
-            "longbow, twinblades, whip, axes, …) has its own feel plus two special attacks. Swapping weapons " +
-            "to suit the fight is normal play.\n" +
-            "• SPELLS come in schools — Blood, Unholy, Chaos, Frost, Illusion, Storm. You slot abilities into " +
-            "your spell slots and an ultimate; JEWELS modify and upgrade individual spells.\n" +
-            "• VAMPIRE POWERS: dodge/travel abilities, the bat form for fast travel (unlocked later), and " +
-            "utility powers all come from progression.\n" +
-            "• Most new abilities, spells, and recipes are unlocked by defeating V Blood bosses (next " +
-            "section) — that's the spine of vanilla progression.");
-        AddCollapsibleHelpDetail(page, "With the mods — Combat & progression",
-            "• BLOODCRAFT bolts a full RPG layer onto vanilla's gear-only power: character XP and levels, " +
-            "Classes, Weapon Expertise (weapons level with use and grant stats), and Prestige. Your effective " +
-            "power becomes gear + level + expertise + legacy + class, not just gear. See the Class, Weapon " +
-            "(Expertise), Levels and Prestige tabs, and the Bloodcraft Help tab.\n" +
-            "• BEELZEBUB lets you capture enemy abilities and equip them in custom loadouts, and unlocks " +
-            "transform forms (Dracula / Morgana). See the Beelzebub Help tab.");
-
-        // ─────────────────────────────────────────────────────────────────
-        AddSectionHeading(page, "Progression — V Bloods & crafting");
-        AddGuideSection(page,
-            "V Bloods: the backbone of progress",
-            "V Bloods are special named bosses scattered across the world, each at a set level. Defeating one " +
-            "lets you consume its powerful blood, which permanently UNLOCKS rewards: new spells, weapon " +
-            "abilities, crafting recipes, structures, and travel powers. You hunt them roughly in level order.\n\n" +
-            "Use the in-game Blood Altar to track and locate the next V Bloods available to you — it's your " +
-            "to-do list for the whole game. Clearing V Bloods is what raises your crafting options and, with " +
-            "it, your gear level.");
-        AddCollapsibleHelpDetail(page, "Details — Crafting, refinement & servants",
-            "• RESOURCES flow through refinement chains: raw materials → refined goods (planks, ingots, " +
-            "scrolls, etc.) at the right station → crafted gear/structures. Higher tiers need stations and " +
-            "recipes unlocked from V Bloods.\n" +
-            "• SERVANTS: later you can convert defeated humans into castle servants, sending them on " +
-            "expeditions for loot/resources. Servant power scales with the blood you converted them with.\n" +
-            "• HORSES can be tamed for fast overland travel; the bat form (late unlock) gives flight between " +
-            "discovered points.\n" +
-            "• Inventory/crafting management is a big time sink in vanilla — which is exactly what some mods " +
-            "streamline (see below).");
-        AddCollapsibleHelpDetail(page, "With the mods — Progression & logistics",
-            "• BLOODCRAFT adds Familiars (defeated enemies can become summonable combat companions, stored " +
-            "in boxes), Professions (gathering/crafting skills that level up), and Daily Quests. See the " +
-            "Familiars / Boxes / All Familiars / Daily Quest tabs and the Bloodcraft Help tab.\n" +
-            "• KINDREDLOGISTICS automates inventory: auto-stashing, pulling from network storage, and sorting " +
-            "— removing much of the manual hauling. See the Kindred Logistics tab.\n" +
-            "• URIEL adds shared storage between players, public prisons, live stair restyling, and spawning " +
-            "decorative/utility objects. See the Uriel Help tab.");
-
-        // ─────────────────────────────────────────────────────────────────
-        AddSectionHeading(page, "Your castle");
-        AddGuideSection(page,
-            "Castle Heart, territory & upkeep",
-            "Your base is built around a CASTLE HEART placed on a territory plot. The Heart claims the " +
-            "surrounding territory, powers your crafting stations and defenses, and must be FUELED with blood " +
-            "essence (gathered from kills / greater blood essence). Let it run dry and your castle enters " +
-            "DECAY — structures degrade and eventually can be lost.\n\n" +
-            "Upgrading the Heart raises your castle level, which increases your servant cap and territory " +
-            "size. Plots are limited, so good early spots get claimed fast on busy servers.");
-        AddCollapsibleHelpDetail(page, "Details — Raiding, decay & offline protection",
-            "• On PvP servers, castles can be raided during set windows; on PvE servers they can't. Which " +
-            "applies, the raid windows, decay rates, and offline-protection rules are all SERVER SETTINGS — " +
-            "ask your admin or check the server's rules.\n" +
-            "• Keep the Heart fueled and your blood-essence stock up, especially before logging off, so you " +
-            "don't return to a decaying castle.\n" +
-            "• Territory and plot availability change as players come and go — a freed plot becomes claimable.");
-        AddCollapsibleHelpDetail(page, "With the mods — Castles & server info",
-            "• FAUST is an information/investigation mod: it surfaces castle ownership, plot " +
-            "size/availability, decay timers, player playtime, V Blood boss status, leaderboards, and a world " +
-            "map — extremely handy for finding open plots or planning. See the Faust Guide tab.\n" +
-            "• KINDREDCOMMANDS gives admins the command tools to manage players, castles, and the server.");
-
-        // ─────────────────────────────────────────────────────────────────
-        AddSectionHeading(page, "The world & its hazards");
-        AddGuideSection(page,
-            "Map, travel & vampire weaknesses",
-            "The world is divided into regions that rise in danger and level as you go outward. Discover " +
-            "WAYGATES to fast-travel between them (you can't carry most resources through waygates by " +
-            "default). World bosses, resource nodes, and points of interest dot each region.\n\n" +
-            "Vampire hazards to respect: SUNLIGHT burns you in the open during the day; GARLIC exposure " +
-            "stacks a debuff indoors in human settlements; HOLY ground and holy enemies deal bonus damage; " +
-            "and SILVER (including silver coins in your inventory) burns you until you have silver resistance. " +
-            "Resistances are improved through gear, consumables, and progression.");
-        AddCollapsibleHelpDetail(page, "Details — Difficulty & PvP vs PvE",
-            "• Servers run at different difficulties (e.g. relaxed → standard → brutal), which scale enemy " +
-            "strength and your durability.\n" +
-            "• PvE servers focus on co-op/solo progression with no castle raiding or player-vs-player combat; " +
-            "PvP servers add player combat and (windowed) raiding. The exact ruleset is server-defined.\n" +
-            "• Clan size, drop rates, blood quality, and many other knobs vary per server — your experience " +
-            "can differ a lot from another server's.");
-
-        // ─────────────────────────────────────────────────────────────────
-        AddSectionHeading(page, "How the mods change the game");
-        AddGuideSection(page,
-            "What each server mod adds",
-            "Raphael is a unified UI for several server-side mods. WHICH of these you actually have depends on " +
-            "your server — Raphael auto-detects them and shows the matching tab groups. Here's the short " +
-            "version of what each one does; open its own Quick Start / Help tab for the full guide.");
-        AddCollapsibleHelpDetail(page, "Bloodcraft — RPG progression",
-            "Turns gear-only vanilla into a full RPG: character XP & levels, Classes, Weapon Expertise, Blood " +
-            "Legacies, Prestige (incl. endgame Exo prestige + Exoform shapeshifts), Familiars, Professions, " +
-            "and Daily Quests. The biggest gameplay change of the set. → Bloodcraft Quick Start / Bloodcraft Help.");
-        AddCollapsibleHelpDetail(page, "Beelzebub — abilities & transforms",
-            "Capture abilities from enemies and slot them into custom loadouts (universal + per-weapon), bind " +
-            "extra abilities to hotkeys, and unlock transform forms (Dracula / Morgana). → Beelzebub Quick " +
-            "Start / Beelzebub Help.");
-        AddCollapsibleHelpDetail(page, "Uriel — sharing, prisons & building",
-            "Share storage chests with other players (with permissions/limits), run public prisons, restyle " +
-            "stairs live, and spawn an unlocked palette of decorative/utility objects. → Uriel Quick Start / " +
-            "Uriel Help.");
-        AddCollapsibleHelpDetail(page, "Faust — server information",
-            "A read-only intel layer: castle/plot info, decay watch, player playtime & frequency, V Blood " +
-            "boss status, kill/playtime leaderboards, and a filterable world map. Great for finding plots, " +
-            "planning hunts, and admin oversight. → Faust Guide.");
-        AddCollapsibleHelpDetail(page, "Kindred suite — logistics & admin",
-            "KindredLogistics automates inventory (auto-stash, network pull, sorting). KindredCommands is an " +
-            "admin/player command toolkit. → Kindred Logistics tab + the Kindred admin/player tabs.");
-
-        AddSpacer(page, 8);
-        AddGuideSection(page,
-            "Want more detail?",
-            "This guide is a primer. For authoritative base-game detail (exact numbers, maps, boss " +
-            "locations) use the official wiki and community links on the Game Guide tab. For each mod's full " +
-            "mechanics and command list, use its dedicated Help tab in this same Settings and Help group. " +
-            "Anything server-specific — drop rates, raid windows, rewards — is best confirmed with your " +
-            "server admin.");
-    }
-
-    private void BuildGameGuideTab(GameObject page)
-    {
-        AddGuideSection(page,
-            "V Rising — quick reference",
-            "Raphael is a UI mod for the Bloodcraft / Kindred V Rising " +
-            "server mods. This tab links to resources for V Rising itself — " +
-            "the official homepage, the community wiki, fan-maintained guides, " +
-            "and the official Discord. Click 'Open' on any row to launch the " +
-            "URL in your default browser.");
-
-        AddSectionHeading(page, "Official");
-        AddLinkRow(page, "Game homepage (Stunlock Studios)",
-            "https://playvrising.com");
-
-        AddSpacer(page, 6);
-        AddSectionHeading(page, "Community resources");
-        AddLinkRow(page, "V Rising Wiki (Fandom)",
-            "https://vrising.fandom.com/wiki/V_Rising_Wiki");
-        AddLinkRow(page, "CaDrift — community guides + tools",
-            "https://www.cadrift.net/v-rising/");
-
-        AddSpacer(page, 6);
-        AddSectionHeading(page, "Discord");
-        AddLinkRow(page, "V Rising official Discord",
-            "https://discord.com/invite/vrising");
-
-        AddSpacer(page, 8);
-        AddGuideSection(page,
-            "Suggest a resource",
-            "Have another V Rising guide / map / Discord worth surfacing here? " +
-            "Open an issue on the Raphael GitHub (link on the About tab) " +
-            "and a future version can include it. Resources listed here are " +
-            "user-suggested — they are not maintained by the mod author and " +
-            "their content / availability may change.");
-    }
-
-    // 0.13.0: Mod Help tab — deeper Bloodcraft mechanics reference for
-    // players new to the mod. Quick Start gives a fast tour of Raphael's UI;
-    // this tab explains what Bloodcraft itself adds vs vanilla V Rising
-    // and how the major systems interlock.
-    //
-    // Structure per mechanic (post-0.13.0 expansion):
-    //   1. Bold section heading
-    //   2. Overview paragraph (always visible)
-    //   3. Collapsed "Details" — numeric specifics, non-obvious rules
-    //   4. Collapsed "Default settings" — ConfigService defaults the
-    //      server admin can override in Bloodcraft.cfg
-    //
-    // Content sourced from LearningMods/Bloodcraft-main/ v1.13.21:
-    //   README.md (overview), Services/ConfigService.cs (defaults),
-    //   Utilities/Classes.cs + Utilities/Shapeshifts.cs (mechanics).
-    // If a future Bloodcraft version changes a default or a class
-    // synergy, update both here AND the relevant tab content (Prestige,
-    // Classes) so the UI doesn't drift from reality.
-    private void BuildModHelpTab(GameObject page)
-    {
-        AddGuideSection(page,
-            "Bloodcraft mechanics — overview",
-            "Vanilla V Rising has no character-level progression — your power " +
-            "comes from the gear you craft. Bloodcraft is a server-side mod that " +
-            "layers a full RPG progression system over the base game: experience " +
-            "leveling, weapon expertise, blood legacies, classes, prestige, " +
-            "familiars, professions, and daily/weekly quests. Raphael is " +
-            "the client-side UI for those systems — every command this mod " +
-            "exposes via chat is reachable from this panel. This tab explains " +
-            "each system; the other tabs let you USE them.\n\n" +
-            "Numbers below are the Bloodcraft v1.13.x DEFAULTS. Your server's " +
-            "admin can override any of them in BepInEx/config/Bloodcraft.cfg, " +
-            "so treat the values as a baseline — your actual rates may differ.");
-
-        // ── XP Leveling ─────────────────────────────────────────────────
-        AddGuideSection(page,
-            "Experience leveling",
-            "Killing enemies grants XP based on enemy level. Rested XP accumulates " +
-            "while you're logged out inside a coffin — stone coffins give the full " +
-            "rested rate, wooden coffins half. Toggle gain notifications in chat " +
-            "with .lvl log; check current progress with .lvl get. The XP overlay " +
-            "(toggle in the footer) shows level + progress live. At the level cap " +
-            "you can prestige to reset level for permanent bonuses (see below).");
-        AddCollapsibleHelpDetail(page, "Details — XP",
-            "• Level cap: <b>90</b>. New players start at level <b>10</b>.\n" +
-            "• XP multipliers per kill: regular units <b>×7.5</b>, V-Bloods <b>×15</b>, " +
-            "docile units <b>×0.15</b>, war events <b>×0.2</b>. Unit spawners give no XP " +
-            "by default.\n" +
-            "• Group XP sharing: party / clan members within <b>25</b> units of the " +
-            "killer share full XP, as long as their level is within <b>10</b> of yours " +
-            "(prestiged players are exempt from the level-difference cap).\n" +
-            "• Rested XP: max stored = <b>5</b> levels' worth, accrues at <b>5%</b> of " +
-            "max per <b>120-minute</b> tick. Stone coffin = 100% rate; wooden = 50%. " +
-            "Fully recharged after roughly <b>20 hours</b> of offline coffin time.\n" +
-            "• Per-prestige XP penalty: <b>−5%</b> XP earned per leveling-prestige " +
-            "tier you've completed (server can set this to 0).");
-        AddCollapsibleHelpDetail(page, "Default settings — XP",
-            "Server-config defaults (BepInEx/config/Bloodcraft.cfg):\n" +
-            "• MaxLevel = 90      • StartingLevel = 10\n" +
-            "• UnitLevelingMultiplier = 7.5\n" +
-            "• VBloodLevelingMultiplier = 15\n" +
-            "• DocileUnitMultiplier = 0.15\n" +
-            "• WarEventMultiplier = 0.2\n" +
-            "• UnitSpawnerMultiplier = 0\n" +
-            "• GroupLevelingMultiplier = 1.0\n" +
-            "• LevelScalingMultiplier = 0.05\n" +
-            "• RestedXPRate = 0.05    RestedXPMax = 5\n" +
-            "• RestedXPTickRate = 120 min\n" +
-            "• ExpShareDistance = 25  ExpShareLevelRange = 10");
-
-        // ── Weapon Expertise ────────────────────────────────────────────
-        AddGuideSection(page,
-            "Weapon Expertise",
-            "Each weapon type tracks its own expertise level — swing it to level " +
-            "it up. Higher expertise = larger bonuses from the stat you've chosen " +
-            "for that weapon. Pick a stat with .wep cst <Weapon> <Stat> after " +
-            ".wep lst lists what's available; .wep get shows your current " +
-            "weapon's progress and chosen stat. Classes have weapon-stat " +
-            "SYNERGIES that boost specific stat effectiveness — picking stats " +
-            "your class synergizes with is usually the optimal play.");
-        AddCollapsibleHelpDetail(page, "Details — Weapon Expertise",
-            "• Cap per weapon: <b>level 100</b>, up to <b>10 prestige tiers</b> on " +
-            "top.\n" +
-            "• XP rates: regular units <b>×2</b>, V-Bloods <b>×5</b>.\n" +
-            "• You pick <b>3 stats</b> per weapon. Each scales linearly from 0 at " +
-            "L1 to its full cap at L100; class synergy multiplies the effective " +
-            "cap by <b>1.5×</b>.\n" +
-            "• Stat caps (baseline, before class synergy): Physical Power <b>+20</b>, " +
-            "Spell Power <b>+10</b>, Max Health <b>+250</b>, Movement Speed <b>+25%</b>, " +
-            "Primary Attack Speed <b>+10%</b>, Physical / Spell Crit Chance " +
-            "<b>+10%</b>, Crit Damage <b>+50%</b>, Life Leech variants <b>+10–15%</b>.\n" +
-            "• Each prestige tier (max 10): <b>−10%</b> XP rate, <b>+10%</b> stat-cap " +
-            "boost. Net: harder to level, bigger payoff at the top.\n" +
-            "• To reset a weapon's stat pick: .wep rst (costs <b>500× Shattered " +
-            "Bone</b> by default).");
-        AddCollapsibleHelpDetail(page, "Default settings — Weapon Expertise",
-            "• MaxExpertiseLevel = 100   MaxExpertisePrestiges = 10\n" +
-            "• UnitExpertiseMultiplier = 2\n" +
-            "• VBloodExpertiseMultiplier = 5\n" +
-            "• ExpertiseStatChoices = 3\n" +
-            "• ResetExpertiseItem = 576389135 (Shattered Bone), qty 500\n\n" +
-            "Per-stat caps (Settings → Bloodcraft.cfg):\n" +
-            "• PhysicalPower 20  SpellPower 10  MaxHealth 250\n" +
-            "• MovementSpeed 0.25  PrimaryAttackSpeed 0.10\n" +
-            "• PhysicalCritChance 0.10  PhysicalCritDamage 0.50\n" +
-            "• SpellCritChance 0.10  SpellCritDamage 0.50\n" +
-            "• PhysicalLifeLeech 0.10  SpellLifeLeech 0.10  PrimaryLifeLeech 0.15");
-
-        // ── Blood Legacies ──────────────────────────────────────────────
-        AddGuideSection(page,
-            "Blood Legacies",
-            "Drinking from enemies grants legacy XP for that blood type. Higher " +
-            "legacy = larger bonuses from the stat you've picked for that blood. " +
-            ".bl lst lists available stats per blood; .bl cst <Blood> <Stat> picks " +
-            "one; .bl get shows your current blood's progress + chosen stat. Like " +
-            "expertise, classes have blood-stat synergies that amplify specific " +
-            "picks. Worth coordinating blood + weapon + class picks to stack the " +
-            "same stat (e.g. all SpellPower-leaning).");
-        AddCollapsibleHelpDetail(page, "Details — Blood Legacies",
-            "• Cap per blood type: <b>level 100</b>, up to <b>10 prestige tiers</b>.\n" +
-            "• XP rates: regular units <b>×1</b>, V-Bloods <b>×5</b>.\n" +
-            "• <b>3 stat picks</b> per blood. Same prestige mechanic as expertise: " +
-            "<b>−10%</b> rate per tier, <b>+10%</b> stat-cap boost per tier.\n" +
-            "• Stat-cap baselines: Healing Received <b>+15%</b>, Damage Reduction " +
-            "<b>+5%</b>, Physical / Spell Resistance <b>+10%</b>, Resource Yield " +
-            "<b>+25%</b>, Reduced Blood Drain <b>+50%</b>, Weapon / Spell Cooldown " +
-            "Recovery <b>+10%</b>, Ultimate Cooldown Recovery <b>+20%</b>, Minion " +
-            "Damage <b>+25%</b>, Ability Attack Speed <b>+10%</b>, Corruption " +
-            "Damage Reduction <b>+10%</b>.\n" +
-            "• Reset a blood's stat pick with .bl rst (<b>500× Shattered Bone</b> " +
-            "by default — same item as expertise reset).");
-        AddCollapsibleHelpDetail(page, "Default settings — Blood Legacies",
-            "• MaxBloodLevel = 100   MaxLegacyPrestiges = 10\n" +
-            "• UnitLegacyMultiplier = 1\n" +
-            "• VBloodLegacyMultiplier = 5\n" +
-            "• LegacyStatChoices = 3\n" +
-            "• ResetLegacyItem = 576389135 (Shattered Bone), qty 500\n\n" +
-            "Per-stat caps (baseline):\n" +
-            "• HealingReceived 0.15  DamageReduction 0.05\n" +
-            "• PhysicalResistance 0.10  SpellResistance 0.10\n" +
-            "• ResourceYield 0.25  ReducedBloodDrain 0.50\n" +
-            "• WeaponCooldownRecoveryRate 0.10  SpellCooldownRecoveryRate 0.10\n" +
-            "• UltimateCooldownRecoveryRate 0.20  MinionDamage 0.25\n" +
-            "• AbilityAttackSpeed 0.10  CorruptionDamageReduction 0.10");
-
-        // ── Classes ─────────────────────────────────────────────────────
-        AddGuideSection(page,
-            "Classes — the six options",
-            "A class is a free pick at character start and a paid change after " +
-            "(via .class change). It grants three things:\n\n" +
-            "• Weapon + Blood synergies — specific stats become more effective " +
-            "(synergized stats get a <b>1.5×</b> cap multiplier).\n" +
-            "• On-hit debuff effects — chance to apply ignite / weaken / chill / " +
-            "etc. when you damage an enemy. The default proc chance is <b>7.5%</b>. " +
-            "If the primary debuff is already on the target, the secondary tier-2 " +
-            "self-buff applies instead.\n" +
-            "• Extra spells from the class's spell school — one slot unlocks per " +
-            "leveling-prestige tier, usable on Shift.\n\n" +
-            "Class change cost: <b>750× Shattered Bone</b> by default.");
-        AddCollapsibleHelpDetail(page, "Details — per-class synergies + debuffs",
-            "Each class's weapon + blood synergies (stats that get <b>1.5×</b> " +
-            "effective cap) and on-hit debuff school:\n\n" +
-            "<b>Blood Knight</b>  (warrior)\n" +
-            "  weapon: MaxHealth, PrimaryAttackSpeed, PrimaryLifeLeech, PhysicalPower\n" +
-            "  blood: DamageReduction, ReducedBloodDrain, WeaponCooldownRecovery, AbilityAttackSpeed\n" +
-            "  on-hit: Leech debuff (secondary: lesser bloodrage self-buff)\n\n" +
-            "<b>Vampire Lord</b>  (warrior)\n" +
-            "  weapon: MaxHealth, SpellLifeLeech, PhysicalPower, SpellPower\n" +
-            "  blood: DamageReduction, SpellResistance, UltimateCooldownRecovery, CorruptionDamageReduction\n" +
-            "  on-hit: Chill debuff (secondary: lesser frozen weapon)\n\n" +
-            "<b>Demon Hunter</b>  (rogue)\n" +
-            "  weapon: MovementSpeed, PrimaryAttackSpeed, PhysicalCritChance, PhysicalCritDamage\n" +
-            "  blood: PhysicalResistance, ReducedBloodDrain, WeaponCooldownRecovery, MinionDamage\n" +
-            "  on-hit: Static debuff (secondary: lesser stormshield)\n\n" +
-            "<b>Shadow Blade</b>  (rogue)\n" +
-            "  weapon: MovementSpeed, PrimaryAttackSpeed, PhysicalPower, PhysicalCritDamage\n" +
-            "  blood: SpellResistance, ReducedBloodDrain, WeaponCooldownRecovery, AbilityAttackSpeed\n" +
-            "  on-hit: Ignite debuff (secondary: lesser powersurge)\n\n" +
-            "<b>Arcane Sorcerer</b>  (caster)\n" +
-            "  weapon: SpellLifeLeech, SpellPower, SpellCritChance, SpellCritDamage\n" +
-            "  blood: HealingReceived, SpellCooldownRecovery, UltimateCooldownRecovery, AbilityAttackSpeed\n" +
-            "  on-hit: Weaken debuff (secondary: lesser aegis)\n\n" +
-            "<b>Death Mage</b>  (caster)\n" +
-            "  weapon: MaxHealth, SpellLifeLeech, SpellPower, SpellCritDamage\n" +
-            "  blood: PhysicalResistance, SpellResistance, SpellCooldownRecovery, MinionDamage\n" +
-            "  on-hit: Condemn debuff (secondary: guardian block self-buff)\n\n" +
-            "Tip: stack your weapon expertise + blood legacy + class so all three " +
-            "pull toward the same role (e.g. Arcane Sorcerer with SpellPower " +
-            "expertise stat + SpellCooldownRecovery legacy stat).");
-        AddCollapsibleHelpDetail(page, "Default settings — Classes",
-            "• ClassSystem = false   (server must enable)\n" +
-            "• ClassOnHitEffects = true\n" +
-            "• OnHitProcChance = 0.075   (7.5%)\n" +
-            "• SynergyMultiplier = 1.5\n" +
-            "• ChangeClassItem = 576389135 (Shattered Bone), qty 750\n" +
-            "• DefaultClassSpell = −433204738 (Veil of Shadow)\n" +
-            "• PrestigeLevelsToUnlockClassSpells = 0,1,2,3,4,5 (one per tier)");
-
-        // ── Prestige ────────────────────────────────────────────────────
-        AddGuideSection(page,
-            "Prestige",
-            "At max level in any progression system (Experience, a specific " +
-            "weapon, a specific blood) you can prestige that system. Prestiging " +
-            "resets the system's level and grants permanent buffs / scaling " +
-            "bonuses — XP-prestige slows future XP gain but boosts your " +
-            "expertise + legacy gain rate, raising your long-term ceiling.\n\n" +
-            "Commands you'll use:\n" +
-            "• <b>.prestige l</b> — list available prestige types.\n" +
-            "• <b>.prestige me <Type></b> — prestige yourself.\n" +
-            "• <b>.prestige get <Type></b> — view current prestige + buffs.\n" +
-            "• <b>.prestige sb</b> — re-sync prestige buffs if they got removed.\n\n" +
-            "The Prestige tab in Raphael dispatches all of these from forms.");
-        AddCollapsibleHelpDetail(page, "Details — Prestige",
-            "• Up to <b>10 prestige tiers</b> per system (Experience, each weapon " +
-            "type, each blood type).\n" +
-            "• Each XP prestige tier: resets level to <b>10</b>, applies a permanent " +
-            "buff, reduces XP from kills by <b>5%</b> per tier, AND boosts your " +
-            "expertise + legacy gain rates by <b>10%</b> per tier.\n" +
-            "• Each weapon / blood prestige tier: resets that system's level to 1, " +
-            "<b>−10%</b> gain rate, <b>+10%</b> stat-bonus cap per tier.\n" +
-            "• A leaderboard tracks prestige ranks (enabled by default; opt out " +
-            "via admin command).\n" +
-            "• .prestige sb (sync buffs) is the one to remember — if you die or " +
-            "get debuffed and your prestige buffs drop, this reapplies them.");
-        AddCollapsibleHelpDetail(page, "Default settings — Prestige",
-            "• PrestigeSystem = false   (server must enable)\n" +
-            "• MaxLevelingPrestiges = 10\n" +
-            "• MaxExpertisePrestiges = 10\n" +
-            "• MaxLegacyPrestiges = 10\n" +
-            "• LevelingPrestigeReducer = 0.05   (5% XP reduction per tier)\n" +
-            "• PrestigeRatesReducer = 0.10      (10% rate reduction per tier for weapons/blood)\n" +
-            "• PrestigeStatMultiplier = 0.10    (10% stat-cap boost per tier)\n" +
-            "• PrestigeRateMultiplier = 0.10    (10% rate bonus to expertise/legacy from leveling prestige)\n" +
-            "• Leaderboard = true");
-
-        // ── Exo Prestige ────────────────────────────────────────────────
-        AddGuideSection(page,
-            "Exo Prestige & Exoforms (endgame)",
-            "Past the regular experience-prestige cap, Bloodcraft has an Exo " +
-            "prestige tier (up to 100 levels) that unlocks shapeshift forms " +
-            "(Exoforms).\n\n" +
-            "Important: each Exo prestige resets your CHARACTER LEVEL back to 0 — " +
-            "you have to level back up to max every time. Only the Exo prestige " +
-            "tier itself carries over; your character level does not stay at max.\n\n" +
-            "Two Exoforms are available — Evolved Vampire and Corrupted Serpent. " +
-            "Pick which one is active with .prestige sf <EvolvedVampire|" +
-            "CorruptedSerpent>; trigger the transformation with .prestige " +
-            "exoform (defaults to a taunt emote trigger). Form duration scales " +
-            "with your Exo tier.\n\n" +
-            "Servers usually grant a reward at each Exo tier, but the reward " +
-            "varies from server to server — check with your server admin for what " +
-            "yours gives. (Where a server grants shard rewards, .fam echoes " +
-            "<VBloodName> can spend them to unlock V-Blood familiars.)");
-        AddCollapsibleHelpDetail(page, "Details — Exo & Exoforms",
-            "• Requires <b>maxed Experience prestige</b> + level 90 to start Exo " +
-            "tiering. Up to <b>100 Exo tiers</b> available.\n" +
-            "• Each Exo prestige <b>resets your character level to 0</b> (re-level to " +
-            "max each time) while the Exo prestige tier itself carries over.\n" +
-            "• Servers usually grant a per-tier reward; the reward varies by server " +
-            "(the Bloodcraft default is <b>500× Primal Stygian Shards</b>, " +
-            "PrefabGUID 28358550, but most servers change this — check with your admin).\n" +
-            "• Exoform duration: <b>15s</b> at Exo 1, growing to roughly <b>180s</b> " +
-            "at Exo 100 (formula: 15 + (165 ÷ 100) × exoLevel).\n" +
-            "• Forms recharge passively; base full-recharge time scales down as " +
-            "your Exo tier rises. A 5-second countdown warning fires just before " +
-            "the form ends.\n" +
-            "• Optional <b>TrueImmortal</b> server toggle: while in exoform your " +
-            "blood swaps to Immortal, restoring to your original on exit.\n" +
-            "• .fam echoes cost formula: base × scaledFactor × EchoesFactor. " +
-            "Higher-level + higher-tier V-Bloods cost more — shard bearers " +
-            "(top tier) cost <b>25×</b> the base.");
-        AddCollapsibleHelpDetail(page, "Default settings — Exo",
-            "• ExoPrestiging = false   (server must enable)\n" +
-            "• ExoPrestigeReward = 28358550 (Primal Stygian Shard)\n" +
-            "• ExoPrestigeRewardQuantity = 500\n" +
-            "• PrimalEchoes = false    (enables .fam echoes V-Blood unlocks)\n" +
-            "• EchoesFactor = 1        (cost multiplier, clamped 1–4)\n" +
-            "• TrueImmortal = false");
-
-        // ── Familiars ───────────────────────────────────────────────────
-        AddGuideSection(page,
-            "Familiars",
-            "Enemies you defeat have a configured chance to drop as familiars — " +
-            "summonable combat companions. Stored in named boxes (you can " +
-            "create + organize multiple). The Boxes tab lists boxes; the " +
-            "Familiars tab handles your active familiar (bind / unbind / " +
-            "toggle / prestige); the Familiar Browser overlay (footer toggle) " +
-            "is a compact draggable subset for in-combat swaps.\n\n" +
-            "Variants you'll see:\n" +
-            "• <b>Basic</b> — standard capture.\n" +
-            "• <b>Shiny</b> — rare visual + stat variant with a glowing effect " +
-            "and an extra debuff proc when dealing damage.\n" +
-            "• <b>Primal</b> — primal echoes-unlocked V-Blood variant.\n\n" +
-            "Familiars level via combat; .fam pr <Stat> prestiges at max level " +
-            "for permanent stat bonuses.");
-        AddCollapsibleHelpDetail(page, "Details — Familiars",
-            "• Unlock chance: <b>5%</b> on regular units, <b>1%</b> on V-Bloods, " +
-            "only on the final-blow kill.\n" +
-            "• Cap: <b>level 90</b>, scaling 7.5× units / 15× V-Bloods. Up to " +
-            "<b>10 prestige tiers</b>, each adding <b>+10%</b> stat bonus (no rate " +
-            "penalty for familiars).\n" +
-            "• <b>Shinies</b>: 20% chance on first unlock of a species, 100% on " +
-            "any repeat unlock. Shiny familiars proc their assigned spell-school " +
-            "debuff on attacks at the same proc rate as class on-hit (7.5%).\n" +
-            "• Shiny cost: <b>100× Vampiric Dust</b> to apply; <b>25%</b> of that " +
-            "to change school later.\n" +
-            "• Prestige cost: <b>1000× Schematics</b>, grants levels equal to the " +
-            "familiar's max-level cap.\n" +
-            "• Share unlocks (off by default): clan / party within experience " +
-            "share distance can co-receive captures.\n" +
-            "• .fam echoes uses Exo shards to unlock specific V-Bloods directly — " +
-            "see the Exo section.\n" +
-            "• Server controls: AllowVBloods, AllowMinions, BannedUnits, BannedTypes " +
-            "filter what's eligible to capture.");
-        AddCollapsibleHelpDetail(page, "Default settings — Familiars",
-            "• FamiliarSystem = false   (server must enable)\n" +
-            "• MaxFamiliarLevel = 90    MaxFamiliarPrestiges = 10\n" +
-            "• FamiliarPrestigeStatMultiplier = 0.10\n" +
-            "• FamiliarCombat = true    FamiliarPvP = true\n" +
-            "• UnitFamiliarMultiplier = 7.5   VBloodFamiliarMultiplier = 15\n" +
-            "• UnitUnlockChance = 0.05  VBloodUnlockChance = 0.01\n" +
-            "• AllowVBloods = false   AllowMinions = false\n" +
-            "• EquipmentOnly = false\n" +
-            "• ShinyChance = 0.20\n" +
-            "• ShinyCostItemQuantity = 100   (range 50–200)\n" +
-            "• PrestigeCostItemQuantity = 1000 (range 500–2000)\n" +
-            "• ShareUnlocks = false");
-
-        // ── Professions ─────────────────────────────────────────────────
-        AddGuideSection(page,
-            "Professions",
-            "Eight gathering / crafting skills level independently. Bonuses " +
-            "differ by profession:\n\n" +
-            "• <b>Mining / Woodcutting / Harvesting</b> — bonus resources per " +
-            "broken node, scaling with profession level. Profession-specific " +
-            "bonus drops (gold ore from mining, saplings from woodcutting, " +
-            "seeds from harvesting).\n" +
-            "• <b>Fishing</b> — extra catch every 20 levels.\n" +
-            "• <b>Alchemy</b> — potions you craft become more effective + last " +
-            "longer (up to ×2 duration at max; holy potions get duration only).\n" +
-            "• <b>Blacksmithing / Tailoring / Enchanting</b> — gear you craft " +
-            "gets <b>+10% base stats</b> and <b>×2 durability</b> at max " +
-            "profession level.\n\n" +
-            ".prof get <Profession> shows current level. The Professions overlay " +
-            "(footer toggle) tracks them live; Settings → Display has per-" +
-            "profession checkboxes if you only care about a few.");
-        AddCollapsibleHelpDetail(page, "Details — Professions",
-            "• Profession multiplier (server-tunable): <b>1.0×</b> by default — " +
-            "all professions level at the same base rate.\n" +
-            "• Stat / durability bonuses scale linearly from L1 to max.\n" +
-            "• Server admins can disable individual professions by listing them " +
-            "in the DisabledProfessions config (comma-separated).\n" +
-            "• Gathering bonus drops: gold ore from mining nodes contributes " +
-            "salvageable jewelry; random saplings + seeds give planters something " +
-            "to work with.");
-        AddCollapsibleHelpDetail(page, "Default settings — Professions",
-            "• ProfessionSystem = false   (server must enable)\n" +
-            "• ProfessionFactor = 1.0\n" +
-            "• DisabledProfessions = \"\"   (comma-separated profession names)");
-
-        // ── Quests ──────────────────────────────────────────────────────
-        AddGuideSection(page,
-            "Daily & Weekly Quests",
-            "Bloodcraft assigns a daily quest (resets daily) and a weekly quest " +
-            "(resets weekly). Each targets specific enemies — kill the target " +
-            "type the required number of times for XP + reward items. Use " +
-            ".quest d / .quest w to view them, .quest t <daily|weekly> to set " +
-            "a tracker waypoint to the nearest target, .quest r to reroll for " +
-            "a configured cost.\n\n" +
-            "The Daily Quest overlay (footer toggle) keeps both progress lines " +
-            "visible while you play.");
-        AddCollapsibleHelpDetail(page, "Details — Quests",
-            "• Daily reward multiplier is the base rate; weekly rewards are " +
-            "roughly <b>5×</b> the daily reward.\n" +
-            "• Each completed daily has a <b>10%</b> chance to also drop a " +
-            "random perfect gem (useful for Primal Jewel crafting — the gem " +
-            "school influences the resulting jewel).\n" +
-            "• Reroll cost (daily): <b>50</b> of the configured reroll item " +
-            "(default PrefabGUID −949672483 — Stygian Coin). Weekly reroll is " +
-            "the same item type, also 50 by default.\n" +
-            "• Optional <b>InfiniteDailies</b> server toggle: when on, daily " +
-            "quests can be repeated as fast as you complete them (off by " +
-            "default → one daily per server day).");
-        AddCollapsibleHelpDetail(page, "Default settings — Quests",
-            "• QuestSystem = false   (server must enable)\n" +
-            "• InfiniteDailies = false\n" +
-            "• DailyPerfectChance = 0.10\n" +
-            "• QuestRewards = 28358550, 576389135, -257494203\n" +
-            "  (Primal Stygian Shard, Shattered Bone, ...)\n" +
-            "• QuestRewardAmounts = 50, 250, 50\n" +
-            "• RerollDailyAmount = 50    RerollWeeklyAmount = 50");
-
-        AddGuideSection(page,
-            "Where to go next",
-            "Open any of the BLOODCRAFT-group tabs in the left rail to actually " +
-            "use the systems described here. Most commands have UI forms with " +
-            "tooltips on every field. The Quick Start tab covers Raphael's UI " +
-            "conventions; the Game Guide tab links external V Rising resources " +
-            "(wiki, Discord, etc.) if you want broader context.\n\n" +
-            "Bloodcraft Thunderstore: https://thunderstore.io/c/v-rising/p/zfolmt/Bloodcraft/\n" +
-            "Bloodcraft GitHub: https://github.com/mfoltz/Bloodcraft");
-    }
-
-    // 0.13.0: collapsed-by-default detail/defaults block under each Mod Help
-    // section. Wraps a single multi-line wrapped TMP label inside a
-    // CollapsibleSection so the help tab opens compact and the user expands
-    // only the parts they care about. The label uses a ContentSizeFitter so
-    // its height tracks the actual wrapped text — no manual line-counting
-    // and the section's outer VLG auto-fits.
-    private static void AddCollapsibleHelpDetail(GameObject parent, string title, string body)
-    {
-        CollapsibleSection.Build(parent, title, startExpanded: false, content =>
-        {
-            // 0.13.0: bumped body fontSize 12 → 14 to match AddGuideSection.
-            var lbl = UIFactory.CreateLabel(content, $"HelpDetail_{title}", body,
-                TextAlignmentOptions.TopLeft, color: null, fontSize: Theme.ScaledUI(14));
-            UIFactory.SetLayoutElement(lbl.GameObject,
-                minWidth: 340, preferredWidth: 380, flexibleWidth: 1,
-                minHeight: 20, flexibleHeight: 0);
-            lbl.TextMesh.enableWordWrapping = true;
-            lbl.TextMesh.overflowMode = TextOverflowModes.Overflow;
-            lbl.TextMesh.fontStyle = FontStyles.Normal;
-            var fitter = lbl.GameObject.AddComponent<UnityEngine.UI.ContentSizeFitter>();
-            fitter.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.Unconstrained;
-            fitter.verticalFit   = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-        });
-    }
-
-    // General "what is Raphael" getting-started — server-mod-agnostic. The Bloodcraft-specific
-    // walkthrough lives in BuildBloodcraftQuickStartTab (parallel to the Beelzebub Quick Start).
-    private void BuildQuickStartTab(GameObject page)
-    {
-        AddGuideSection(page,
-            "<color=#C41E3A>Welcome to Raphael!</color>",
-            "It looks like this is your first time here, so we opened to Quick Start instead of dropping you " +
-            "straight into a feature tab. This page is a 60-second tour. You can come back any time from " +
-            "<b>Settings and Help → Quick Start</b>, and each mod has its own Quick Start tab too. " +
-            "When you're ready, just click a tab on the left rail.");
-
-        AddGuideSection(page,
-            "What is Raphael?",
-            "Raphael is a client-side companion UI for several server-side V Rising mods. " +
-            "It turns each mod's chat commands into buttons and forms and adds on-screen overlays — so you " +
-            "can play the mods without memorizing commands.\n\n" +
-            "Raphael works with: <b>Bloodcraft</b> (leveling, familiars, classes, expertise, blood legacy, " +
-            "prestige, quests), the <b>Kindred</b> suite (KindredCommands + KindredLogistics), and " +
-            "<b>Beelzebub</b> (ability capture + transforms). It also has a standalone tabbed chat window " +
-            "and Game-UI tweaks that work on ANY server, even one with no mods.");
-
-        AddGuideSection(page,
-            "Your first minute",
-            "<b>1.</b> Click the <b>Raphael</b> button (top-right of your screen) to open this panel — or press " +
-            "the keybind shown in Settings.\n" +
-            "<b>2.</b> Look at the left rail. Raphael auto-detects your server's mods, so you'll see a group for " +
-            "each one it finds: <b>BLOODCRAFT</b>, <b>BEELZEBUB</b>, <b>KINDRED</b>, plus <b>SETTINGS AND HELP</b> " +
-            "(always there).\n" +
-            "<b>3.</b> Open the Quick Start tab for whichever mod your server runs:\n" +
-            "   • Bloodcraft server → the <b>Bloodcraft Quick Start</b> tab.\n" +
-            "   • Beelzebub server → the <b>Beelzebub Quick Start</b> tab.\n" +
-            "<b>4.</b> That's it — each mod's tabs are buttons and forms. Hover anything to see what it does " +
-            "(the description shows in the bar at the bottom of the panel).");
-
-        AddGuideSection(page,
-            "Don't see a mod's tabs?",
-            "A group only appears once Raphael confirms that mod on your server. If you know a mod is installed " +
-            "but its group is greyed or missing — common right after switching servers — you have two easy " +
-            "fixes:\n" +
-            "• Click the greyed <b>group header</b>: it expands to a small panel with a <b>Re-check now</b> " +
-            "button (restarts detection) and a <b>Force-enable</b> button (shows the tabs anyway).\n" +
-            "• Or open <b>Settings and Help → Connection</b> and press the matching <b>Re-detect</b>.\n\n" +
-            "Game UI and the chat window always work, even on a vanilla server.");
-
-        AddGuideSection(page,
-            "Moving things around",
-            "• <b>Left rail:</b> click a group header to collapse/expand it. Groups for detected mods " +
-            "auto-expand.\n" +
-            "• <b>Buttons:</b> the top-right <b>Raphael</b> button opens this panel; <b>OV</b> toggles all overlays.\n" +
-            "• <b>Drag + resize:</b> this panel and every overlay move by their title bar and resize from any " +
-            "edge or corner; the maximize button toggles fullscreen.\n" +
-            "• <b>Footer:</b> toggles the secondary overlays, auto-resize, and the \"block typing from " +
-            "triggering the game\" option.\n" +
-            "• <b>Settings and Help → Settings</b> has display / colour / size options.");
-    }
-
-    private void BuildBloodcraftQuickStartTab(GameObject page)
-    {
-        AddGuideSection(page,
-            "Bloodcraft — getting started",
-            "Bloodcraft is the server-side mod that adds leveling, familiars, classes, weapon expertise, " +
-            "blood legacy, prestige, and quests. Raphael surfaces all of it under the BLOODCRAFT tab " +
-            "group (visible when your server runs Bloodcraft). This walkthrough covers the core systems; " +
-            "the <b>Bloodcraft Help</b> tab has the deeper mechanics reference.");
-
-        AddGuideSection(page,
-            "Leveling (passive)",
-            "Your character earns XP automatically as you defeat enemies. " +
-            "Current level, progress, and class show on the Levels tab and " +
-            "in the XP overlay (toggle on the panel footer). Nothing to " +
-            "click to gain XP - just play. When you hit the level cap, you " +
-            "can prestige (see Prestige below) to reset level and earn " +
-            "permanent bonuses.");
-
-        AddGuideSection(page,
-            "Familiars",
-            "Familiars are summoned combat companions collected from random " +
-            "drops when you defeat eligible mobs and V-Bloods. The drop " +
-            "table and rate are server-configured.\n\n" +
-            "Boxes hold your familiar collection (named buckets you can " +
-            "switch between). The Boxes tab lists them: click a box to load " +
-            "its contents, then click any familiar to bind it as your " +
-            "active companion. Use the Familiars tab to unbind, toggle " +
-            "combat mode, or prestige the active familiar.\n\n" +
-            "Shiny familiars are rare visual+stat variants of normal " +
-            "familiars - the server admin configures the rate. A shiny " +
-            "drop is the same creature but with a glowing effect and " +
-            "(usually) noticeably better stats.");
-
-        AddGuideSection(page,
-            "Classes",
-            "A class specializes your character with weapon synergies, stat bonuses, and a unique spell. " +
-            "On the <b>Class</b> tab, use <b>List Classes</b> to see what's available, then choose one with " +
-            "<b>.class s (ClassName)</b> in chat. Most classes grant a spell that can occupy your shift slot " +
-            "(see Unarmed + Shift below).");
-
-        AddGuideSection(page,
-            "Weapon Expertise",
-            "Each weapon type (Sword, Axe, Mace, …) tracks its own expertise level. Switch to a weapon and " +
-            "use it — expertise rises. The <b>Weapon Expertise</b> tab shows level, progress, prestige, and " +
-            "the bonus stats you've chosen for the currently-equipped weapon. Pick a stat with " +
-            "<b>.wep cst (Weapon) (Stat)</b>; common choices: PhysicalPower / SpellPower / one of the crit " +
-            "chances.");
-
-        AddGuideSection(page,
-            "Unarmed + Shift slot",
-            "Two ways to gain extra ability slots:\n\n" +
-            "Unarmed: when you have no weapon equipped, you use unarmed " +
-            "expertise. Bloodcraft tracks it like any weapon. Unarmed " +
-            "expertise unlocks extra spell slots so you can cast while " +
-            "weaponless. Use `.wep locksp` after equipping the spells you " +
-            "want to keep.\n\n" +
-            "Shift slot: by default your shift ability is your travel " +
-            "spell (wolf, bat, etc.). Bloodcraft can replace it with a " +
-            "class spell instead. Toggle the override from <b>Class → " +
-            "Toggle Shift</b>. Pick which class spell goes in the slot with " +
-            "<b>.class csp (#)</b>.");
-
-        AddGuideSection(page,
-            "Prestige",
-            "At max level in any system (Experience, a weapon expertise, " +
-            "a blood legacy, etc.) you can prestige. Prestiging resets the " +
-            "level to 1 but grants permanent stat multipliers proportional " +
-            "to your prestige count.\n\n" +
-            "Use the Prestige tab: expand 'Prestige in a system', pick the " +
-            "type from the dropdown, Submit. Quick actions: List shows what " +
-            "exists; Sync Buffs re-applies your prestige buffs; Exoform " +
-            "toggles the high-prestige shapeshift; Shroud is the " +
-            "permanent stealth toggle if you qualify.");
-
-        AddGuideSection(page,
-            "Tips",
-            "• Hover any control to see what it does (description shows in the bar at the panel bottom).\n" +
-            "• Auto-resize ON: the panel grows to fit the active tab. Turn it off if you prefer manual " +
-            "sizing.\n" +
-            "• The secondary overlays (XP, Familiar, Familiar Browser, Daily Quest) are independent " +
-            "draggable panels — toggle them in the footer.");
     }
 
     private static void AddGuideSection(GameObject parent, string title, string body)

@@ -166,10 +166,18 @@ public static class FormBuilder
             return;
         }
 
-        // Token substitution: every {field.Name} in the template becomes the field's value.
+        // Token substitution: every {field.Name} in the template becomes the field's token.
+        // 0.73.0: GetToken == GetValueString for every field except a quoted TextField (encoded once here, by
+        // VcfArg) and a DecimalField (invariant text), so existing forms send byte-identical commands. An optional
+        // field left blank drops its token; it is always a trailing placeholder, so trimming the end closes the gap.
         string command = template;
+        bool omitted = false;
         foreach (var f in fields)
-            command = command.Replace("{" + f.Name + "}", f.GetValueString());
+        {
+            command = command.Replace("{" + f.Name + "}", f.GetToken());
+            if (f is TextField tf && tf.IsOmitted) omitted = true;
+        }
+        if (omitted) command = command.TrimEnd();
 
         // Feed the player-name cache if any field looks like a player name.
         foreach (var f in fields)

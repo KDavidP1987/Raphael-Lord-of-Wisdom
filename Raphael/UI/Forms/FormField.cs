@@ -26,6 +26,10 @@ public abstract class FormField
     public abstract void   Build(GameObject row);
     public abstract string GetValueString();
     public virtual  bool   IsValid() => !string.IsNullOrEmpty(GetValueString());
+
+    /// <summary>0.73.0: the text FormBuilder substitutes for {Name}. Same as GetValueString unless a field encodes
+    /// its value (a quoted TextField, a DecimalField). Called only after IsValid passed.</summary>
+    public virtual  string GetToken() => GetValueString();
 }
 
 // ---------------------------------------------------------------------------
@@ -53,6 +57,72 @@ public class TextField : FormField
     }
 
     public override string GetValueString() => Input?.Text ?? "";
+
+    // 0.73.0: opt-in VCF quoting (PLAN-ADDENDUM §1 "Quoting"). Off by default, so every existing form sends exactly
+    // what it sent before. When on, the raw value is validated by Services.VcfArg.TryEncode (no '"', backslash or
+    // control characters; not blank) and encoded once at substitution: wrapped in quotes only if it has a space.
+    // Kindred forms set it from KindredAdminCommands.IsQuoted, never by hand.
+    public bool Quote { get; set; }
+
+    // 0.73.0: a trailing optional source parameter the player may leave blank. Blank → IsValid passes and the token
+    // is dropped (FormBuilder trims the trailing space). Only for the LAST placeholder(s) of a template.
+    public bool Optional { get; set; }
+
+    private bool IsBlank => string.IsNullOrWhiteSpace(GetValueString());
+
+    public override bool IsValid()
+    {
+        if (Optional && IsBlank) return true;
+        if (Quote) return Services.VcfArg.TryEncode(GetValueString(), out _, out _);
+        return base.IsValid();
+    }
+
+    public override string GetToken()
+    {
+        if (Optional && IsBlank) return "";
+        if (Quote) return Services.VcfArg.TryEncode(GetValueString(), out var token, out _) ? token : "";
+        return GetValueString();
+    }
+
+    /// <summary>0.73.0: true when this field is an optional one left blank (its token is dropped).</summary>
+    public bool IsOmitted => Optional && IsBlank;
+}
+
+// ---------------------------------------------------------------------------
+// DecimalField - 0.73.0: text input for a decimal in [Min, Max] with at most
+// MaxDecimals places. Accepts '.' or ',' as the separator and always sends
+// invariant text ("0.5"), via the pure Services.VcfArg.TryDecimal.
+// ---------------------------------------------------------------------------
+public class DecimalField : TextField
+{
+    public double Min { get; set; }
+    public double Max { get; set; } = 1;
+    public int MaxDecimals { get; set; } = 3;
+
+    public DecimalField() { }
+    public DecimalField(string name, string label, double min, double max, int maxDecimals = 3, string tooltip = null)
+        : base(name, label, placeholder: "0.5", tooltip: tooltip)
+    {
+        Min = min; Max = max; MaxDecimals = maxDecimals;
+    }
+
+    // Narrow like IntField. No TMP content type: DecimalNumber's separator handling depends on the client's culture,
+    // and VcfArg.TryDecimal accepts both '.' and ','.
+    public override void Build(GameObject row)
+    {
+        Input = UIFactory.CreateInputField(row, $"Field_{Name}", Placeholder);
+        UIFactory.SetLayoutElement(Input.GameObject,
+            minWidth: 56, preferredWidth: 72, flexibleWidth: 0,
+            minHeight: Theme.ScaledHeight(24), preferredHeight: Theme.ScaledHeight(26), flexibleHeight: 0);
+        if (!string.IsNullOrEmpty(Tooltip))
+            TooltipHover.Attach(Input.GameObject, Tooltip);
+    }
+
+    public override bool IsValid()
+        => Input != null && Services.VcfArg.TryDecimal(Input.Text, Min, Max, MaxDecimals, out _);
+
+    public override string GetToken()
+        => Services.VcfArg.TryDecimal(GetValueString(), Min, Max, MaxDecimals, out var text) ? text : GetValueString();
 }
 
 // ---------------------------------------------------------------------------

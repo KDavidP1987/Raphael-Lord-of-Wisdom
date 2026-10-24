@@ -1,0 +1,2048 @@
+{
+  "mod": "Uriel",
+  "source": "Uriel Lord of Oaths/Uriel/Uriel",
+  "sourceVersion": "0.22.0",
+  "sourceCommit": "0bad5feee6",
+  "generatorVersion": 1,
+  "commands": [
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "uriel",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Uriel overview — what the mod does and how to get help.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Uriel",
+      "file": "Commands/RootCommands.cs",
+      "line": 13
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "block",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: block a prefab (by GUID or name) so it can't be spawned/discovered/granted. Usage: .uriel block <guid|name>",
+      "params": [
+        {
+          "name": "prefab",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Block",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 241
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "blocklist",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: list the blocked prefabs. Usage: .uriel blocklist",
+      "params": [],
+      "verbDispatch": false,
+      "method": "BlockList",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 257
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "bossmap",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: edit the boss->object unlock map (defeating the V-blood grants the objects). Usage: .uriel bossmap <add|remove|list> [vblood] [object]",
+      "params": [
+        {
+          "name": "action",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "vblood",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "obj",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BossMap",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 287
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "catalog",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Browse the full placeable-object catalog (paged) and see totals (total + discoverable). Usage: .uriel catalog [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Catalog",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 222
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "despawn",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Remove the nearest object you spawned (aim at it or stand near it). Usage: .uriel despawn",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Despawn",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 83
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "features",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: show which Uriel features are switched on (config file BepInEx/config/kdpen.Uriel.cfg). Usage: .uriel features",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Features",
+      "file": "Commands/KillSwitchCommands.cs",
+      "line": 20
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "finditem",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Search the item catalog by name. Usage: .uriel finditem <name fragment>",
+      "params": [
+        {
+          "name": "fragment",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "FindItem",
+      "file": "Commands/ShareCommands.cs",
+      "line": 264
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "findprefab",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Search spawnable placeable objects for '.uriel spawn'. Usage: .uriel findprefab <text> [page]",
+      "params": [
+        {
+          "name": "text",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "FindPrefab",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 215
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "forcedespawn",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: force-remove the object you're aiming at, IGNORING Uriel ownership/records (recovers untracked objects, e.g. from older builds). Run once to arm (names it), then '.uriel forcedespawn confirm' within 30s. Usage: .uriel forcedespawn [confirm]",
+      "params": [
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ForceDespawn",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 149
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "forcepurgeplot",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Same as '.uriel purgeplot' — removes Uriel's objects on the plot (live spawns + records); native objects/plants/trees/build pieces are never touched. (Kept as a synonym; the old chain sweep was removed because it could delete native resources.) Usage: .uriel forcepurgeplot",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ForcePurgePlot",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 158
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "grant",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: unlock an object for a player to build — covers non-destroyable objects discovery can't reach. Usage: .uriel grant <player> <name|guid>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "prefab",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Grant",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 188
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "grantall",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: grant a player ALL placeable objects (or a subset). Usage: .uriel grantall <player> [all|destructible|indestructible]",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "all"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GrantAll",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 206
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "help",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Uriel help menu. Usage: .uriel help [objects|storage|stairs|events|admin]",
+      "params": [
+        {
+          "name": "topic",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Help",
+      "file": "Commands/HelpCommands.cs",
+      "line": 14
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "info",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show the sharing rules of the aimed container (or '.uriel info nearest' for the closest one).",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Info",
+      "file": "Commands/ShareCommands.cs",
+      "line": 242
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "killswitch",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: restore vanilla server-wide. Stops every castle event (doors put back), removes every Uriel unit and every Uriel-spawned object, and makes every shared chest and prison cell private. Run once to arm, then '.uriel killswitch confirm' within 30 s. Usage: .uriel killswitch [confirm]",
+      "params": [
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Kill",
+      "file": "Commands/KillSwitchCommands.cs",
+      "line": 32
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "lower",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Lower the nearest object you spawned so it sits lower / stops floating. Optional amount in metres (default 0.25). Stand near the object. Usage: .uriel lower [metres]",
+      "params": [
+        {
+          "name": "amount",
+          "type": "float",
+          "optional": true,
+          "default": 0.25
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Lower",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 118
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "move",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Move the nearest object you spawned to your aim point — or to YOUR location with 'here' (use this from a UI button). Stand near the object; aim where you want it (or pass 'here'), then run. Usage: .uriel move [here]",
+      "params": [
+        {
+          "name": "flag",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Move",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 91
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "notify",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Turn your object-discovery chat messages on or off. Usage: .uriel notify <on|off>",
+      "params": [
+        {
+          "name": "state",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Notify",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 229
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "objcfg",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: set spawn conditions for ONE object. Fields: max <n> (max per plot, 0=unlimited) | cost <amount> <itemGuid> (0=free) | indestructible <true|false> | respawn <true|false> | yoffset <metres> (auto height-correct so it sits flush; applies to everyone) | clear | show. (max/cost/permits gate players only; yoffset applies to all.) Usage: .uriel objcfg <name|guid> <field> [v1] [v2]",
+      "params": [
+        {
+          "name": "prefab",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "optional": true,
+          "default": "show"
+        },
+        {
+          "name": "v1",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "v2",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ObjCfg",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 264
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "objcfgglobal",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: set the GLOBAL DEFAULT spawn condition applied to every object unless that object overrides it (players only). Same fields as objcfg. Usage: .uriel objcfgglobal <field> [v1] [v2]",
+      "params": [
+        {
+          "name": "field",
+          "type": "string",
+          "optional": true,
+          "default": "show"
+        },
+        {
+          "name": "v1",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "v2",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": true,
+      "method": "ObjCfgGlobal",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 272
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "objcfglist",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: list the global + per-object spawn conditions. Usage: .uriel objcfglist",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ObjCfgList",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 280
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "paychest",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Designate the aimed PRIVATE chest to receive cost payments (or '.uriel paychest nearest').",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PayChest",
+      "file": "Commands/ShareCommands.cs",
+      "line": 252
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "purgeall",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: remove EVERY Uriel-spawned object on the server, on every plot. Native objects are never touched. Run once to arm, then '.uriel purgeall confirm' within 30 s. Usage: .uriel purgeall [confirm]",
+      "params": [
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PurgeAll",
+      "file": "Commands/KillSwitchCommands.cs",
+      "line": 50
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "purgeorphans",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: scan the WHOLE map and remove orphaned Uriel objects — ones whose castle heart is gone (castle destroyed/decayed) or that sit where no living heart governs them. Only Uriel's own objects are touched; native objects are never affected. Server-wide on-demand backup for the automatic boot-time cleanup. Usage: .uriel purgeorphans",
+      "params": [],
+      "verbDispatch": false,
+      "method": "PurgeOrphans",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 166
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "purgeplot",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove Uriel's objects on the castle plot you're standing in (live spawns + tracked records). Native objects are never touched. For one specific untracked object, aim at it and use '.uriel forcedespawn'. Usage: .uriel purgeplot",
+      "params": [],
+      "verbDispatch": false,
+      "method": "PurgePlot",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 134
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "raise",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Raise the nearest object you spawned so it sits higher / flush with the ground. Optional amount in metres (default 0.25). Stand near the object. Usage: .uriel raise [metres]",
+      "params": [
+        {
+          "name": "amount",
+          "type": "float",
+          "optional": true,
+          "default": 0.25
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Raise",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 109
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "removestairs",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Cleanly remove the aimed staircase (the whole fused structure) WITHOUT disturbing the floors/walls it's connected to. You must own it. Usage: .uriel removestairs [nearest]",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveStairs",
+      "file": "Commands/StairCommands.cs",
+      "line": 42
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "revoke",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: remove an object from a player's unlocks. Usage: .uriel revoke <player> <name|guid>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "prefab",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Revoke",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 197
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "rotate",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Rotate the nearest object you spawned. No arg turns it 90 degrees; 0-3 sets that tile rotation. Usage: .uriel rotate [0-3]",
+      "params": [
+        {
+          "name": "rotation",
+          "type": "int",
+          "optional": true,
+          "default": -1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Rotate",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 100
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "share",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Share the aimed container. Optional stackable modifiers (any order): permission take|give|givetake, limithours <h>, limitwithdrawal <stacks>, cost <itemId> <amount>, nearest (target nearest container instead of aimed — for UI buttons).",
+      "params": [
+        {
+          "name": "m1",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "m2",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "m3",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "m4",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "m5",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "m6",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "m7",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "m8",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "m9",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "m10",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Share",
+      "file": "Commands/ShareCommands.cs",
+      "line": 32
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "shared",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List every container YOU have made public, with its full sharing rules.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Shared",
+      "file": "Commands/ShareCommands.cs",
+      "line": 133
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "sharedall",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "(admin) List ALL public containers, or one player's: .uriel sharedall [name|steamId]",
+      "params": [
+        {
+          "name": "playerFilter",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SharedAll",
+      "file": "Commands/ShareCommands.cs",
+      "line": 161
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "sharedebug",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "(admin) Dump the aimed container's live sharing state (team, castle link, prisoner) for diagnostics.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ShareDebug",
+      "file": "Commands/ShareCommands.cs",
+      "line": 223
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "spawn",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Spawn a prefab in the castle plot you're in. After the name, the rotation (0-3) and any flags may appear IN ANY ORDER: 'breakable' (raid/decay can destroy it), 'smashable' (you can destroy it too), 'respawn' (auto-comes-back until the castle's gone or you despawn it), 'here'/'nearest' (place at YOUR location — use this from a UI button), 'indestructible'. Admin-only 'force' spawns a non-networked object (e.g. an effect zone) that would otherwise be refused — it may be INVISIBLE. Default indestructible. Usage: .uriel spawn <name|guid> [rot 0-3] [flags…]. Players: own plot only; admins: any plot.",
+      "params": [
+        {
+          "name": "prefab",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "a1",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "a2",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "a3",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "a4",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "a5",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "a6",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Spawn",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 41
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "spawninfo",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Inspect the nearest object you spawned (prefab, ownership, indestructible/decay flags, plot).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "SpawnInfo",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 142
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "spawnlist",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List the Uriel-spawned objects on the castle plot you're standing in. Usage: .uriel spawnlist",
+      "params": [],
+      "verbDispatch": false,
+      "method": "SpawnList",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 127
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "stairpurge",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "(admin) Destroy ALL stair entities within 5m of you — cleanup for invisible 'ghost' stairs from older builds. Restart the server afterwards.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "StairPurge",
+      "file": "Commands/StairCommands.cs",
+      "line": 35
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "stairrefresh",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "(admin, EXPERIMENTAL) Dump the aimed staircase's mega-static state to the server log; attempts a LIVE visual refresh only if [StairSwap] ExperimentalLiveRefresh is enabled. Does not affect the durable swap.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "StairRefresh",
+      "file": "Commands/StairCommands.cs",
+      "line": 59
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "stairstyles",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show the aimed stair's shape, current style, and the styles available to you.",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "StairStyles",
+      "file": "Commands/StairCommands.cs",
+      "line": 51
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "stairswap",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Swap the aimed stair to another style of the same shape — applies LIVE (the stair is rebuilt in the new style; no restart needed). Usage: .uriel stairswap <stone1|stone2|stone3|gloomrot|projectk|strongblade|next>",
+      "params": [
+        {
+          "name": "style",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "StairSwap",
+      "file": "Commands/StairCommands.cs",
+      "line": 26
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "takeprisoner",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Take the prisoner from the SHARED cell you're aiming at — they're subdued and released to you (have Dominating Presence ready).",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TakePrisoner",
+      "file": "Commands/ShareCommands.cs",
+      "line": 193
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "unblock",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: allow a previously blocked prefab again (use its GUID from '.uriel blocklist'). Usage: .uriel unblock <guid|name>",
+      "params": [
+        {
+          "name": "prefab",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Unblock",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 249
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "unlocks",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List the objects you've unlocked for building. Admins can pass a player name to view theirs. Usage: .uriel unlocks [player]",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Unlocks",
+      "file": "Commands/ObjectCommands.cs",
+      "line": 174
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "unshare",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Make the public container you're aiming at private again ((or '.uriel unshare nearest' for the closest one).",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Unshare",
+      "file": "Commands/ShareCommands.cs",
+      "line": 120
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "unshareall",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "(admin) Revert EVERY public container to private and clear the registry.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "UnshareAll",
+      "file": "Commands/ShareCommands.cs",
+      "line": 234
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "unsharemine",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Revert EVERY container you shared (or control) back to private, in bulk.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "UnshareMine",
+      "file": "Commands/ShareCommands.cs",
+      "line": 151
+    },
+    {
+      "group": "uriel",
+      "groupShort": null,
+      "name": "unshareplayer",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "(admin) Revert ALL of one player's public containers: .uriel unshareplayer <name|steamId>",
+      "params": [
+        {
+          "name": "nameOrId",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "UnsharePlayer",
+      "file": "Commands/ShareCommands.cs",
+      "line": 182
+    },
+    {
+      "group": "uriel api",
+      "groupShort": null,
+      "name": "catalog",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Raphael: the total prefab list available in-game (paged). Usage: .uriel api catalog [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Catalog",
+      "file": "Commands/ApiCommands.cs",
+      "line": 37
+    },
+    {
+      "group": "uriel api",
+      "groupShort": null,
+      "name": "unlocked",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Raphael: your unlocked prefabs + collection percentage (paged). Usage: .uriel api unlocked [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Unlocked",
+      "file": "Commands/ApiCommands.cs",
+      "line": 47
+    },
+    {
+      "group": "uriel api",
+      "groupShort": null,
+      "name": "version",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Raphael: object-spawn API version, capabilities + catalog totals.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Version",
+      "file": "Commands/ApiCommands.cs",
+      "line": 30
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "door",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Bind the castle door nearest you (within 6 m) to a group: during an event it stays shut and locked until every unit of the group is defeated, then opens. Usage: .uriel event door <group>",
+      "params": [
+        {
+          "name": "group",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Door",
+      "file": "Commands/EventCommands.cs",
+      "line": 38
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "history",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show the last event runs on this plot (result, time, time to the last boss) and the best times per template. Usage: .uriel event history",
+      "params": [],
+      "verbDispatch": false,
+      "method": "History",
+      "file": "Commands/EventCommands.cs",
+      "line": 103
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show this plot's event layout: groups by floor, their doors and markers. Usage: .uriel event list",
+      "params": [],
+      "verbDispatch": false,
+      "method": "List",
+      "file": "Commands/EventCommands.cs",
+      "line": 66
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "marker",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Place a spawn marker where you stand, in a group (made on its first marker, on the floor you're on). Slot mob or boss: where the squad's mobs or bosses stand. Unit: a name/GUID for a fixed spawn here, or - for the group's squad. Count/level: for a fixed unit. Contain: plot, room, storey, <m>, or - for the server default. Usage: .uriel event marker <group> [mob|boss] [unit|-] [count] [level] [contain|-]",
+      "params": [
+        {
+          "name": "group",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slot",
+          "type": "string",
+          "optional": true,
+          "default": "mob"
+        },
+        {
+          "name": "unit",
+          "type": "string",
+          "optional": true,
+          "default": "-"
+        },
+        {
+          "name": "count",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "contain",
+          "type": "string",
+          "optional": true,
+          "default": "-"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Marker",
+      "file": "Commands/EventCommands.cs",
+      "line": 31
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "remove",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Remove a marker (by its #number) or a whole group (by name) from this plot's layout; paid markers are refunded. Usage: .uriel event remove <#id|group>",
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Remove",
+      "file": "Commands/EventCommands.cs",
+      "line": 59
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "squad",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Give a group its own squad (- for none): what it spawns when the run's template doesn't cover it. Usage: .uriel event squad <group> <squad|->",
+      "params": [
+        {
+          "name": "group",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "squad",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Squad",
+      "file": "Commands/EventCommands.cs",
+      "line": 52
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "start",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Start this plot's event: each group rolls its squad (from the template, a floor template or a squad you name, else its own), every group's door shuts until that group is defeated. Options, comma-separated: easy|normal|hard|brutal, level=N, level+N, auto[+N] (highest player level here), hp*X, dmg*X, pp*X, sp*X, speed*X, aspd*X, limit=15m, faction=keep (units keep their own factions; by default the whole run is one side). Usage: .uriel event start [template|-] [options]",
+      "params": [
+        {
+          "name": "template",
+          "type": "string",
+          "optional": true,
+          "default": "-"
+        },
+        {
+          "name": "options",
+          "type": "string",
+          "optional": true,
+          "default": "-"
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Start",
+      "file": "Commands/EventCommands.cs",
+      "line": 73
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "status",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show the running event on this plot: the clock, bosses left, time left, groups cleared, units left, doors. Usage: .uriel event status",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Status",
+      "file": "Commands/EventCommands.cs",
+      "line": 96
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "stop",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stop this plot's event: its units are removed and its doors put back as they were. Usage: .uriel event stop",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Stop",
+      "file": "Commands/EventCommands.cs",
+      "line": 80
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "stopall",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Admin: stop every castle event on the server: their units are removed and their doors put back as they were. Works with castle events switched off. Usage: .uriel event stopall",
+      "params": [],
+      "verbDispatch": false,
+      "method": "StopAll",
+      "file": "Commands/EventCommands.cs",
+      "line": 87
+    },
+    {
+      "group": "uriel event",
+      "groupShort": null,
+      "name": "undoor",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Unbind a group's door. Usage: .uriel event undoor <group>",
+      "params": [
+        {
+          "name": "group",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Undoor",
+      "file": "Commands/EventCommands.cs",
+      "line": 45
+    },
+    {
+      "group": "uriel floor",
+      "groupShort": null,
+      "name": "assign",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Give a layout group (by name, or * for every group on the floor) a squad; several comma-separated = one rolled per run; - unassigns. Usage: .uriel floor assign <name> <group|*> <squad[,squad...]|->",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "group",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "squads",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Assign",
+      "file": "Commands/EventCommands.cs",
+      "line": 188
+    },
+    {
+      "group": "uriel floor",
+      "groupShort": null,
+      "name": "create",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Create a floor template. Usage: .uriel floor create <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Create",
+      "file": "Commands/EventCommands.cs",
+      "line": 181
+    },
+    {
+      "group": "uriel floor",
+      "groupShort": null,
+      "name": "delete",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Delete a floor template (yours, or any as admin). Usage: .uriel floor delete <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Delete",
+      "file": "Commands/EventCommands.cs",
+      "line": 209
+    },
+    {
+      "group": "uriel floor",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List the floor templates you can use. Usage: .uriel floor list",
+      "params": [],
+      "verbDispatch": false,
+      "method": "List",
+      "file": "Commands/EventCommands.cs",
+      "line": 195
+    },
+    {
+      "group": "uriel floor",
+      "groupShort": null,
+      "name": "show",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show a floor template's groups and squads. Usage: .uriel floor show <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Show",
+      "file": "Commands/EventCommands.cs",
+      "line": 202
+    },
+    {
+      "group": "uriel squad",
+      "groupShort": null,
+      "name": "add",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Add an entry to a squad's set (set 1 by default; the next number starts a new combination, one combination rolled per run). Role mob or boss. Units: one or more, comma-separated. Pick any = each unit at random (an assortment), distinct = that many different ones (1 of these 3 bosses). Level 0 = the unit's own. Usage: .uriel squad add <name> <mob|boss> <unit[,unit...]> [count] [any|distinct] [level] [set]",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "units",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "count",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        },
+        {
+          "name": "pick",
+          "type": "string",
+          "optional": true,
+          "default": "any"
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "set",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Add",
+      "file": "Commands/EventCommands.cs",
+      "line": 125
+    },
+    {
+      "group": "uriel squad",
+      "groupShort": null,
+      "name": "create",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Create a squad (an admin's is server-wide, a player's is their own). Usage: .uriel squad create <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Create",
+      "file": "Commands/EventCommands.cs",
+      "line": 118
+    },
+    {
+      "group": "uriel squad",
+      "groupShort": null,
+      "name": "delete",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Delete a squad (yours, or any as admin). Usage: .uriel squad delete <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Delete",
+      "file": "Commands/EventCommands.cs",
+      "line": 167
+    },
+    {
+      "group": "uriel squad",
+      "groupShort": null,
+      "name": "extend",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Add more units to an entry's list (a chat line is short, so a long list takes several commands). Usage: .uriel squad extend <name> <set> <entry> <unit[,unit...]>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "set",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "entry",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "units",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Extend",
+      "file": "Commands/EventCommands.cs",
+      "line": 132
+    },
+    {
+      "group": "uriel squad",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List the squads you can use. Usage: .uriel squad list",
+      "params": [],
+      "verbDispatch": false,
+      "method": "List",
+      "file": "Commands/EventCommands.cs",
+      "line": 153
+    },
+    {
+      "group": "uriel squad",
+      "groupShort": null,
+      "name": "remove",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Remove an entry from a squad's set, or the whole set (entry 0). Usage: .uriel squad remove <name> <set> [entry]",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "set",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "entry",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Remove",
+      "file": "Commands/EventCommands.cs",
+      "line": 139
+    },
+    {
+      "group": "uriel squad",
+      "groupShort": null,
+      "name": "show",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show a squad's sets and entries. Usage: .uriel squad show <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Show",
+      "file": "Commands/EventCommands.cs",
+      "line": 160
+    },
+    {
+      "group": "uriel squad",
+      "groupShort": null,
+      "name": "weight",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "How often a squad's set is rolled, relative to its other sets (default 1). Usage: .uriel squad weight <name> <set> <1-100>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "set",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "weight",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Weight",
+      "file": "Commands/EventCommands.cs",
+      "line": 146
+    },
+    {
+      "group": "uriel template",
+      "groupShort": null,
+      "name": "create",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Create a castle-wide event template. Usage: .uriel template create <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Create",
+      "file": "Commands/EventCommands.cs",
+      "line": 223
+    },
+    {
+      "group": "uriel template",
+      "groupShort": null,
+      "name": "delete",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Delete a template (yours, or any as admin). Usage: .uriel template delete <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Delete",
+      "file": "Commands/EventCommands.cs",
+      "line": 258
+    },
+    {
+      "group": "uriel template",
+      "groupShort": null,
+      "name": "floor",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Give a floor (1, 2, ... or * for every floor) a floor template; several comma-separated = one rolled per floor per run (a theme); - clears. Usage: .uriel template floor <name> <floor|*> <floor template[,...]|->",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "floor",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "plans",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Floor",
+      "file": "Commands/EventCommands.cs",
+      "line": 230
+    },
+    {
+      "group": "uriel template",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List the templates you can use. Usage: .uriel template list",
+      "params": [],
+      "verbDispatch": false,
+      "method": "List",
+      "file": "Commands/EventCommands.cs",
+      "line": 244
+    },
+    {
+      "group": "uriel template",
+      "groupShort": null,
+      "name": "options",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Default run options for a template (the start's own options add to them): easy|normal|hard|brutal, level=N, level+N, auto[+N], hp*X, dmg*X, pp*X, sp*X, speed*X, aspd*X, limit=15m, faction=keep|one; - for none. Usage: .uriel template options <name> <options|->",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "options",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Options",
+      "file": "Commands/EventCommands.cs",
+      "line": 237
+    },
+    {
+      "group": "uriel template",
+      "groupShort": null,
+      "name": "show",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show a template's floors and options. Usage: .uriel template show <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Show",
+      "file": "Commands/EventCommands.cs",
+      "line": 251
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "clear",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove every Uriel unit on the castle plot you're standing in. Usage: .uriel unit clear",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Clear",
+      "file": "Commands/UnitCommands.cs",
+      "line": 61
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "despawn",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove the nearest Uriel unit within the radius (default 10 m). Usage: .uriel unit despawn [radius]",
+      "params": [
+        {
+          "name": "radius",
+          "type": "float",
+          "optional": true,
+          "default": 10
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Despawn",
+      "file": "Commands/UnitCommands.cs",
+      "line": 54
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "door",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Spike 7: drive the nearest castle door of this plot within 6 m from the server: open, close, lock (players can't use it), unlock, or show. Usage: .uriel unit door <open|close|lock|unlock|show>",
+      "params": [
+        {
+          "name": "action",
+          "type": "string",
+          "optional": true,
+          "default": "show"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Door",
+      "file": "Commands/UnitCommands.cs",
+      "line": 97
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "kill",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Kill the Uriel units within the radius (default 15 m): all, boss or mob. A real death (event groups clear, doors open), unlike despawn. Only Uriel's own units. Usage: .uriel unit kill [radius] [all|boss|mob]",
+      "params": [
+        {
+          "name": "radius",
+          "type": "float",
+          "optional": true,
+          "default": 15
+        },
+        {
+          "name": "which",
+          "type": "string",
+          "optional": true,
+          "default": "all"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Kill",
+      "file": "Commands/UnitCommands.cs",
+      "line": 47
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Count the Uriel units on the server, per plot. Usage: .uriel unit list",
+      "params": [],
+      "verbDispatch": false,
+      "method": "List",
+      "file": "Commands/UnitCommands.cs",
+      "line": 40
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "probe",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Read the tile map where you stand (or at your aim point): height level, and free/blocked and ground/air for nearby levels. Label it for the log. Usage: .uriel unit probe [label] [here|aim]",
+      "params": [
+        {
+          "name": "label",
+          "type": "string",
+          "optional": true,
+          "default": "-"
+        },
+        {
+          "name": "where",
+          "type": "string",
+          "optional": true,
+          "default": "here"
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Probe",
+      "file": "Commands/UnitCommands.cs",
+      "line": 120
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "probemap",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Write an ASCII map of the tile map around you to the server log ('#' blocked, '.' floor, ' ' no ground), at your height level and the one above. Usage: .uriel unit probemap [label] [radius 2-20]",
+      "params": [
+        {
+          "name": "label",
+          "type": "string",
+          "optional": true,
+          "default": "-"
+        },
+        {
+          "name": "radius",
+          "type": "int",
+          "optional": true,
+          "default": 10
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ProbeMap",
+      "file": "Commands/UnitCommands.cs",
+      "line": 83
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "purge",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Kill switch: remove EVERY Uriel unit on the server. Run once to arm, then '.uriel unit purge confirm' within 30 s. Usage: .uriel unit purge [confirm]",
+      "params": [
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Purge",
+      "file": "Commands/UnitCommands.cs",
+      "line": 68
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "rooms",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Write the castle's rooms (the game's own: floors, storeys, enclosed or not) and a map of the plot per storey to the server log. Room containment keeps a unit in the room it spawned in. Usage: .uriel unit rooms",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Rooms",
+      "file": "Commands/UnitCommands.cs",
+      "line": 90
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "spawn",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Spawn NPC units into the castle plot you're in, 2.5 m in front of you ('aim' = at your aim point). Optional level (0 = the prefab's own). Units never leave the plot; 'contain' narrows that: room, storey, a leash radius in metres, or a mix like room,15. Usage: .uriel unit spawn <name|guid> [count] [level] [here|aim] [plot|room|storey|<m>]",
+      "params": [
+        {
+          "name": "prefab",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "count",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "where",
+          "type": "string",
+          "optional": true,
+          "default": "here"
+        },
+        {
+          "name": "contain",
+          "type": "string",
+          "optional": true,
+          "default": "plot"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Spawn",
+      "file": "Commands/UnitCommands.cs",
+      "line": 31
+    },
+    {
+      "group": "uriel unit",
+      "groupShort": null,
+      "name": "status",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Write each Uriel unit within the radius (default 30 m) to the server log: position, height level, health, behaviour state, target. Usage: .uriel unit status [radius]",
+      "params": [
+        {
+          "name": "radius",
+          "type": "float",
+          "optional": true,
+          "default": 30
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Status",
+      "file": "Commands/UnitCommands.cs",
+      "line": 76
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "_comment": "0.73.0: every heading, paragraph, bullet, link label and URL of the old bespoke builder (MainPanel.cs) this guide replaced. GuideTests asserts each appears in the guide's text; 'rewordings' lists deliberate edits.",
+  "guide": "gameguide",
+  "entries": [
+    "V Rising — quick reference",
+    "Links to resources for V Rising itself: the official homepage, the community wiki, fan-maintained guides and the official Discord. Click 'Open' on any row to launch the URL in your default browser. For the server mods, use their guides in Settings and Help.",
+    "Official",
+    "Game homepage (Stunlock Studios)",
+    "https://playvrising.com",
+    "Community resources",
+    "V Rising Wiki (Fandom)",
+    "https://vrising.fandom.com/wiki/V_Rising_Wiki",
+    "CaDrift — community guides + tools",
+    "https://www.cadrift.net/v-rising/",
+    "Discord",
+    "V Rising official Discord",
+    "https://discord.com/invite/vrising",
+    "Suggest a resource",
+    "Have another V Rising guide / map / Discord worth surfacing here? Open an issue on the Raphael GitHub (link on the About tab) and a future version can include it. Resources listed here are user-suggested — they are not maintained by the mod author and their content / availability may change."
+  ],
+  "rewordings": []
+}

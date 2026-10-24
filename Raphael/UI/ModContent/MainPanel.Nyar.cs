@@ -508,7 +508,7 @@ public partial class MainPanel
         AddUrielBoolToggle(notif, "NyarToastLogin", "Login summary", Config.Settings.NyarToastLogin,
             Config.Settings.SetNyarToastLogin, "On joining, one notice listing the events already under way. Default on.");
         var dr = MakeUrielRow(notif, "NyarToastSecsRow");
-        AddUrielButton(dr, "NyarToastSecsDown", "−", "Shorter.", () => { Config.Settings.SetNyarToastSeconds(Config.Settings.NyarToastSeconds - 1); RefreshNyarToastSecs(); }, 40);
+        AddUrielButton(dr, "NyarToastSecsDown", "-", "Shorter.", () => { Config.Settings.SetNyarToastSeconds(Config.Settings.NyarToastSeconds - 1); RefreshNyarToastSecs(); }, 40);
         _nyarToastSecsLabel = AddNyarRowText(dr, "");
         AddUrielButton(dr, "NyarToastSecsUp", "+", "Longer.", () => { Config.Settings.SetNyarToastSeconds(Config.Settings.NyarToastSeconds + 1); RefreshNyarToastSecs(); }, 40);
         AddUrielButton(dr, "NyarToastTest", "Test", "Show a sample notification.",
@@ -579,6 +579,16 @@ public partial class MainPanel
         "action.regionLock", "action.bosses", "action.waveList.N.bosses", "action.pursuit", "action.pools.NAME",
         "action.goal", "action.goal.radius", "action.goal.name", "action.hordes.count", "action.hordes.everyMinutes", "action.hordes.size",
         "action.roamers.max", "action.marchSpeed",
+        // 0.73.0: undead hordes (Nyarlathotep 0.14.0). "Any other field" offers each only for the types that take it.
+        "action.destination", "action.destination.radius", "action.destination.name",
+        "action.origins.count", "action.origins.minNatives", "action.origins.minSpacing", "action.origins.perOrigin",
+        "action.hunters", "action.driftRadius",
+        "action.spread.perKillMin", "action.spread.perKillMax", "action.spread.max", "action.spread.perMinute", "action.spread.pool",
+        "action.start", "action.start.minDistance",
+        "action.growth.perKillMin", "action.growth.perKillMax", "action.growth.max", "action.growth.perMinute", "action.growth.pool",
+        "action.infest.hunters", "action.infest.driftRadius",
+        "action.infest.spread.perKillMin", "action.infest.spread.perKillMax", "action.infest.spread.max",
+        "action.infest.spread.perMinute", "action.infest.spread.pool",
     };
 
     private void BuildNyarAdminEventsTab(GameObject page)
@@ -988,58 +998,6 @@ public partial class MainPanel
     }
 
     // ---------------------------------------------------------------- GUIDE
-
-    private void BuildNyarGuideTab(GameObject page)
-    {
-        AddGuideSection(page, "Nyarlathotep, Lord of Chaos",
-            "A server mod that stages NPC world events the base game doesn't have: empowered factions, waves " +
-            "that hunt players, swarms in an arena, hunting grounds bound to a region, faction revenge and a " +
-            "map-wide apocalypse. Every pillar and event starts off; the server admin turns them on. " +
-            "The Nyarlathotep tabs appear only on servers that run it.");
-        AddCollapsibleHelpDetail(page, "How events work",
-            "• Triggers: a schedule, nightfall or daybreak, a V Blood kill, a random interval, a player entering " +
-            "a region, players killing a faction, faction revenge, or an admin command.\n" +
-            "• Actions: empower a faction with timed buffs, or spawn waves that hunt players, roam a region or " +
-            "hold an arena. A last wave can bring a boss.\n" +
-            "• Revenge: kill too many of one faction and it sends squads after you. You get private warnings in chat first.\n" +
-            "• Cleanup: when an event ends, its units leave and its buffs expire. Stuck units are moved back " +
-            "into play, or removed after two tries.\n" +
-            "• Planned, not on the server yet: boss reinforcements, defended zones, sieges and player stats.");
-        AddCollapsibleHelpDetail(page, "Players",
-            "• Live Events: what's running now, which regions it's in, and a countdown to the next wave. The " +
-            "Regions list shows how many events are active in each part of the map.\n" +
-            "• Notifications: a short notice at the top of the screen when an event begins or ends, a wave is " +
-            "coming, or an admin uses the kill switch. On joining, one notice lists the events already under way. " +
-            "Switch each kind on or off in Nyarlathotep → Settings. Wave warnings come only if the server sends " +
-            "them. Scoreboards, revenge warnings and admin broadcasts still show in chat only.\n" +
-            "• Leaderboards and My Stats: planned. The server doesn't collect stats yet, so these tabs say " +
-            "stats are off. They fill in when Nyarlathotep's stats update ships.");
-        AddCollapsibleHelpDetail(page, "Not seeing a reply?",
-            "Nyarlathotep's replies to commands you send always show in chat, including errors like \"command not " +
-            "found\" (`.nyar` alone lists the real commands). The tabs' Refresh buttons read data quietly and update " +
-            "the tab instead of chat. On newer servers, admin buttons show their result on the tab itself. To see " +
-            "everything while testing, open Settings and Help → Chat & Diagnostics and pick Show everything.");
-        AddCollapsibleHelpDetail(page, "Admins",
-            "Admin tabs are greyed until you run adminauth (F1 console) and press Re-check.\n" +
-            "• Events: start, stop, enable or disable each definition. Unstick moves a running event's idle " +
-            "units back into play (the server's unit watch must be on). Create a new event or copy one; new ones " +
-            "start disabled. Delete one (click twice). Edit one field (pick it from the list), or set the location " +
-            "to where you stand. Raphael can't read a field's current value yet, so Show in chat prints the full " +
-            "definition. Units near me and Test spawn answer in chat.\n" +
-            "• Templates: browse the built-in templates by pillar and create an event from one. It starts disabled.\n" +
-            "• Pillars: switch whole families of events on or off. Off ends their running events.\n" +
-            "• Zones: planned. Defended zones aren't on the server yet, so Add and Remove do nothing for now. " +
-            "Zones can't be listed here either; remove is by name.\n" +
-            "• Announce: broadcast a message now (1 to 200 characters, no angle brackets). The announcement " +
-            "switches are read-only.\n" +
-            "• Kill Switch: Purge (click twice) ends every event and removes every Nyarlathotep unit. Scheduled " +
-            "events pause for the cooldown shown. Stats reset is for the planned stats update and does nothing yet.");
-        AddCollapsibleHelpDetail(page, "Troubleshooting",
-            "Tabs greyed out: the server didn't answer the handshake. Use Settings and Help → Connection → " +
-            "Re-detect Nyarlathotep. Lists empty: the server's Nyarlathotep may be too old for live data (see " +
-            "Nyarlathotep → Settings). Unstick needs Nyarlathotep 0.13.0 (api 8). A version like 0.13.0-rc.1 is a " +
-            "test build. Reporting a bug: turn on diagnostic details in Nyarlathotep → Settings.");
-    }
 
     // ---------------------------------------------------------------- RAIL DIAGNOSTIC
 

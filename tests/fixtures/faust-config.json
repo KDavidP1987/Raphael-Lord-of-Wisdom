@@ -1,0 +1,222 @@
+{
+  "mod": "Faust",
+  "source": "Faust Lord of Investigation/Faust/Faust",
+  "sourceVersion": "0.16.5",
+  "sourceCommit": "d8afca2262",
+  "generatorVersion": 1,
+  "settings": [
+    {
+      "section": "Diagnostics",
+      "key": "VerboseLogging",
+      "default": false,
+      "description": "Emit detailed per-query log lines (useful when testing; noisy in production).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 208
+    },
+    {
+      "section": "Faust",
+      "key": "AuditQueries",
+      "default": true,
+      "description": "Log who asked what, when, and whether they were charged — a privacy/abuse trail for admins.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 185
+    },
+    {
+      "section": "Faust",
+      "key": "Enabled",
+      "default": true,
+      "description": "Master switch for the whole mod. When false, every query refuses with [FAUST:err] code=disabled.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 181
+    },
+    {
+      "section": "Faust",
+      "key": "RateLimitAdminsExempt",
+      "default": true,
+      "description": "When true, admins are exempt from RateLimitSeconds (so admin dashboards/paging aren't throttled). Since features default to AdminOnly, the limit mainly guards features an admin has opened to players.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 196
+    },
+    {
+      "section": "Faust",
+      "key": "RateLimitSeconds",
+      "default": 0,
+      "description": "Anti-spam floor: minimum seconds a player must wait between ANY two Faust queries (a denied query with code=ratelimit + secs remaining). 0 = off (default). Set e.g. 5 to stop a player hammering a query and stressing the server. Applies across all features (it's a per-player, not per-feature, limit). NOTE: it also throttles paged reads, so admins driving the BloodCraftHub/Raphael UI should stay exempt (see RateLimitAdminsExempt).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 189
+    },
+    {
+      "section": "Faust.Bosses",
+      "key": "MapLimit",
+      "default": 9000,
+      "description": "Boss board (.faust api bosses) on-map threshold, in world units. A live V Blood within ±this on both axes is reported 'up' with its coordinates; beyond it, 'down' (no coords). In-game diagnostics (.faust admin bossdiag) showed the V Rising map extends WELL past ±5000 and that streamed-out bosses keep their REAL positions (there is no sentinel-parking), so the default is 9000 — generous enough to cover the whole map while still excluding any far off-map sentinel (~10000). Raise it further only if a boss you know is alive still reads 'down' (keep it below ~10000). Lower it only if a boss shows up at bogus far-off coordinates. See '.faust admin bossdiag <name>'.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 312
+    },
+    {
+      "section": "Faust.Collection",
+      "key": "ConcurrencySampling",
+      "default": true,
+      "description": "Whether to sample the online-player count on each connect/disconnect (the concurrency series behind stats concurrency / population graphs). When false, no concurrency points are stored. Independent of SessionTracking (you can keep playtime history without the population series).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 235
+    },
+    {
+      "section": "Faust.Collection",
+      "key": "DataNamespace",
+      "default": "",
+      "description": "Optional label that scopes Faust's stored data to a subfolder (BepInEx/config/Faust/<name>/). Leave EMPTY (default) to keep ONE shared dataset for the server — the usual choice, since after a world wipe the same players return and their activity history stays relevant. Set a distinct name per world (e.g. 'season3') ONLY if you want each world's data kept fully separate; changing it starts a fresh dataset (the previous one is left on disk under its own name, not deleted). To reset data instead of separating it, use '.faust admin data wipe …'.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 322
+    },
+    {
+      "section": "Faust.Collection",
+      "key": "KillTracking",
+      "default": true,
+      "description": "Master switch for the PASSIVE kill tally (powers '.faust api kills' top-killers + '.faust api bosskills' boss-defeat counts). Fed from the existing death hook (only does work on a kill, nothing periodic), bucketed per UTC day and bounded by SessionRetentionDays. When false, no kills are recorded and the kill leaderboards return empty. Reset the data with '.faust admin data wipe kills'.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 240
+    },
+    {
+      "section": "Faust.Collection",
+      "key": "MaxConcurrencyPoints",
+      "default": 4000,
+      "description": "Hard cap on retained concurrency samples (oldest trimmed past this). Bounds memory and the sessions.json size. Lower it on a busy server to cap growth; 0 disables sampling entirely.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 247
+    },
+    {
+      "section": "Faust.Collection",
+      "key": "SessionRetentionDays",
+      "default": 0,
+      "description": "Auto-prune session records older than this many days (checked on every connect and at load). 0 = keep forever (the default — most servers want full history, and it survives a world wipe since the same players return). Set e.g. 30/60/90 to bound long-term growth on a very busy or long-lived server and keep playtime/frequency windows recent. For a one-off cleanup without changing this, use '.faust admin data clear <days>'.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 251
+    },
+    {
+      "section": "Faust.Collection",
+      "key": "SessionTracking",
+      "default": true,
+      "description": "Master switch for PASSIVE session logging (connect/disconnect over time). When false, Faust records no sessions: playerinfo's playtime/sessions/frequency/peak-hour and the stats playtime leaderboard return the -1 'not tracked' sentinel, and nothing is written to sessions.json. Turn off if you want Faust purely as a live-query tool with no historical collection.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 229
+    },
+    {
+      "section": "Faust.Data",
+      "key": "ResetSteamIds",
+      "default": "",
+      "description": "Comma-separated SteamIDs of the admins allowed to run the DESTRUCTIVE data commands ('.faust admin data clear' / 'data wipe'). EMPTY (default) = any admin may. Set it to lock data resets to specific senior admins on servers with layered admin teams (junior admins still get every other '.faust admin …' command and 'data status', just not clear/wipe).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 201
+    },
+    {
+      "section": "Faust.Heatmap",
+      "key": "CellSize",
+      "default": 25,
+      "description": "Heat-map grid resolution in world units — positions are binned into CellSize×CellSize cells (smaller = sharper/heavier, larger = coarser/lighter). NOTE: the resolution is fixed once data exists; to change it, wipe the heat map first ('.faust admin data wipe heatmap'), or old and new cells would mix resolutions.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 272
+    },
+    {
+      "section": "Faust.Heatmap",
+      "key": "Enabled",
+      "default": false,
+      "description": "Master switch for player-position heat-map COLLECTION. When true, Faust snapshots every online player's map coordinates every SampleSeconds and bins them into a grid (for per-player and server-wide density maps, read via '.faust api heatmap'). OFF by default — it's the only collector that runs on a timer (others are read-on-demand or event-driven), so you opt in. Reset the collected data any time with '.faust admin data wipe heatmap'.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 261
+    },
+    {
+      "section": "Faust.Heatmap",
+      "key": "MaxCells",
+      "default": 250000,
+      "description": "Hard cap on distinct (player, cell) entries stored (bounds memory + heatmap.json size). Applied to BOTH the cumulative all-time grid and the per-day grid independently. Once reached, existing cells keep counting but no new cells are added. 0 = unlimited (not advised).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 278
+    },
+    {
+      "section": "Faust.Heatmap",
+      "key": "RetentionDays",
+      "default": 30,
+      "description": "How many UTC days of per-day heat-map history to keep, for the WINDOWED queries (.faust api heatmap <scope> <days> — today / this week / this month / last N days). Older days are pruned (they still counted toward the ALL-TIME map, which is days=0 and is never pruned). 30 covers today/week/month; raise it for longer windows at the cost of more memory + heatmap.json size, lower it to trim footprint. 0 = keep all days (unbounded — not advised on a long-lived server). Changing this prunes on the next sample/load; it does not retroactively recover dropped days.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 283
+    },
+    {
+      "section": "Faust.Heatmap",
+      "key": "SampleSeconds",
+      "default": 60,
+      "description": "How often (seconds) to snapshot online player positions for the heat map. Clamped to 30–300 (every 30s to every 5 min). Lower = finer time resolution but more samples/disk; higher = lighter.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 268
+    },
+    {
+      "section": "Faust.MapMarkers",
+      "key": "Enabled",
+      "default": false,
+      "description": "EXPERIMENTAL — leave OFF unless you are testing. Master switch for '.faust admin showpositions', which makes the server attach native-map markers to online players (admin-visible). This touches server-authoritative networked MapIcon entities; if the archetype is wrong it can crash the server in a way no try/catch can stop. Validate on a TEST server before using in production. Default false.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 215
+    },
+    {
+      "section": "Faust.MapMarkers",
+      "key": "MarkerPrefabGuid",
+      "default": -892362184,
+      "description": "PrefabGUID of the map-icon prefab to attach per player (default -892362184 = MapIcon_Player). Ignored unless Enabled = true.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 221
+    },
+    {
+      "section": "Faust.WorldScan",
+      "key": "MaxResults",
+      "default": 10000,
+      "description": "Cap on the number of assets a single '.faust api worldscan' query RETURNS, applied AFTER your filter (the wire is paged separately). The full whitelisted, on-map world is always snapshotted first, so a narrow filter (e.g. bloodqmin=99) scans every asset and returns all of its matches — no qualifying asset is ever missed. This cap only trims a broad result (e.g. type=all) before it goes to the wire; when it does, the reply carries 'truncated=1' (never silent) so you know to filter further. Set 0 for UNLIMITED — this also lifts the internal snapshot safety backstop, so the WHOLE whitelisted, on-map world is captured and no query is ever truncated (use this if you rely on exhaustive results; on a very asset-dense map it costs more memory/scan time, paid only when someone queries). Raise it (or use 0) if a broad query is being cut short. The scan is on-demand and cached, so the cost is paid only when someone queries.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 299
+    },
+    {
+      "section": "Faust.WorldScan",
+      "key": "ScanIntervalSeconds",
+      "default": 10,
+      "description": "How often (seconds) the world-asset scan ('.faust api worldscan') may rebuild its snapshot of map units/resource nodes. Scanning the whole map is heavy, so a result is cached and reused for this long — queries inside the window read the cache (cheap); the first query after it triggers ONE rescan, server-wide. This is the de-facto rate limit (clamped to a 5s minimum). Raise it on a busy server. The scan is on-demand only — zero cost when nobody is querying.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 292
+    }
+  ],
+  "unresolvedBinds": [
+    "Config\\Settings.cs:354: Bind(section, \"Access\", ...)",
+    "Config\\Settings.cs:356: Bind(section, \"Delivery\", ...)",
+    "Config\\Settings.cs:359: Bind(section, \"CostItemGuid\", ...)",
+    "Config\\Settings.cs:361: Bind(section, \"CostQuantity\", ...)",
+    "Config\\Settings.cs:363: Bind(section, \"CooldownSeconds\", ...)",
+    "Config\\Settings.cs:367: Bind(section, \"AdminsExempt\", ...)",
+    "Config\\Settings.cs:369: Bind(section, \"Availability\", ...)",
+    "Config\\Settings.cs:372: Bind(section, \"WindowSeconds\", ...)",
+    "Config\\Settings.cs:376: Bind(section, \"PeriodSeconds\", ...)",
+    "Config\\Settings.cs:379: Bind(section, \"MaxUsesPerPeriod\", ...)",
+    "Config\\Settings.cs:382: Bind(section, \"Unlock\", ...)",
+    "Config\\Settings.cs:387: Bind(section, \"RequireNearPrefab\", ...)",
+    "Config\\Settings.cs:392: Bind(section, \"RequireNearDistance\", ...)"
+  ]
+}

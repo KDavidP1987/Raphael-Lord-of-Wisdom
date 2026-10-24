@@ -1,0 +1,3061 @@
+{
+  "mod": "Beelzebub",
+  "source": "Beelzebub Lord of Gluttony/Beelzebub/Beelzebub",
+  "sourceVersion": "0.137.7",
+  "sourceCommit": "228bb00da3",
+  "generatorVersion": 1,
+  "commands": [
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "beelz",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Beelzebub overview — what the mod does and how to start.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Beelz",
+      "file": "Commands/RootCommands.cs",
+      "line": 13
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "active",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show your current spell bar with full ability info per slot (name, school, cooldown, description). Useful for transforms since V Rising's action-bar tooltip can't render NPC ability text. Usage: .beelz active",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Active",
+      "file": "Commands/TransformCommands.cs",
+      "line": 467
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "bestiary",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Your collection book: per-unit ability progress (X/Y) + transform status. Usage: .beelz bestiary [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Bestiary",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1251
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "bestiary unit",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Detail for one collected unit: which of its abilities you have. Usage: .beelz bestiary unit <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BestiaryUnit",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1282
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "cast",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Cast a captured ability on demand — beyond your 6 slots. Usage: .beelz cast <hotkey name | list index>. Raphael buttons invoke this.",
+      "params": [
+        {
+          "name": "nameOrIndex",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Cast",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 187
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "catalog",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Curated boss-kit reference — every curated boss V-Blood with its tier/difficulty. NOTE: a few units (Dracula, Morgana, Werewolf, Golem, Gargoyle) can be transformed into; every other unit's kit is collected as abilities (see .beelz bestiary). Usage: .beelz catalog [page]. Sorted by tier ascending. 10 per page.",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Catalog",
+      "file": "Commands/TransformCommands.cs",
+      "line": 696
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "clear",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Wipe ALL your Beelzebub data — captured abilities, transform unlocks, every slot bind, hotkey, and preset. Cannot be undone. Requires confirmation: .beelz clear CONFIRM. (To only reset your action bar while KEEPING your collection, use .beelz resetbar.)",
+      "params": [
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Clear",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1159
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "clearbar",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Clear your captured-ability bindings (no confirmation needed) — choose WHICH set. Usage: .beelz clearbar [all|universal|<weapon>|<form>]. No arg or 'all' = every set (universal + all weapons + all forms). 'universal'/'basic' = the any-weapon set. A weapon (sword/spear/unarmed/crossbow/…) = that weapon's set. A form (wolf/bear/rat/spider/toad/…) = that form's set. Your captured abilities are KEPT — re-grant anytime with .beelz grant / weapon-grant / form-grant.",
+      "params": [
+        {
+          "name": "bucket",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ClearBar",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 732
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "commands",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List all Beelzebub player commands. For a specific group's detail: .beelz admin help · .beelz api help · .beelz hotkey help.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Commands",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 31
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "current",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show what's effectively on your spell bar right now (transform-aware). Helps debug 'why isn't this ability on my bar?' questions.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Current",
+      "file": "Commands/TransformCommands.cs",
+      "line": 645
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "detonate",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Manually fire your transformed unit's signature detonation AoE (e.g. the Undead Priest's Nova), if it has one. Usage: .beelz detonate",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Detonate",
+      "file": "Commands/TransformCommands.cs",
+      "line": 380
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "forget",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Delete one captured ability. Usage: .beelz forget <index|ability ID> (the number is a .beelz list index when in range, otherwise the ability's ID). Also clears any hotkeys bound to it.",
+      "params": [
+        {
+          "name": "indexOrId",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Forget",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1014
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "forget-transform",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Delete one transform unlock by index. Usage: .beelz forget-transform <index>",
+      "params": [
+        {
+          "name": "index",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ForgetTransform",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1045
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "form-grant",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Bind a captured ability to a shapeshift FORM (Wolf/Bear/Rat/Spider/Toad/Werewolf/Gargoyle), like a weapon loadout: it auto-loads when you enter that form and reverts to your weapon bar on exit. Usage: .beelz form-grant <form|auto> <slot 1-6> <index OR ability ID>. NOTE: a form has only a FEW ability slots, so your form abilities fill them in slot order (your lowest-numbered grant takes the form's first slot, etc.); extras beyond the form's slot count won't appear. Takes effect next time you enter that form.",
+      "params": [
+        {
+          "name": "formStr",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slotToken",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "index",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "FormGrant",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 926
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "form-unslot",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Clear a form-specific slot bind. Usage: .beelz form-unslot <form|auto> <slot> (1-6, or 'primary' / 'ultimate').",
+      "params": [
+        {
+          "name": "formStr",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slotToken",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "FormUnslot",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 981
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "grant",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Assign a captured ability to a slot. Usage: .beelz grant <slot> <index OR ability ID>. Slot is 1-6, or 'primary' (left-click attack) / 'ultimate' (T key). The number is read as a list index (0-based, from .beelz list) when in range, otherwise as the ability's PrefabGUID. Universal abilities apply on any weapon; weapon-tagged ones only on their weapon family.",
+      "params": [
+        {
+          "name": "slotToken",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "indexOrId",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Grant",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 559
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "help",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show a short walkthrough of how Beelzebub works.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Help",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 15
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "info",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show full info for an ability: title, description, school, type, cooldown, cast time, source NPCs. Usage: .beelz info <index|name>. Index = your .beelz list entry; name = substring search across all known abilities.",
+      "params": [
+        {
+          "name": "arg",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Info",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 381
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List your captured abilities + slot assignments. Optional filter: vblood | shard | regular. Usage: .beelz list [filter] [page]. Paginated 15/page.",
+      "params": [
+        {
+          "name": "arg",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "List",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 111
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "loadouts",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show your slot loadouts: the universal 'basic' set + each per-weapon set, and which is active for your equipped weapon. Usage: .beelz loadouts",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Loadouts",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 65
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "odds",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show your current ability/devour drop chances and your accumulated pity (bad-luck protection) bonus.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Odds",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 633
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "phase",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Switch your active transformation's spell bar between boss-phase loadouts. Usage: .beelz phase [n]. No arg = show current + available phases.",
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "optional": true,
+          "default": -1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Phase",
+      "file": "Commands/TransformCommands.cs",
+      "line": 230
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "preset delete",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Delete a saved preset. Usage: .beelz preset delete <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PresetDelete",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1143
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "preset list",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List your saved slot-loadout presets.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "PresetList",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1114
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "preset load",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Load a named preset into your current slot assignments. Usage: .beelz preset load <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PresetLoad",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1090
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "preset save",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Save your current slot assignments as a named preset. Usage: .beelz preset save <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PresetSave",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1078
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "preview",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show what abilities you'd get if you transformed into <unit>. Usage: .beelz preview <index|name>. Helps decide which V-Blood to transform into without committing.",
+      "params": [
+        {
+          "name": "unitOrIndex",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Preview",
+      "file": "Commands/TransformCommands.cs",
+      "line": 768
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "progress",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show your collection progress: % of curated abilities captured and transforms unlocked.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Progress",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 1196
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "refresh",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Re-apply your current ability bar — fixes a blank or wrong bar after reverting, leaving a travel/wolf/bat form, or a weapon quirk. Usage: .beelz refresh",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Refresh",
+      "file": "Commands/TransformCommands.cs",
+      "line": 344
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "resetbar",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Reset your action bar to its vanilla in-game state: ends any active transformation, removes ALL your Beelzebub slot bindings (universal, weapon and form sets) and clears every Beelzebub override on the live bar, so your normal spells and weapon skills return without a weapon swap. Keeps your captured abilities, transform unlocks, hotkeys and presets. Requires confirmation: .beelz resetbar CONFIRM",
+      "params": [
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ResetBar",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 706
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "revert",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Revert your current transformation. Spell bar restored immediately.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Revert",
+      "file": "Commands/TransformCommands.cs",
+      "line": 330
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "search",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Search your captured abilities. Substring match against ability + unit names. Usage: .beelz search <term>. Returns up to 25 matches.",
+      "params": [
+        {
+          "name": "term",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Search",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 326
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "silent",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Toggle whether you see the 'you already knew all of its abilities' devour message. Usage: .beelz silent <on|off> (on = hide it).",
+      "params": [
+        {
+          "name": "state",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Silent",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 650
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "summon",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Force-cast your transformed unit's signature add-summon (e.g. the Toad King's frogs) — the one bosses normally trigger at a low-HP soft phase. Usage: .beelz summon [n]. No arg lists options / casts the only one.",
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "optional": true,
+          "default": -1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Summon",
+      "file": "Commands/TransformCommands.cs",
+      "line": 418
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "summons",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Manage your summons (work transformed OR via captured summon abilities). Usage: .beelz summons [stash|restore|off|on|clear|status]. stash = stow (lets you use waygates); restore = bring back; off/on = stash/restore aliases; clear = despawn all; status (default) = counts.",
+      "params": [
+        {
+          "name": "action",
+          "type": "string",
+          "optional": true,
+          "default": "status"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Summons",
+      "file": "Commands/TransformCommands.cs",
+      "line": 532
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "tform",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Customize YOUR transformation loadout. Usage: .beelz tform <unit|index> <abilities|set|clear|defaults> [phase] [slot] [abilityIndex|id]. 'abilities' = list that boss's full kit; 'set <phase> <slot> <index>' = bind one of its abilities to a slot (0=primary, 7=ultimate); 'clear <phase> <slot>'; 'defaults' = reset that transform to the curated kit.",
+      "params": [
+        {
+          "name": "unit",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "action",
+          "type": "string",
+          "optional": true,
+          "default": "abilities"
+        },
+        {
+          "name": "a1",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "a2",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "a3",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Tform",
+      "file": "Commands/TransformCommands.cs",
+      "line": 137
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "top",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Show the server leaderboard: the top players by abilities collected (count + %). Admins are excluded. Usage: .beelz top",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Top",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 661
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "tp",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Shortcut to stash summons before using a waygate or bat-form. Equivalent to `.beelz summons stash`. Summons auto-restore at your destination via PlayerTeleportSystem.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Tp",
+      "file": "Commands/TransformCommands.cs",
+      "line": 526
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "transform",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Activate transformation. Usage: .beelz transform <index|unitName>. Applies immediately.",
+      "params": [
+        {
+          "name": "unitOrIndex",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Transform",
+      "file": "Commands/TransformCommands.cs",
+      "line": 77
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "transforms",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List your transform unlocks. Optional filter: vblood | shard | regular. Usage: .beelz transforms [filter]",
+      "params": [
+        {
+          "name": "filter",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Transforms",
+      "file": "Commands/TransformCommands.cs",
+      "line": 16
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "unslot",
+      "shortHand": "clear-slot",
+      "adminOnly": false,
+      "usage": null,
+      "description": "Remove your universal-bucket assignment from a spell slot. Usage: .beelz unslot <slot> (1-6, or 'primary' / 'ultimate'). Alias: .beelz clear-slot.",
+      "params": [
+        {
+          "name": "slotToken",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Unslot",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 690
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "verbosity",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Set your in-chat notification level: silent | summary | verbose.",
+      "params": [
+        {
+          "name": "level",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetVerbosity",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 998
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "weapon-grant",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Bind a captured ability to a slot for a specific weapon family. Usage: .beelz weapon-grant <weapon|auto> <slot> <index OR ability ID>. Slot is 1-6, or 'primary' / 'ultimate'. Use 'auto' for the weapon you're currently wielding; pass the stable ability ID (from .beelz list) instead of an index if you prefer.",
+      "params": [
+        {
+          "name": "weaponStr",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slotToken",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "index",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "WeaponGrant",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 785
+    },
+    {
+      "group": "beelz",
+      "groupShort": null,
+      "name": "weapon-unslot",
+      "shortHand": "clear-weapon-slot",
+      "adminOnly": false,
+      "usage": null,
+      "description": "Clear a weapon-family-specific slot bind. Usage: .beelz weapon-unslot <weapon|auto> <slot> (1-6, or 'primary' / 'ultimate'). Alias: .beelz clear-weapon-slot.",
+      "params": [
+        {
+          "name": "weaponStr",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slotToken",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "WeaponUnslot",
+      "file": "Commands/BeelzCommands.cs",
+      "line": 859
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "ability",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set ANY per-ability rule live. Usage: .beelz admin ability <name|id> [<field> <value> ...] — set UP TO 5 fields at once; OMIT field/value to READ every current setting. weapons/forms take a WHITELIST (e.g. 'sword,axe' or 'wolf') or '!X' to BLACKLIST (e.g. 'forms !mounted' = usable everywhere except mounted). Fields: enabled, weapons, forms, transformonly, difficulty, phase, allowdenied, damagescale, cooldownscale, cooldown, range, charges, chargetime, aoe, projspeed, duration, healing, maxstacks, projcount, knockback, lifetime, casttime, summoncap, summontimeout, summonunits, summonpower, forcetimeout, powerwindow, leapheight, allowglobalsharededit, category, interruptible, interruptonhit, freemove, freelymove, castspeed, notes. (weapons/forms take a comma list or 'any' to clear; cooldown/cooldownscale apply at runtime to captured bar casts only; range/charges/chargetime/aoe/projspeed/leapheight/duration/healing/maxstacks/projcount/knockback/lifetime/casttime/freelymove/interruptonhit are baked edits applied when Abilities_ApplyConfig is on, default, and are skipped on prefabs shared with other abilities unless allowglobalsharededit on; forcetimeout (runtime, player casts only) makes the player's otherwise-indefinite effects from this ability expire; freelymove frees movement N seconds into a cast; interruptonhit cancels the cast when the caster is hit; summoncap/summontimeout/summonunits govern summons.) CURATION: reviewstatus <Unreviewed|Reviewed|Approved|Blocked|Hidden>, reviewtag <type>, condition <Aimed|CloseRange|Summon|SelfCast|Movement|clear> (confirms an activation condition in-game -> conditionSource=confirmed, saved to the override file). RESET: .beelz admin ability <id> defaults — clear one ability's shaping config back to shipped baseline; .beelz admin ability all defaults — reset every ability.",
+      "params": [
+        {
+          "name": "ability",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "field2",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "value2",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "field3",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "value3",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "field4",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "value4",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "field5",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "value5",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AbilitySet",
+      "file": "Commands/AdminCommands.cs",
+      "line": 605
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "ability-inspect",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Read-only: every tunable number in an ability's chain (cooldown, cast time, charges, range, projectile, lifetime, AoE, hit radius/targets, DAMAGE factors, heals, buff duration/stacks, knockback, max stacks, projectile/minion counts, spell-mod targets) + which prefabs are shared with other abilities + warnings. 'export' writes ALL abilities to inspect_export.csv. Usage: .beelz admin ability-inspect <ability name|ID> | .beelz admin ability-inspect export",
+      "params": [
+        {
+          "name": "ability",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AbilityInspect",
+      "file": "Commands/AdminCommands.cs",
+      "line": 225
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "ability-set",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "BULK-set many ability config fields in ONE command. Group each setting as (field=value) — or separate with ';' — so values can contain spaces/commas (weapon lists, notes) without breaking. Usage: .beelz admin ability-set <name|id> \"(cooldown=30)(weapons=sword,axe)(reviewstatus=Approved)(notes=big strong nuke)\"  OR  .beelz admin ability-set <id> \"cooldown=30; range=50; reviewstatus=Approved\". WRAP the whole list in \"quotes\" if any value has spaces. Same field names as .beelz admin ability (enabled, weapons, forms, transformonly, difficulty, phase, cooldown, range, charges, chargetime, aoe, projspeed, duration, healing, summoncap, summontimeout, summonunits, forcetimeout, powerwindow, leapheight, allowglobalsharededit, category, reviewstatus, reviewtag, condition, interruptible, interruptonhit, freemove, freelymove, castspeed, notes).",
+      "params": [
+        {
+          "name": "ability",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "configs",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AbilitySetBulk",
+      "file": "Commands/AdminCommands.cs",
+      "line": 706
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "allow",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Add a substring pattern to the allow list (when non-empty, only matching abilities are captured). Usage: .beelz admin allow <pattern>",
+      "params": [
+        {
+          "name": "pattern",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Allow",
+      "file": "Commands/AdminCommands.cs",
+      "line": 124
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "allowguid",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Add/remove an ability GUID on the capture ALLOW list (non-empty = exclusive whitelist). Usage: .beelz admin allowguid <add|remove> <guid>.",
+      "params": [
+        {
+          "name": "action",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "guid",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AllowGuid",
+      "file": "Commands/AdminCommands.cs",
+      "line": 794
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "bar",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "READ-ONLY: show a player's bar slot by slot — the resolved ability, the saved bind, a Beelzebub row on the weapon, override buffs, and slot mods split gear vs other. Offline: their saved sets, transform record and hotkeys. Changes nothing. Usage: .beelz admin bar [player] (default: you)",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Bar",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1258
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "bar-raw",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "DIAGNOSTIC (read-only): log each bar slot's raw engine modification dump — current and Base ability, every GroupGuid change with the ability it sets and its source prefab — to LogOutput.log as [Beelz BARRAW] lines. Changes nothing. Usage: .beelz admin bar-raw [player] (default: you)",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BarRaw",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1270
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "broadcast",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Server announcements. Sub: status | leaderboard on|off | interval <minutes> | top <1-5> | complete on|off | test. Usage: .beelz admin broadcast <sub> [value]",
+      "params": [
+        {
+          "name": "sub",
+          "type": "string",
+          "optional": true,
+          "default": "status"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Broadcast",
+      "file": "Commands/AdminCommands.cs",
+      "line": 325
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "broadcast-msg",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Manage a broadcast message pool. Usage: .beelz admin broadcast-msg <complete|leaderboard> <list|add|remove|edit> [args]. add \"<text>\" · remove <n> · edit <n> \"<text>\" · list. WRAP multi-word messages in \"quotes\". Tokens: %player% (complete), %top%/%count% (leaderboard).",
+      "params": [
+        {
+          "name": "pool",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "action",
+          "type": "string",
+          "optional": true,
+          "default": "list"
+        },
+        {
+          "name": "arg1",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "arg2",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BroadcastMsg",
+      "file": "Commands/AdminCommands.cs",
+      "line": 409
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "buffs",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "DIAGNOSTIC: dump a player's active buffs and which ones override ability slots, to the server log (with a chat summary). Use to find what's driving a stuck ability bar. Usage: .beelz admin buffs [player] (default: you)",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Buffs",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1136
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "cleanse",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "RECOVERY: strip stuck STATE buffs from a player — fixes a character stuck invisible/phased/immaterial after casting an ability (survives respawn + relog). With no buff arg, removes the known stuck-state buffs (HideCorpse/Corpse/Invisible/Immaterial/Camouflage/Stealth). Pass a buff NAME-substring or GUID to strip a specific one. Usage: .beelz admin cleanse <player> [buffNameOrGuid]",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "buff",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Cleanse",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1075
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "clear-slot",
+      "shortHand": "unslot",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Clear a player's universal-bucket slot binding. Usage: .beelz admin clear-slot <player> <slot 0-7>. Alias: .beelz admin unslot.",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slot",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ClearSlot",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2110
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "clear-transform",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "End another player's active transformation. Usage: .beelz admin clear-transform <player>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ClearTransform",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1853
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "clear-weapon-slot",
+      "shortHand": "weapon-unslot",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Clear a player's weapon-specific slot binding. Usage: .beelz admin clear-weapon-slot <player> <weapon> <slot 0-7>. Alias: .beelz admin weapon-unslot.",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "weaponStr",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slot",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ClearWeaponSlot",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2253
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "clearslotmods",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "LEGACY: (use .beelz admin purge) RECOVERY: clear orphaned ability-slot MODIFICATIONS on a player's character (the deep cause of a bar frozen on a creature kit) and force the slots to rebuild from base. Run after .beelz clear if a stuck bar survives everything. Usage: .beelz admin clearslotmods [player] (default: you)",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ClearSlotMods",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1461
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "copy-collection",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Copy a player's captured abilities + transform unlocks into the admin clipboard (to paste onto another character — e.g. as a backup before a re-roll). Usage: .beelz admin copy-collection <player>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "CopyCollection",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1645
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "damage-stats",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Per-hit damage attribution/scaling counters (Damage_Mode). Usage: .beelz admin damage-stats [ability name|ID] | .beelz admin damage-stats reset",
+      "params": [
+        {
+          "name": "ability",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DamageStats",
+      "file": "Commands/AdminCommands.cs",
+      "line": 245
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "damage-trace",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Log every attributed captured-ability hit + the target's HP change (truth table for testing Damage_Mode). Not saved; off after restart. Usage: .beelz admin damage-trace on|off",
+      "params": [
+        {
+          "name": "onOff",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DamageTrace",
+      "file": "Commands/AdminCommands.cs",
+      "line": 270
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "default",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set a server-wide scaling default for abilities with no per-ability override. Usage: .beelz admin default <damagescale|cooldownscale> <value>.",
+      "params": [
+        {
+          "name": "field",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DefaultSet",
+      "file": "Commands/AdminCommands.cs",
+      "line": 775
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "deny",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Add a substring pattern to the deny list. Usage: .beelz admin deny <pattern>",
+      "params": [
+        {
+          "name": "pattern",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Deny",
+      "file": "Commands/AdminCommands.cs",
+      "line": 105
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "denyguid",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Add/remove an ability GUID on the capture DENY list. Usage: .beelz admin denyguid <add|remove> <guid>.",
+      "params": [
+        {
+          "name": "action",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "guid",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DenyGuid",
+      "file": "Commands/AdminCommands.cs",
+      "line": 784
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "desummon",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Clean up all Beelzebub-tagged ally summons following a specific player. Includes orphans from previous sessions. Usage: .beelz admin desummon <player>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Desummon",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1878
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "desummon-all",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Global sweep — destroy every Beelzebub-tagged ally summon on the map regardless of owner. Use to recover from stale state. Usage: .beelz admin desummon-all",
+      "params": [],
+      "verbDispatch": false,
+      "method": "DesummonAll",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1908
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "devour",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Grant a player ALL of a unit's eligible abilities at once — the admin equivalent of the rare Devour jackpot, and the alternative to transformation for non-renderable units. Usage: .beelz admin devour <player> <unitGuid>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "unitGuid",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Devour",
+      "file": "Commands/AdminCommands.cs",
+      "line": 954
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "difficulty",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set or show the server's difficulty mode for TX4 gating. Usage: .beelz admin difficulty [basic|brutal]",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Difficulty",
+      "file": "Commands/AdminCommands.cs",
+      "line": 974
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "dump",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "DIAGNOSTIC: log to LogOutput.log. <abilityGuid> = an ability's full prefab chain (Group→Cast→spawned) + key field values; 'form' = your active shapeshift form buff's components; 'forms' = every shapeshift form-buff prefab the game has + which form Beelzebub maps it to (verify skin coverage). Usage: .beelz admin dump <abilityGuid|form|forms>",
+      "params": [
+        {
+          "name": "target",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Dump",
+      "file": "Commands/AdminCommands.cs",
+      "line": 493
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "force-transform",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Force a transformation on another player (bypasses unlock + cooldown). Only player-renderable forms qualify (Dracula, Morgana, Werewolf, Golem, Gargoyle, basic werewolf). Usage: .beelz admin force-transform <player> <unitGuid>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "unitGuid",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ForceTransform",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1811
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "freeze-captures",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Toggle the CaptureOnKill master switch at runtime. Usage: .beelz admin freeze-captures <on|off|status>",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "status"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "FreezeCaptures",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2172
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "give",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Grant a captured ability to a player. Usage: .beelz admin give <player> <unitGuid> <abilityGuid>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "unitGuid",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "abilityGuid",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Give",
+      "file": "Commands/AdminCommands.cs",
+      "line": 899
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "give-transform",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Grant a TRANSFORMATION unlock to a player. Only units the game can render as a player form qualify (Dracula, Morgana, Werewolf Chieftain, Geomancer/Golem, Tailor/Gargoyle, basic werewolf) — for any other unit use .beelz admin devour to grant its full ability kit. Usage: .beelz admin give-transform <player> <unitGuid>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "unitGuid",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GiveTransform",
+      "file": "Commands/AdminCommands.cs",
+      "line": 928
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "help",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "List all Beelzebub admin commands, grouped by purpose.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Help",
+      "file": "Commands/AdminCommands.cs",
+      "line": 37
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "inspect",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "View another player's Beelzebub state. Usage: .beelz admin inspect <player>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Inspect",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1011
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "lock add",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Create/extend an incompatibility lock group: at most MAX of its members may be on one player's active bar + hotkeys at once (new groups start at max 1). Usage: .beelz admin lock add <group> \"<member, member, ...>\"",
+      "params": [
+        {
+          "name": "group",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "members",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "LockAdd",
+      "file": "Commands/AdminLockCommands.cs",
+      "line": 30
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "lock check",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show which of a player's active abilities are locked right now, and why. Usage: .beelz admin lock check <player>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "LockCheck",
+      "file": "Commands/AdminLockCommands.cs",
+      "line": 102
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "lock list",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show every incompatibility lock group and its members.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "LockList",
+      "file": "Commands/AdminLockCommands.cs",
+      "line": 92
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "lock max",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set how many members of a lock group may be active at once. Usage: .beelz admin lock max <group> <n>",
+      "params": [
+        {
+          "name": "group",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "max",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "LockMax",
+      "file": "Commands/AdminLockCommands.cs",
+      "line": 57
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "lock remove",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove a whole lock group, or one member from it. Usage: .beelz admin lock remove <group> [member]",
+      "params": [
+        {
+          "name": "group",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "member",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "LockRemove",
+      "file": "Commands/AdminLockCommands.cs",
+      "line": 68
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "modleak",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "DIAGNOSTIC (read-only): list the engine's slot-override holders that point at a player's character and whether each still sets a slot or is stale (a stale one is what the startup 'Couldn't remap old Modification Id' errors name; the sweep cleans those on its own after a boot or a bar reset). Logs [Beelz MODLEAK] lines. Changes nothing. Usage: .beelz admin modleak [player|all] (default: you)",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ModLeak",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1286
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "paste-collection",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Paste the admin clipboard's captured abilities + transform unlocks onto a player (additive — keeps anything they already have). Run .beelz admin copy-collection first. Usage: .beelz admin paste-collection <player>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PasteCollection",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1660
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "progress",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show another player's collection progress. Usage: .beelz admin progress <player>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Progress",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2014
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "purge",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reset a player's bar to vanilla AND clear their hotkeys: the same layered reset as reset-loadouts (saved binds, weapon rows, form/orphan sources, every leaked slot modification) plus all hotkeys. KEEPS captures, transform unlocks and presets. For a bar still stuck after resetbar. Usage: .beelz admin purge <player> CONFIRM",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Purge",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1440
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "rebuildbar",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Alias of .beelz admin bar (read-only bar readout; the old init-state toggle is retired). Usage: .beelz admin rebuildbar [player] (default: you)",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RebuildBar",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1255
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "rebuildslots",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "LEGACY: (use .beelz admin purge) RECOVERY (safe): re-sync a player's active ability slots back to their stored base abilities via the engine's slot-setter — fixes a bar stuck on creature/shapeshift abilities. Values only; never destroys entities. Usage: .beelz admin rebuildslots [player] (default: you)",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RebuildSlots",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1540
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "reload",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Re-read ability rules JSON from disk (for hand-edited changes).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Reload",
+      "file": "Commands/AdminCommands.cs",
+      "line": 143
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "reseed",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Bring this server's ability_rules.json up to this build's shipped defaults. preview = show what would change; merge = keep your edits, take shipped changes you never touched (backup kept); replace CONFIRM = overwrite with the shipped default (your curation is lost; backup kept). Usage: .beelz admin reseed <preview|merge|replace> [CONFIRM]",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Reseed",
+      "file": "Commands/AdminLockCommands.cs",
+      "line": 112
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "reset-character",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reset a player's CHARACTER to a fresh start: unbinds their Steam ID + kicks them, so they create a NEW character on next login. Their Beelzebub collection (captures/transforms) is preserved (it's tied to their Steam account). The old body stays in-world but unplayable. Requires a confirm token. Usage: .beelz admin reset-character <player> CONFIRM-RESET",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ResetCharacter",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1688
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "reset-loadouts",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reset a player's bar to vanilla: clears their slot loadouts (universal, weapon and form sets) and custom transform loadouts, ends any active transform, and clears every Beelzebub override on the live bar — the same layered reset as resetbar, on any player. KEEPS captures, transform unlocks, hotkeys and presets. Usage: .beelz admin reset-loadouts <player> CONFIRM",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ResetLoadouts",
+      "file": "Commands/AdminCommands.cs",
+      "line": 378
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "respawn",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Respawn a player's character AT THEIR CURRENT SPOT — V Rising rebuilds the character fresh, which fixes a stuck/frozen ability bar (the bear-form bug). Inventory, equipment, blood, and progress are preserved (same as dying + respawning). Usage: .beelz admin respawn [player] (default: you)",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Respawn",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1320
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "revert-all",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Force every active transformation on the server to end immediately. Usage: .beelz admin revert-all",
+      "params": [],
+      "verbDispatch": false,
+      "method": "RevertAll",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2135
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "revoke",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove a captured ability from a player. Usage: .beelz admin revoke <player> <unitGuid> <abilityGuid> [reason]",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "unitGuid",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "abilityGuid",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "optional": true,
+          "default": "admin"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Revoke",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1755
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "revoke-transform",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove a transform unlock from a player. Usage: .beelz admin revoke-transform <player> <unitGuid> [reason]",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "unitGuid",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "optional": true,
+          "default": "admin"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RevokeTransform",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1780
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "rules",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show the currently loaded ability filter rules.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Rules",
+      "file": "Commands/AdminCommands.cs",
+      "line": 90
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "scan-abilities",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Dump per-ability metadata (shipped + ECS-derived + admin policy) to discovered_abilities.json for the admin to audit. Surfaces abilities lacking curated descriptions so they can be filled in. Usage: .beelz admin scan-abilities",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ScanAbilities",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1940
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "set",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set a config value at runtime by key (applies live, persists to the .cfg). Usage: .beelz admin set <key> <value>. See .beelz api config for keys.",
+      "params": [
+        {
+          "name": "key",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetConfig",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2285
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "set-slot",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Bind a player's universal-bucket slot to an ability. Usage: .beelz admin set-slot <player> <slot 0-7> <abilityGuid>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slot",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "abilityGuid",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetSlot",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2030
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "set-weapon-slot",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Bind a player's weapon-specific slot to an ability. Usage: .beelz admin set-weapon-slot <player> <weapon> <slot 0-7> <abilityGuid>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "weaponStr",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slot",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "abilityGuid",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetWeaponSlot",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2067
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "snapshot",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Dump high-level Beelzebub state to chat (player counts, active transforms, etc.). Usage: .beelz admin snapshot",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Snapshot",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2203
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "testform",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Phase-1 native-form test: drop YOU into wolf/bear form (persistent ExoForm recipe) carrying your current loadout's abilities, to test whether the form HOLDS through casting custom abilities. Usage: .beelz admin testform <wolf|bear|off>",
+      "params": [
+        {
+          "name": "form",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TestForm",
+      "file": "Commands/AdminCommands.cs",
+      "line": 820
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "testmount",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "STAGE-2 TEST: spawn a rideable horse next to a player to test whether mounting coexists with Beelz granted abilities WITHOUT crashing the server. Have some Beelz abilities slotted, walk onto the horse and press your mount key, then ride + cast a spell and watch whether the server stays up. 'off' removes the horse and frees you. Usage: .beelz admin testmount [on|off] [player]",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "on"
+        },
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": true,
+      "method": "TestMount",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1397
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "transform cooldown",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set post-revert cooldown. Usage: .beelz admin transform cooldown <regular|vblood> <seconds>",
+      "params": [
+        {
+          "name": "source",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "seconds",
+          "type": "float",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TransformCooldown",
+      "file": "Commands/AdminCommands.cs",
+      "line": 888
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "transform duration",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set Timed-mode duration. Usage: .beelz admin transform duration <regular|vblood> <seconds>",
+      "params": [
+        {
+          "name": "source",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "seconds",
+          "type": "float",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TransformDuration",
+      "file": "Commands/AdminCommands.cs",
+      "line": 877
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "transform mode",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set transform mode. Usage: .beelz admin transform mode <regular|vblood> <toggle|timed|disabled>",
+      "params": [
+        {
+          "name": "source",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TransformMode",
+      "file": "Commands/AdminCommands.cs",
+      "line": 860
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "transform show",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show current transform settings.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "TransformShow",
+      "file": "Commands/AdminCommands.cs",
+      "line": 994
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "transform-set",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set a per-unit transform rule live. Usage: .beelz admin transform-set <CHAR_unit> <field> <value>. Fields: enabled, difficulty, tier, damagescale, cooldownscale, healthscale, speedscale, fullreplace, powerscalingmode, notes. (SlotTemplate is edited in ability_rules.json.)",
+      "params": [
+        {
+          "name": "unit",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TransformSet",
+      "file": "Commands/AdminCommands.cs",
+      "line": 766
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "transformonly",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Manage the bulk transform-only reservation lists (enforced only when Grant_EnforceTransformOnly is on). A numeric value targets the GUID list, text targets the name-pattern list. Usage: .beelz admin transformonly <add|remove> <pattern|guid>.",
+      "params": [
+        {
+          "name": "action",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TransformOnlyRule",
+      "file": "Commands/AdminCommands.cs",
+      "line": 804
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "tune",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Shape an ability server-wide (ONE knob per command). Baked (global prefab edit, also changes the source NPC; skipped on prefabs shared with other abilities unless allowglobalsharededit): range, charges, chargetime, aoe, projspeed, leapheight, duration, healing, interruptible, interruptonhit, freemove, freelymove, castspeed, maxstacks, projcount, knockback, lifetime, casttime (experimental). Runtime (player casts only, no prefab edit): cooldown, forcetimeout, powerwindow, summoncap, summontimeout, summonpower, summonunits. See values with .beelz admin ability-inspect <ability>. Usage: .beelz admin tune <ability name|ID> <knob> <value|clear>",
+      "params": [
+        {
+          "name": "ability",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "knob",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Tune",
+      "file": "Commands/AdminCommands.cs",
+      "line": 165
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "tune-list",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "List every ability with ANY shaping/tuning set (cooldown, range, charges, aoe, projspeed, duration, healing, forcetimeout, summons, scales, interrupt, freemove/freelymove, castspeed). Usage: .beelz admin tune-list",
+      "params": [],
+      "verbDispatch": false,
+      "method": "TuneList",
+      "file": "Commands/AdminCommands.cs",
+      "line": 278
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "unallow",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove a substring pattern from the allow list. Usage: .beelz admin unallow <pattern>",
+      "params": [
+        {
+          "name": "pattern",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Unallow",
+      "file": "Commands/AdminCommands.cs",
+      "line": 134
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "undeny",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove a substring pattern from the deny list. Usage: .beelz admin undeny <pattern>",
+      "params": [
+        {
+          "name": "pattern",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Undeny",
+      "file": "Commands/AdminCommands.cs",
+      "line": 115
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "unmount",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "RECOVERY: free a player stuck on a summoned mount (e.g. the Sir Erwin 'Militia Fabian Mountup' crash) — strips the mount/rider buffs, despawns the orphaned steed near them, and re-applies their Beelz grants. Safe to run repeatedly; if the bar still looks stuck afterward, follow with .beelz admin respawn. Usage: .beelz admin unmount [player] (default: you)",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Unmount",
+      "file": "Commands/AdminCommands.cs",
+      "line": 1370
+    },
+    {
+      "group": "beelz admin",
+      "groupShort": null,
+      "name": "wipe-all",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "DESTRUCTIVE: wipe ALL player data (captures, transforms, slots, hotkeys, presets, cooldowns). Requires literal confirmation token. Usage: .beelz admin wipe-all CONFIRM-WIPE",
+      "params": [
+        {
+          "name": "confirmToken",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "WipeAll",
+      "file": "Commands/AdminCommands.cs",
+      "line": 2225
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "active",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Return the caller's active transform, if any (BCH-readable).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Active",
+      "file": "Commands/ApiCommands.cs",
+      "line": 379
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "bch",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Toggle BCH event-stream emission for the caller (BCH calls this on load). Usage: .beelz api bch <on|off|status>",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Bch",
+      "file": "Commands/ApiCommands.cs",
+      "line": 602
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "bestiary",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream the caller's collection book — per-unit ability progress + transform status (BCH-readable). Optional page, size 40.",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Bestiary",
+      "file": "Commands/ApiCommands.cs",
+      "line": 1088
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "broadcast-msgs",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "ADMIN: stream a broadcast message pool's current custom messages. One [BEELZ:broadcast-msg] line per message (idx is 1-based to match .beelz admin broadcast-msg edit/remove <n>; text= SafeToken-encoded). Usage: .beelz api broadcast-msgs <complete|leaderboard>",
+      "params": [
+        {
+          "name": "pool",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BroadcastMsgs",
+      "file": "Commands/ApiCommands.cs",
+      "line": 1203
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "catalog",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Summary of what's in the curated catalog (counts only). Drill in via .beelz api catalog units|abilities.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Catalog",
+      "file": "Commands/ApiCommands.cs",
+      "line": 688
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "catalog abilities",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream the capturable ability catalog with matrix attributes (BCH collection book). Optional page (default 0, size 40) + FILTER: catalog abilities <page> <weapon|cat|unit|form|search|tag|reviewstatus|tier|vblood> <value> — load just a subset (e.g. weapon Sword, cat Summon, unit Erwin, search lightning, tag emote, tier T4, vblood 1) instead of the full ~1700 rows.",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "filter",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "CatalogAbilities",
+      "file": "Commands/ApiCommands.cs",
+      "line": 940
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "catalog abilities-all",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "ADMIN: stream EVERY ability group for configuration — regardless of enable/deny/difficulty/inclusive (junk stubs excluded). Same line format + FILTER support as `catalog abilities` (each row carries enabled=). Usage: catalog abilities-all <page> <weapon|cat|unit|form|search|tag|reviewstatus|tier|vblood> <value>.",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "filter",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "CatalogAbilitiesAll",
+      "file": "Commands/ApiCommands.cs",
+      "line": 951
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "catalog units",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream every curated transform-target unit + its matrix attributes (BCH collection book). Optional page index, default 0. Page size 40.",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "CatalogUnits",
+      "file": "Commands/ApiCommands.cs",
+      "line": 697
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "config",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream every Beelzebub config setting (BCH settings panel). One [BEELZ:config] line per setting.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Config",
+      "file": "Commands/ApiCommands.cs",
+      "line": 1112
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "cooldowns",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Per-category transform cooldown remaining, for cooldown timers (BCH-readable).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Cooldowns",
+      "file": "Commands/ApiCommands.cs",
+      "line": 1147
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "help",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List the Beelzebub API/BCH read commands (machine-readable data streams).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Help",
+      "file": "Commands/ApiCommands.cs",
+      "line": 232
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "hotkeys",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream the caller's named hotkey bindings (BCH-readable). Extra slots beyond V Rising's 6.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Hotkeys",
+      "file": "Commands/ApiCommands.cs",
+      "line": 1044
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "info",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Return detailed info for one captured ability by index (BCH tooltip data).",
+      "params": [
+        {
+          "name": "index",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Info",
+      "file": "Commands/ApiCommands.cs",
+      "line": 406
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "info-guid",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Return detailed BCH tooltip data for any ability by its PrefabGUID — for ACTIVE/ASSIGNED abilities where you have the GUID (from api slots) but not a captured-list index. Usage: .beelz api info-guid <abilityGuid>",
+      "params": [
+        {
+          "name": "abilityGuid",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "InfoGuid",
+      "file": "Commands/ApiCommands.cs",
+      "line": 421
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream the caller's captured abilities (BCH-readable).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "List",
+      "file": "Commands/ApiCommands.cs",
+      "line": 253
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "locks",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream the server's incompatibility lock groups (BCH: grey out / badge abilities that can't share a bar). One [BEELZ:lock] line per group.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Locks",
+      "file": "Commands/ApiCommands.cs",
+      "line": 1133
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "progress",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Return the caller's collection-completion data (BCH-readable).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Progress",
+      "file": "Commands/ApiCommands.cs",
+      "line": 660
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "rules",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream the loaded ability rules (BCH-readable, admin-relevant).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Rules",
+      "file": "Commands/ApiCommands.cs",
+      "line": 640
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "slots",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream the caller's current slot assignments — universal + weapon + form buckets, each row carrying a=<guid> an=<prefab> label=<friendly name> (BCH-readable; label= for the hover card).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Slots",
+      "file": "Commands/ApiCommands.cs",
+      "line": 283
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "tform-binds",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream the caller's CUSTOM transform loadout for one unit — one [BEELZ:tform-slot] line per phase/slot the player has bound (empty = just the end line). The end line carries phases=<n> (how many phases the form has). Usage: .beelz api tform-binds <unit|index> (same resolution as .beelz tform).",
+      "params": [
+        {
+          "name": "unit",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TformBinds",
+      "file": "Commands/ApiCommands.cs",
+      "line": 1180
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "tform-kit",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream a transform unit's FULL eligible ability kit — the pool you bind from with .beelz tform <unit> set. One [BEELZ:tform-ability] line per ability. Usage: .beelz api tform-kit <unit|index> (same resolution as .beelz tform).",
+      "params": [
+        {
+          "name": "unit",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TformKit",
+      "file": "Commands/ApiCommands.cs",
+      "line": 1164
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "transform-config",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Return current transform mode/duration/cooldown per source (BCH-readable).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "TransformConfig",
+      "file": "Commands/ApiCommands.cs",
+      "line": 1067
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "transforms",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Stream the caller's transform unlocks (BCH-readable). Matrix attributes included.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Transforms",
+      "file": "Commands/ApiCommands.cs",
+      "line": 340
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "verbosity",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Return the caller's current verbosity setting (BCH-readable).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Verbosity",
+      "file": "Commands/ApiCommands.cs",
+      "line": 631
+    },
+    {
+      "group": "beelz api",
+      "groupShort": null,
+      "name": "version",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Return the Beelzebub API version (BCH-readable).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Version",
+      "file": "Commands/ApiCommands.cs",
+      "line": 247
+    },
+    {
+      "group": "beelz hotkey",
+      "groupShort": null,
+      "name": "clear",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Clear a hotkey binding by name. Usage: .beelz hotkey clear <name>",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Clear",
+      "file": "Commands/HotkeyCommands.cs",
+      "line": 87
+    },
+    {
+      "group": "beelz hotkey",
+      "groupShort": null,
+      "name": "help",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List the Beelzebub hotkey commands (extra cast slots beyond your 6).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Help",
+      "file": "Commands/HotkeyCommands.cs",
+      "line": 23
+    },
+    {
+      "group": "beelz hotkey",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "List your hotkey bindings.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "List",
+      "file": "Commands/HotkeyCommands.cs",
+      "line": 106
+    },
+    {
+      "group": "beelz hotkey",
+      "groupShort": null,
+      "name": "set",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Bind a hotkey name to a captured ability. Usage: .beelz hotkey set <name> <index|ability ID> (the number is a .beelz list index when in range, otherwise the ability's stable ID).",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "indexOrId",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Set",
+      "file": "Commands/HotkeyCommands.cs",
+      "line": 33
+    }
+  ]
+}

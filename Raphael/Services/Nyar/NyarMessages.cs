@@ -78,7 +78,8 @@ internal static class NyarMessages
 
     /// <summary>The Templates panel's group of a template (PLAN.md §C1): pillars in their usual order, and inside Spawns
     /// three groups by id suffix (a naming convention of Nyarlathotep's templates, not a wire field; an unknown suffix
-    /// falls back to the plain group). Order sorts the groups; Blurb is "" when there is nothing to add.</summary>
+    /// falls back to the plain group). Order sorts the groups; Blurb is "" when there is nothing to add.
+    /// 0.73.0: the apocalypse-type templates (Nyarlathotep 0.14.0: -apocalypse, -infestation, -horde-march) get their own group.</summary>
     public static (int Order, string Heading, string Blurb) TemplateGroup(string pillar, string id)
     {
         string p = (pillar ?? "").Trim().ToLowerInvariant();
@@ -89,6 +90,9 @@ internal static class NyarMessages
         string s = (id ?? "").ToLowerInvariant();
         if (s.EndsWith("-timed", StringComparison.Ordinal)) return (order + 1, "Spawns — Timed waves", "A new wave every 75 s, cleared or not.");
         if (s.EndsWith("-onslaught", StringComparison.Ordinal)) return (order + 2, "Spawns — Onslaughts", "Rolled waves, a boss mid-run and one or two at the end.");
+        if (s.EndsWith("-apocalypse", StringComparison.Ordinal) || s.EndsWith("-infestation", StringComparison.Ordinal) || s.EndsWith("-horde-march", StringComparison.Ordinal))
+            return (order + 3, "Spawns — Undead hordes",
+                "Apocalypse-type events (apocalypse, infestation, horde march): one runs at a time, and the server cfg caps their size. Each template's summary says where it starts.");
         return (order, "Spawns — Wave events", "");
     }
 

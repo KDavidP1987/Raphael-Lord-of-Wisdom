@@ -1,0 +1,667 @@
+{
+  "mod": "Nyarlathotep",
+  "source": "Nyarlathotep Lord of Chaos/Nyarlathotep/Nyarlathotep",
+  "sourceVersion": "0.14.0",
+  "sourceCommit": "1b4584e7fe",
+  "generatorVersion": 1,
+  "commands": [
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "nyar",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Nyarlathotep overview and the commands you may run.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Nyar",
+      "file": "Commands/RootCommands.cs",
+      "line": 16
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "announce",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "TEXT (quote text of more than 16 words)",
+      "description": "Broadcast a line to every connected player.",
+      "params": [
+        {
+          "name": "w1",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w2",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w3",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w4",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w5",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w6",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w7",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w8",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w9",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w10",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w11",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w12",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w13",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w14",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w15",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "w16",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Announce",
+      "file": "Commands/MessageCommands.cs",
+      "line": 15
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "debug",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "here [radius]",
+      "description": "List tracked units near you with lifetime, level and stats.",
+      "params": [
+        {
+          "name": "where",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "radius",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "extra",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Debug",
+      "file": "Commands/SpawnCommands.cs",
+      "line": 51
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "event",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "list [page] | info|start|stop|enable|disable|unstick ID | set ID FIELD VALUE | reload | new ID PILLAR | copy ID NEWID | delete ID [confirm]",
+      "description": "List, inspect, start, stop, enable, disable, edit, reload, create, copy or delete event definitions, or unstick a running event's units.",
+      "params": [
+        {
+          "name": "verb",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Event",
+      "file": "Commands/EventCommands.cs",
+      "line": 18
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "pillar",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "list | NAME on|off",
+      "description": "List the pillar switches, or turn one pillar on or off (saved to the cfg).",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "state",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Pillars",
+      "file": "Commands/PillarCommands.cs",
+      "line": 13
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "purge",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "[confirm]",
+      "description": "End every event and despawn every tracked unit (asks to confirm).",
+      "params": [
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PurgeCommand",
+      "file": "Commands/SpawnCommands.cs",
+      "line": 33
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "region",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "list | here",
+      "description": "List the map's regions with their event counts, or name the region you stand in.",
+      "params": [
+        {
+          "name": "verb",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Region",
+      "file": "Commands/RegionCommands.cs",
+      "line": 14
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "spawn",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "UNIT [count] [level|+n|-n] [hp] [power]",
+      "description": "Spawn tracked units around you.",
+      "params": [
+        {
+          "name": "unit",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "count",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "level",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "hp",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "power",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Spawn",
+      "file": "Commands/SpawnCommands.cs",
+      "line": 16
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "status",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Active events and their time left.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Status",
+      "file": "Commands/StatusCommands.cs",
+      "line": 13
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "template",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "list [pillar] [page] | info TEMPLATE | use TEMPLATE [as ID]",
+      "description": "List, inspect or copy the starter event templates into events.json.",
+      "params": [
+        {
+          "name": "verb",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "a",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "b",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "c",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Template",
+      "file": "Commands/TemplateCommands.cs",
+      "line": 14
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "event",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "VERB [ID] [FIELD] [VALUE]",
+      "description": "Event admin actions as machine-readable lines (for the Raphael client).",
+      "params": [
+        {
+          "name": "verb",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "extra",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Event",
+      "file": "Commands/ApiAdminCommands.cs",
+      "line": 19
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "events",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "[page]",
+      "description": "Event definitions as machine-readable lines (for the Raphael client).",
+      "params": [
+        {
+          "name": "page",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Events",
+      "file": "Commands/ApiCommands.cs",
+      "line": 53
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "killswitch",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "The kill switch state as a machine-readable line (for the Raphael client).",
+      "params": [
+        {
+          "name": "extra",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "KillSwitch",
+      "file": "Commands/ApiAdminCommands.cs",
+      "line": 54
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "pillar",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "list | NAME on|off",
+      "description": "Pillar switches as machine-readable lines (for the Raphael client).",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "state",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "extra",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Pillar",
+      "file": "Commands/ApiAdminCommands.cs",
+      "line": 40
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "purge",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "[confirm]",
+      "description": "The kill switch as machine-readable lines (for the Raphael client).",
+      "params": [
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "extra",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "PurgeCommand",
+      "file": "Commands/ApiAdminCommands.cs",
+      "line": 47
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "regions",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": "[page]",
+      "description": "The map's regions and their active events as machine-readable lines (for the Raphael client).",
+      "params": [
+        {
+          "name": "page",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Regions",
+      "file": "Commands/ApiCommands.cs",
+      "line": 64
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "status",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Active events as machine-readable lines (for the Raphael client).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Status",
+      "file": "Commands/ApiCommands.cs",
+      "line": 34
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "sub",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": "on|off",
+      "description": "Push lines on or off for you (for the Raphael client).",
+      "params": [
+        {
+          "name": "state",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Sub",
+      "file": "Commands/ApiCommands.cs",
+      "line": 74
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "template",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "use TEMPLATE [as ID] | info TEMPLATE",
+      "description": "Template use and info as machine-readable lines (for the Raphael client).",
+      "params": [
+        {
+          "name": "verb",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "template",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "asWord",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "asId",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "extra",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Template",
+      "file": "Commands/ApiAdminCommands.cs",
+      "line": 26
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "templates",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "[pillar] [page]",
+      "description": "The template catalogue as machine-readable lines (for the Raphael client).",
+      "params": [
+        {
+          "name": "pillar",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "page",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "extra",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Templates",
+      "file": "Commands/ApiAdminCommands.cs",
+      "line": 33
+    },
+    {
+      "group": "nyar api",
+      "groupShort": null,
+      "name": "version",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "The machine-readable handshake line (for the Raphael client).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Version",
+      "file": "Commands/ApiCommands.cs",
+      "line": 18
+    }
+  ]
+}

@@ -292,6 +292,9 @@ internal static class ClientChatPatch
                 // echo. It never destroys the entity: the line still reaches chat and the pipelines below.
                 try { Services.Uriel.UrielEvents.Observe(text); }
                 catch (Exception ex) { LogUtils.LogDebug($"UrielEvents.Observe: {ex.Message}"); }
+                // 0.73.0: Uriel 0.22.0 feature switches, refusals and the Server controls replies. Same observe-only rule.
+                try { Services.Uriel.UrielFeatureState.Observe(text); }
+                catch (Exception ex) { LogUtils.LogDebug($"UrielFeatureState.Observe: {ex.Message}"); }
                 // 0.71.0: same observe-only pattern for the Nyarlathotep `event info` / `debug here` human replies.
                 try { Services.Nyar.NyarCapture.Observe(text); }
                 catch (Exception ex) { LogUtils.LogDebug($"NyarCapture.Observe: {ex.Message}"); }

@@ -4,7 +4,7 @@ using Raphael.UI.ModContent;
 
 // 0.72.0: logic tests for Raphael's pure parts. Exit code 0 = all passed. Each check prints only on failure; a summary
 // line ends the run. Server rules quoted here come from Nyarlathotep 4f059f5 (PLAN.md Appendix).
-internal static class Program
+internal static partial class Program
 {
     private static int _pass, _fail;
 
@@ -37,6 +37,13 @@ internal static class Program
         InfoParse();
         Form();
         Templates();
+        GuideKitRules();
+        GuideChecks();
+        ResetTests();
+        EmberglassTests();
+        KindredAdminTests();
+        UndeadHordesTests();
+        UrielFeaturesTests();
         Console.WriteLine($"Raphael.Logic.Tests: {_pass} passed, {_fail} failed");
         return _fail == 0 ? 0 : 1;
     }
@@ -72,8 +79,8 @@ internal static class Program
         Range("action.goal.radius", "9", "10", "100", "101");
         Range("action.hordes.count", "0", "1", "10", "11");
         Range("action.hordes.everyMinutes", "4", "5", "1440", "1441");
-        Range("action.hordes.size", "4", "5", "50", "51");
-        Range("action.roamers.max", "0", "1", "100", "101");
+        Range("action.hordes.size", "4", "5", "500", "501");      // 0.73.0: Nyarlathotep 0.14.0 raised both
+        Range("action.roamers.max", "0", "1", "500", "501");
         Range("action.marchSpeed", "0.4", "0.5", "5.0", "5.01");
         Range("behaviour.range", "9", "10", "60", "61");
         Range("location.near", "9", "10", "60", "61");
@@ -130,19 +137,19 @@ internal static class Program
     private static void UnitLists()
     {
         Ok(NyarFieldRules.CheckUnitList("CHAR_Bandit_Thug", false), "count optional (default 1)");
-        Ok(NyarFieldRules.CheckUnitList("CHAR_Bandit_Thug:49,pool:troops:1", false), "count 49 and pool entry (50 in all)");
-        Ok(NyarFieldRules.CheckUnitList("CHAR_Bandit_Thug:50", false), "count 50");
+        Ok(NyarFieldRules.CheckUnitList("CHAR_Bandit_Thug:499,pool:troops:1", false), "count 499 and pool entry (500 in all)");
+        Ok(NyarFieldRules.CheckUnitList("CHAR_Bandit_Thug:500", false), "count 500 (0.73.0)");
         Bad(NyarFieldRules.CheckUnitList("CHAR_Bandit_Thug:0", false), "count 0");
-        Bad(NyarFieldRules.CheckUnitList("CHAR_Bandit_Thug:51", false), "count 51");
+        Bad(NyarFieldRules.CheckUnitList("CHAR_Bandit_Thug:501", false), "count 501");
         Bad(NyarFieldRules.CheckUnitList("CHAR_A:1,CHAR_A:2", false), "action.units refuses a repeat");
         Ok(NyarFieldRules.CheckUnitList("CHAR_A:1,CHAR_A:2", true), "a wave list allows a repeat");
         Bad(NyarFieldRules.CheckUnitList("pool:troops:2,pool:troops:3", false), "action.units refuses a repeated pool");
         string ten = string.Join(",", Enumerable.Range(1, 10).Select(i => $"CHAR_U{i}:1"));
         Ok(NyarFieldRules.CheckUnitList(ten, false), "10 entries");
         Bad(NyarFieldRules.CheckUnitList(ten + ",CHAR_U11:1", false), "11 entries");
-        Ok(NyarFieldRules.CheckUnitList("pool:troops:25,CHAR_A:25", true), "pool list with 50 units");
-        Bad(NyarFieldRules.CheckUnitList("pool:troops:26,CHAR_A:25", true), "pool list with 51 units");
-        Ok(NyarFieldRules.CheckUnitList("CHAR_A:50,CHAR_B:50", false), "no pool → no 50-unit total");
+        Ok(NyarFieldRules.CheckUnitList("pool:troops:250,CHAR_A:250", true), "pool list with 500 units");
+        Bad(NyarFieldRules.CheckUnitList("pool:troops:251,CHAR_A:250", true), "pool list with 501 units");
+        Ok(NyarFieldRules.CheckUnitList("CHAR_A:500,CHAR_B:500", false), "no pool → no 500-unit total");
         Bad(NyarFieldRules.CheckUnitList("pool:Troops:2", false), "upper-case pool name");
         Bad(NyarFieldRules.CheckUnitList("pool:troops", false), "pool token without count");
         Bad(NyarFieldRules.CheckUnitList("pool:troops:2:3", false), "pool token with 4 parts");

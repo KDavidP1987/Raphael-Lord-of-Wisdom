@@ -240,8 +240,10 @@ public partial class MainPanel
         AddSectionHeading(run, "Run");
         _urielEvHudLabel = AddBodyText(run, UrielEvents.HudText(), Theme.ScaledUI(13));
         var rRow = MakeUrielRow(run, "UrielEvRunRow");
-        AddUrielButton(rRow, "UrielEvStart", "Start", "Start a run on this plot with the template and options below (.uriel event start …).",
-            StartUrielEvent, 90);
+        UrielGatesBegin(Data.PanelType.UrielEventsTab);
+        UrielGate(Data.PanelType.UrielEventsTab, UrielFeature.Events,
+            AddUrielButton(rRow, "UrielEvStart", "Start", "Start a run on this plot with the template and options below (.uriel event start …).",
+                StartUrielEvent, 90));
         AddUrielConfirmButton(rRow, "UrielEvStop", "Stop",
             "Stop the run: its units are removed and every door goes back as it was (.uriel event stop).",
             () => EvSend(".uriel event stop"), 80, UrielDanger);
@@ -303,8 +305,10 @@ public partial class MainPanel
         AddUrielButton(mRow, "UrielEvBossMarker", "Boss marker here", "Drop a boss marker at your feet in this group (.uriel event marker <group> boss …).",
             () => SendUrielEvMarker("boss"), 150);
         var dRow = MakeUrielRow(lay, "UrielEvDoorRow");
-        AddUrielButton(dRow, "UrielEvDoor", "Bind nearest door", "This group holds the castle door nearest you (within 6 m): shut while its units live (.uriel event door <group>).",
-            () => { if (TakeUrielEvGroup(out var g)) EvSend($".uriel event door {g}"); }, 150);
+        // 0.73.0: only binding is gated; Unbind stays usable as cleanup (Uriel 0.22.0 still runs undoor).
+        UrielGate(Data.PanelType.UrielEventsTab, UrielFeature.Doors,
+            AddUrielButton(dRow, "UrielEvDoor", "Bind nearest door", "This group holds the castle door nearest you (within 6 m): shut while its units live (.uriel event door <group>).",
+                () => { if (TakeUrielEvGroup(out var g)) EvSend($".uriel event door {g}"); }, 150));
         AddUrielButton(dRow, "UrielEvUndoor", "Unbind door", "The group stops holding its door (.uriel event undoor <group>).",
             () => { if (TakeUrielEvGroup(out var g)) EvSend($".uriel event undoor {g}"); }, 120);
         var sRow = MakeUrielRow(lay, "UrielEvShowRow");

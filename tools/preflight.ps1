@@ -124,6 +124,30 @@ if ($strayLogs) {
     Pass "No stray Console/Debug log calls."
 }
 
+# ---- 6. Guide glyph lint (0.73.0): the game font lacks these, so they render as squares ----
+#      U+2212 minus, the arrows/refresh glyphs confirmed missing, and emoji / most U+2600-27BF symbols (star and
+#      crossed swords are confirmed OK). The logic tests lint the rendered text too; this catches it in any build mode.
+$guideDir = Join-Path $repoRoot 'Raphael\Services\Guides'
+if (Test-Path $guideDir) {
+    $glyphHits = @()
+    # GuideModel.cs defines the rule, so it names the forbidden glyphs itself.
+    foreach ($f in Get-ChildItem -Path $guideDir -Filter *.cs | Where-Object { $_.Name -ne 'GuideModel.cs' }) {
+        $n = 0
+        foreach ($line in [System.IO.File]::ReadAllLines($f.FullName, [System.Text.Encoding]::UTF8)) {
+            $n++
+            foreach ($ch in $line.ToCharArray()) {
+                $c = [int]$ch
+                $bad = ($c -eq 0x2212) -or ($c -eq 0x25C4) -or ($c -eq 0x25BA) -or ($c -eq 0x21BB) -or
+                       ([char]::IsSurrogate($ch)) -or
+                       (($c -ge 0x2600) -and ($c -le 0x27BF) -and ($c -ne 0x2605) -and ($c -ne 0x2694))
+                if ($bad) { $glyphHits += "$($f.Name):$n U+$('{0:X4}' -f $c)"; break }
+            }
+        }
+    }
+    if ($glyphHits) { foreach ($h in $glyphHits) { Fail "Guide text uses a glyph the game font lacks: $h" } }
+    else { Pass "Guide text uses only glyphs the game font has." }
+}
+
 # ---- Release-only checks below ----
 if ($Mode -eq 'Release') {
 
@@ -208,6 +232,18 @@ if ($Mode -eq 'Release') {
             } catch {
                 Warn "Could not inspect DLL AssemblyVersion: $($_.Exception.Message)"
             }
+        }
+    }
+
+    # 10b. Guide manifests (0.73.0): tests/fixtures/<mod>-commands.json / -config.json must match each mod's source,
+    #      or the guide checks in the logic tests compare against stale data. Exit 1 = stale, 2 = a source is missing.
+    $gen = Join-Path $repoRoot 'tools\guide-commands.py'
+    if (Test-Path $gen) {
+        $genOut = & python -I $gen --check 2>&1
+        switch ($LASTEXITCODE) {
+            0 { Pass "Guide manifests match the mods' source." }
+            1 { Fail "Guide manifests are stale or the generator failed (run: python -I tools/guide-commands.py):`n$(($genOut | Select-String -Pattern 'STALE|ERROR' | ForEach-Object { $_.Line }) -join "`n")" }
+            default { Fail "Guide manifest check couldn't find a mod's source:`n$(($genOut | Select-String -Pattern 'MISSING' | ForEach-Object { $_.Line }) -join "`n")" }
         }
     }
 

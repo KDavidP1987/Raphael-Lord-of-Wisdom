@@ -50,3 +50,6 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 .DS_Store
+
+# Python bytecode (tools/guide-commands.py)
+**/__pycache__/

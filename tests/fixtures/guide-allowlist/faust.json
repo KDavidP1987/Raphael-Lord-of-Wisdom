@@ -1,0 +1,71 @@
+{
+  "commands": [],
+  "settings": [],
+  "unresolvedBinds": [
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"Access\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] Access"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"Delivery\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] Delivery"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"CostItemGuid\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] CostItemGuid"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"CostQuantity\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] CostQuantity"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"CooldownSeconds\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] CooldownSeconds"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"AdminsExempt\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] AdminsExempt"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"Availability\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] Availability"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"WindowSeconds\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] WindowSeconds"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"PeriodSeconds\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] PeriodSeconds"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"MaxUsesPerPeriod\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] MaxUsesPerPeriod"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"Unlock\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] Unlock"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"RequireNearPrefab\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] RequireNearPrefab"
+    },
+    {
+      "mod": "faust",
+      "match": "Bind(section, \"RequireNearDistance\"",
+      "reason": "per-feature template documented as [Faust.<Feature>] RequireNearDistance"
+    }
+  ]
+}

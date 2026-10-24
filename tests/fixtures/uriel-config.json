@@ -1,0 +1,460 @@
+{
+  "mod": "Uriel",
+  "source": "Uriel Lord of Oaths/Uriel/Uriel",
+  "sourceVersion": "0.22.0",
+  "sourceCommit": "0bad5feee6",
+  "generatorVersion": 1,
+  "settings": [
+    {
+      "section": "CastleEvents",
+      "key": "BossMarkerCostAmount",
+      "default": 0,
+      "description": "How many of MarkerCostItem a boss marker costs.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 366
+    },
+    {
+      "section": "CastleEvents",
+      "key": "ClearDrops",
+      "default": true,
+      "description": "Spawned units drop no loot.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 335
+    },
+    {
+      "section": "CastleEvents",
+      "key": "ContainCheckSeconds",
+      "default": 1,
+      "description": "How often spawned units are checked against their containment (the castle plot always; a room, storey or leash radius when the spawn asked for one). A unit outside is returned to its spawn spot.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 339
+    },
+    {
+      "section": "CastleEvents",
+      "key": "DefaultContain",
+      "default": "storey",
+      "description": "Containment for an event marker that doesn't name one: plot, room, storey, a leash radius in metres, or a mix such as room,15. Units never leave the plot whatever this says.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 349
+    },
+    {
+      "section": "CastleEvents",
+      "key": "DoorGates",
+      "default": true,
+      "description": "Let castle events take over castle doors: a group bound to a door ('.uriel event door') keeps it shut and locked until its units are defeated. When false, no door can be bound and runs never touch a door (events still run, with every door left as the players set it).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 304
+    },
+    {
+      "section": "CastleEvents",
+      "key": "Enabled",
+      "default": false,
+      "description": "EXPERIMENTAL. Allow admins to spawn NPC units into castle plots with '.uriel unit ...' (the foundation for castle events). Spawned units are never saved: they are removed at the next boot, by '.uriel unit purge', or by the game itself when their lifetime runs out.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 298
+    },
+    {
+      "section": "CastleEvents",
+      "key": "MarkerCostAmount",
+      "default": 0,
+      "description": "How many of MarkerCostItem a mob marker costs.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 362
+    },
+    {
+      "section": "CastleEvents",
+      "key": "MarkerCostItem",
+      "default": 0,
+      "description": "Item GUID a player pays to place a spawn marker (0 = free). Refunded when the marker is removed.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 358
+    },
+    {
+      "section": "CastleEvents",
+      "key": "MaxDespawnsPerTick",
+      "default": 5,
+      "description": "Units removed per spawn tick. Spreads large removals over frames.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 326
+    },
+    {
+      "section": "CastleEvents",
+      "key": "MaxMarkersPerPlot",
+      "default": 40,
+      "description": "Most spawn markers one castle's event layout may have (admins are not limited).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 354
+    },
+    {
+      "section": "CastleEvents",
+      "key": "MaxSpawnsPerTick",
+      "default": 5,
+      "description": "Units created per spawn tick (about 6 ticks a second). Spreads large spawns over frames.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 322
+    },
+    {
+      "section": "CastleEvents",
+      "key": "MaxTrackedUnits",
+      "default": 300,
+      "description": "Most Uriel units alive on the whole server at once.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 318
+    },
+    {
+      "section": "CastleEvents",
+      "key": "MaxUnitsPerCommand",
+      "default": 10,
+      "description": "Most units one '.uriel unit spawn' may queue.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 310
+    },
+    {
+      "section": "CastleEvents",
+      "key": "MaxUnitsPerPlot",
+      "default": 60,
+      "description": "Most Uriel units alive on one castle plot at once.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 314
+    },
+    {
+      "section": "CastleEvents",
+      "key": "PlayerEvents",
+      "default": false,
+      "description": "Let castle owners (not only admins) set up and run castle events on their OWN plot: place spawn markers, bind doors, make templates, start and stop. Admins can always do it, on any plot.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 344
+    },
+    {
+      "section": "CastleEvents",
+      "key": "RunCostAmount",
+      "default": 0,
+      "description": "How many of RunCostItem one event start costs.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 374
+    },
+    {
+      "section": "CastleEvents",
+      "key": "RunCostItem",
+      "default": 0,
+      "description": "Item GUID a player pays each time they start an event (0 = free). Not refunded.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 370
+    },
+    {
+      "section": "CastleEvents",
+      "key": "UnitLifetimeSeconds",
+      "default": 3600,
+      "description": "Safety net: the game itself destroys a spawned unit after this many seconds, even if Uriel is removed from the server.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 330
+    },
+    {
+      "section": "Diagnostics",
+      "key": "VerboseLogging",
+      "default": false,
+      "description": "Emit detailed per-action log lines (useful when testing; noisy in production).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 378
+    },
+    {
+      "section": "General",
+      "key": "Enabled",
+      "default": true,
+      "description": "Master switch. False turns EVERY Uriel feature off for everyone, admins included, whatever the feature switches below say. The admin cleanup commands ('.uriel killswitch', '.uriel purgeall', '.uriel unshareall', '.uriel unit purge', '.uriel event stopall') still work, so you can undo what Uriel did. Takes effect at the next server start.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 89
+    },
+    {
+      "section": "KillSwitch",
+      "key": "RestoreVanillaOnBoot",
+      "default": false,
+      "description": "Emergency reset for a server you can't get into. When true, the next server start removes EVERY Uriel-spawned object, makes every shared chest and prison cell private again, and puts back every door an event held (Uriel's NPC units are always removed at start). Uriel then sets this back to false itself, so it runs once. Saved settings (unlocks, layouts, squads) are kept. Swapped stairs stay as they are: they are ordinary game stairs in another style. In-game, '.uriel killswitch' does the same without a restart.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 96
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "AdminOnly",
+      "default": true,
+      "description": "When true, only admins may use '.uriel spawn'/'.uriel despawn' (the Phase-1 test-bed default). A curated, cost-gated player-facing path ('.uriel decor') is a later phase.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 138
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "AutoPurgeOrphans",
+      "default": true,
+      "description": "Periodically scan the map mid-session and remove Uriel-spawned objects whose castle is gone (the heart no longer exists — castle abandoned/destroyed/decayed), instead of waiting for the next server boot (PurgeOrphansOnBoot). Registry-driven, so ONLY Uriel's own objects are ever touched — native world objects are never affected. Turn OFF to clean orphans only at boot or via the manual '.uriel purgeorphans'.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 190
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "BossUnlocksEnabled",
+      "default": false,
+      "description": "Discovery mode: when a player defeats a V-blood listed in boss_unlocks.json (under BepInEx/config/Uriel/), grant them the objects mapped to that boss — a tier-gated way to earn otherwise non-destructible objects by beating an area's boss. Build the map in-game with '.uriel bossmap add <vblood> <object>' or edit the JSON. Empty by default.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 267
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "CollectionEnabled",
+      "default": true,
+      "description": "Master switch for the prefab-COLLECTION feature (discovery-by-destruction). When false, players never unlock objects by destroying them and get no discovery messages — servers that don't want a collection mechanic can turn it off. (Admin '.uriel grant' and Full access mode still work independently.)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 218
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "DiscoveryChancePercent",
+      "default": 25,
+      "description": "Discovery mode only: percent chance (0-100) that destroying an eligible world object (a destroyable, spawnable object) unlocks it for that player to build. 0 disables discovery-by-destruction (grants still work).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 233
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "DiscoveryNotify",
+      "default": true,
+      "description": "Discovery mode only: send the player a chat message when they unlock a new object by destroying it.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 239
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "Enabled",
+      "default": true,
+      "description": "Allow spawning game objects into a castle via '.uriel spawn' (extended build palette / world-object decoration). Objects are adopted by the castle you're standing in.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 133
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "IncludeCastleBuildables",
+      "default": false,
+      "description": "Whether the catalog includes the inherent CASTLE build-menu pieces (anything with a BlueprintData component — ~1200 walls/floors/stations/decor players already build normally). Default FALSE: the catalog focuses on WORLD objects players can't otherwise get (the point of the feature). Set TRUE to also expose the standard buildables through '.uriel spawn'/catalog. (Identified by component, not the word 'Castle' — reliable. Admins can still GUID-spawn any prefab regardless.)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 154
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "Indestructible",
+      "default": true,
+      "description": "Make spawned objects indestructible (Immortal) AND immune to castle decay by default. Turn OFF on PvP servers (so spawned objects obey normal raid rules), or per-spawn with '.uriel spawn <prefab> breakable'. Objects meant to be harvested (veins/trees) should be breakable.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 148
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "MaxTargetDistance",
+      "default": 8,
+      "description": "How close (meters) your aim point must be to a Uriel-spawned object for '.uriel despawn'/'.uriel spawninfo' to target it.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 143
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "NonDestructibleUnlock",
+      "default": "Off",
+      "description": "Discovery mode: how a player earns the NON-destructible objects (the ~half that discovery can't reach). 'Off' = never (only '.uriel grant'/'grantall'). 'Collection' = on collecting 100% of the discoverable set. 'FinalBoss' = on defeating Dracula (game completion — easiest, recommended). 'AllBosses' = on defeating every main V-blood. (FinalBoss/AllBosses share the V-blood kill detection used by BossUnlocksEnabled.)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 259
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "OrphanPollSeconds",
+      "default": 120,
+      "description": "How often (seconds, approximate) the mid-session orphan sweep runs when AutoPurgeOrphans is on. The sweep is a whole-map scan, so keep it relatively infrequent; 120s is a good balance. Clamped to a 30s minimum.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 198
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "OverlapMinDistance",
+      "default": 0.5,
+      "description": "When PreventOverlap is on, the minimum spacing (meters, center-to-center) Uriel keeps between a spawned/moved object and a nearby NON-wall object — the proximity backstop that stops two pieces from near-stacking when their tile cells differ by a fraction. Default 0.5 (~one tile). LOWER it (toward 0) to let admins/players place décor closer together / tighter around furniture; 0 disables this distance check entirely (only the exact same-tile-cell block remains). Raise it to space objects out more. NOTE: walls are already exempt, so this does NOT affect how close you can place to a wall — that's governed only by the same-cell test. Clamped to a 0 minimum.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 173
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "PlayerAccessMode",
+      "default": "Discovery",
+      "description": "How NON-admin players choose what to spawn (only relevant when AdminOnly=false). 'Full' = any object in the placeable catalog. 'Discovery' = only objects the player has personally UNLOCKED by destroying them in the world (see DiscoveryChancePercent), plus any an admin granted ('.uriel grant'). Admins always have full access. Non-destroyable objects can only ever be obtained via '.uriel grant'.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 225
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "PrefabCostItem",
+      "default": 0,
+      "description": "Item PrefabGUID a NON-admin player must pay to build ANY object (e.g. 123456789). 0 = building is free. Find item ids with '.uriel finditem <name>'. (v1 charges from the player's own inventory; castle shared-stash payment is a planned enhancement.)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 243
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "PrefabCostStack",
+      "default": 0,
+      "description": "How many of PrefabCostItem a NON-admin player must have and spend to build one object (e.g. 100). Ignored when PrefabCostItem=0.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 249
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "PreventOverlap",
+      "default": true,
+      "description": "Prevent a spawned object from being placed (or moved) onto a tile already occupied by a wall, crafting station, native prop, or another spawned object — i.e. it can't be dropped INSIDE other build pieces. FLOORS are the exception (you place decor on top of floors). This guards against the overlapping pile-ups that can destabilise/crash a server when many objects are spawned into the same spot. The check is limited to roughly one building level (objects on the floor above/below don't count), so multi-storey castles are unaffected. Set FALSE to allow free stacking/overlap (e.g. a candle directly on a table) at your own risk.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 163
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "PurgeOrphansOnBoot",
+      "default": true,
+      "description": "On server start, automatically remove any Uriel-spawned object whose castle is gone (the castle heart no longer exists — destroyed or fully decayed). This keeps a destroyed castle from leaving permanent, indestructible orphan objects floating in the world. Turn OFF to keep such objects until an admin removes them manually ('.uriel purgeplot').",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 183
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "RefundOnRemove",
+      "default": false,
+      "description": "When true, removing your OWN spawned object with '.uriel despawn' refunds the item cost you paid for it. Admin spawns and granted-free spawns refund nothing.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 254
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "RespawnEnabled",
+      "default": true,
+      "description": "Master switch for AUTO-RESPAWN: objects spawned with the 'respawn' flag ('.uriel spawn <prefab> breakable respawn') automatically come back after they're destroyed (by a raid, decay, or — if 'smashable' — the player), as long as the castle still stands and the object wasn't '.uriel despawn'ed. Turn OFF to disable the respawn loop server-wide (existing respawn-flagged objects simply stay gone once destroyed).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 204
+    },
+    {
+      "section": "ObjectSpawn",
+      "key": "RespawnPollSeconds",
+      "default": 30,
+      "description": "How often (seconds, approximate) the auto-respawn loop checks for destroyed respawn-flagged objects and brings them back. Lower = snappier respawns but more frequent territory scans; 30 is a good balance for decor. Clamped to a 5s minimum.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 212
+    },
+    {
+      "section": "PublicStorage",
+      "key": "CostsEnabled",
+      "default": true,
+      "description": "Allow paid shares: '.uriel share cost <item> <amount>' and '.uriel paychest'. When false, no new price can be set and Uriel moves no payment items; a chest that already has a price stays CLOSED to others (it is never made free behind its owner's back) until the owner removes the price ('.uriel share cost 0 0') or unshares it.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 286
+    },
+    {
+      "section": "PublicStorage",
+      "key": "Enabled",
+      "default": true,
+      "description": "Allow a container's owner to mark a SPECIFIC chest/stash as publicly accessible to all players on the server. Per-container opt-in; nothing is shared unless its owner shares it.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 274
+    },
+    {
+      "section": "PublicStorage",
+      "key": "MaxTargetDistance",
+      "default": 5,
+      "description": "How close (meters) your aim point must be to a container for '.uriel share'/'.uriel unshare' to target it.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 293
+    },
+    {
+      "section": "PublicStorage",
+      "key": "PrisonEnabled",
+      "default": true,
+      "description": "Allow a prison cell's owner to mark a SPECIFIC cell as publicly accessible: others may feed the prisoner, extract blood, or charm the prisoner out as their own subdued follower. Separate switch from chest sharing — prison cells are a different container type and are governed independently. (Requires PublicStorage.Enabled as the master switch.)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 279
+    },
+    {
+      "section": "StairSwap",
+      "key": "Enabled",
+      "default": true,
+      "description": "Allow players to hot-swap placed stairs to another cosmetic style of the same shape via '.uriel stairswap' without demolishing them first. DLC styles require the player to own that DLC (same rule as the build menu).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 105
+    },
+    {
+      "section": "StairSwap",
+      "key": "ExperimentalLiveRefresh",
+      "default": false,
+      "description": "EXPERIMENTAL / ADMIN ONLY. When true, '.uriel stairrefresh' will ATTEMPT a live mega-static visual refresh by appending to the per-chunk MegaStaticManager's snapshot-replicated destroyed-instance buffer. The durable identity swap is never affected by this. Leave false unless you are actively testing: a placed staircase renders from a per-chunk static batch baked at load, and dropping an instance with no verified live re-add path can make the staircase render INVISIBLE until the next server restart (which renders it correctly in the swapped style). With the flag off, '.uriel stairrefresh' only dumps diagnostics to the server log and changes nothing.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 122
+    },
+    {
+      "section": "StairSwap",
+      "key": "MaxTargetDistance",
+      "default": 6,
+      "description": "How close (meters) your aim point must be to a stair for '.uriel stairswap'/'.uriel stairstyles' to target it.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 111
+    },
+    {
+      "section": "StairSwap",
+      "key": "RespawnGapFrames",
+      "default": 5,
+      "description": "EXPERIMENTAL ('.uriel stairrespawn'): frames to wait between destroying the old staircase and spawning the new-style one, so server + clients register the removal before the replacement appears. Higher = longer visible gap but more reliable.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 116
+    }
+  ],
+  "unresolvedBinds": []
+}

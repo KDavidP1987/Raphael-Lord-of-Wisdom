@@ -1,0 +1,757 @@
+{
+  "mod": "Beelzebub",
+  "source": "Beelzebub Lord of Gluttony/Beelzebub/Beelzebub",
+  "sourceVersion": "0.137.7",
+  "sourceCommit": "228bb00da3",
+  "generatorVersion": 1,
+  "settings": [
+    {
+      "section": "Abilities",
+      "key": "Abilities_ApplyConfig",
+      "default": true,
+      "description": "v0.66.0 (renamed from AbilityTuning_Enabled, now DEFAULT ON — a master kill-switch, not an opt-in): apply the per-ability config you set (cooldown, range, charges, interrupt, free-move, cast-speed, …) by rewriting the curated abilities' baked prefab fields at server init and on `.beelz admin reload`. Set per-ability via `.beelz admin ability <name> <field> <value>` / `.beelz admin tune`, or hand-edit ability_rules.json. The edits are SERVER-WIDE: the ability behaves the configured way for every player who casts it, and because V Rising shares the ability prefab, the source NPC/boss's copy changes too (this is intended — you're configuring how the ability functions on the server). Set false ONLY to disable ALL baked ability-config edits (e.g. to debug a conflict).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 834
+    },
+    {
+      "section": "Abilities",
+      "key": "Grant_EnforceWeaponMatch",
+      "default": false,
+      "description": "#4 (v0.34.0): when true, refuse a universal `.beelz grant` of a weapon-animation-bound ability (sword/axe/spear/etc.) and tell the player to use `.beelz weapon-grant <weapon>` so it binds to the weapon whose cast animation it needs (V Rising bakes the animation into the ability — wielding the matching weapon is the only way it reads correctly). Default false: the weapon-to-wield guidance is shown on every grant regardless; this only hard-blocks the universal bind. Spells/universal abilities are never affected.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 581
+    },
+    {
+      "section": "Abilities",
+      "key": "Grant_MinimumCooldownSeconds",
+      "default": 0,
+      "description": "Minimum cooldown (seconds) for captured abilities cast from a player's bar — stops spammy low/zero-cooldown captures. 0 = off (default). v0.134.0: applied at RUNTIME to captured bar casts only (bosses and native abilities keep their own cooldowns; nothing is baked). Applied after the per-ability `cooldown` / `cooldownscale`. Charge-based abilities are not affected.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 719
+    },
+    {
+      "section": "Abilities",
+      "key": "Grant_PowerScalingFactor",
+      "default": 1.0,
+      "description": "v0.43.5: the multiplier applied to granted-ability power when Grant_PowerScalingMode = 'Boosted'. 1.0 = no change, 1.5 = +50%, 0.75 = -25%. Ignored in PlayerScaled mode. Implemented as a brief Physical+Spell power buff around the cast, so other actions in a ~1.5s window are also affected (a tuning approximation, not a surgical per-hit multiply).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 712
+    },
+    {
+      "section": "Abilities",
+      "key": "Grant_PowerScalingMode",
+      "default": "PlayerScaled",
+      "description": "v0.43.5: how GRANTED abilities (captured boss abilities on your normal bar/hotkeys) scale in power. 'PlayerScaled' (default) = pure vanilla — the ability already scales with YOUR Physical/Spell Power + crit, so it tracks your level/gear/prestige automatically (no extra applied). 'Boosted' = additionally multiply granted-ability power by Grant_PowerScalingFactor (server-wide dial for under/over-tuned boss abilities). Combines with each ability's AbilityMap DamageScale. Does NOT affect transforms (those use Transform_PowerScalingMode).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 702
+    },
+    {
+      "section": "AbilityTuning",
+      "key": "AbilityTuning_Enabled",
+      "default": false,
+      "description": "(deprecated — renamed to Abilities.Abilities_ApplyConfig, now default ON)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 830
+    },
+    {
+      "section": "Announcements",
+      "key": "Broadcast_CollectionComplete_Enabled",
+      "default": true,
+      "description": "v0.88.0: when a player collects EVERY capturable ability (100%), post a server-wide celebratory message. Default ON.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 440
+    },
+    {
+      "section": "Announcements",
+      "key": "Broadcast_CollectionComplete_Messages",
+      "default": "🩸 %player% has devoured the entire bestiary — every ability in the realm now bends to their will.|👑 The Lord of Gluttony is sated: %player% has collected ALL known abilities. Bow before the complete collection.|🦇 Legend spreads through the night — %player% has mastered every ability V Rising has to offer.",
+      "description": "v0.88.0: pipe ( | )-separated pool of collection-complete messages (one is picked per event). Use %player% for the player's name. Edit freely — keep them short (one chat line).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 444
+    },
+    {
+      "section": "Announcements",
+      "key": "Broadcast_Leaderboard_Enabled",
+      "default": false,
+      "description": "v0.88.0: periodically post a server-wide leaderboard of the top players by ability-collection %. Default OFF. Toggle live with .beelz admin broadcast leaderboard on|off.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 452
+    },
+    {
+      "section": "Announcements",
+      "key": "Broadcast_Leaderboard_IntervalMinutes",
+      "default": 60,
+      "description": "v0.88.0: minutes between leaderboard broadcasts (60 = hourly, 1440 = daily). Min 1. Set live with .beelz admin broadcast interval <minutes>.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 456
+    },
+    {
+      "section": "Announcements",
+      "key": "Broadcast_Leaderboard_Messages",
+      "default": "🏆 The hungriest vampires tonight: %top%|🩸 Bestiary standings — %top%|👑 Who devours the most? %top%",
+      "description": "v0.88.0: pipe ( | )-separated pool of leaderboard messages (one is picked per broadcast). Use %top% for the ranked list (e.g. '🥇 Alice (62%) · 🥈 Bob (55%)') and %count% for the number of collectors.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 463
+    },
+    {
+      "section": "Announcements",
+      "key": "Broadcast_Leaderboard_TopN",
+      "default": 3,
+      "description": "v0.88.0: how many top players to list in the leaderboard broadcast (1, 3, or 5). Clamped to 1..5.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 460
+    },
+    {
+      "section": "Capture",
+      "key": "CaptureOnKill",
+      "default": true,
+      "description": "Master switch. When false, no abilities are captured from kills.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 291
+    },
+    {
+      "section": "Capture",
+      "key": "Capture_GrantSignatureSummons",
+      "default": true,
+      "description": "v0.43.4: when true, unlocking a unit's transform ALSO grants that unit's signature add-summon(s) into the player's captured pool as standalone abilities — usable WITHOUT transforming (grant to a spell slot or bind to a `.beelz hotkey` / `.beelz cast`). Applies retroactively to already-unlocked units on load. False = summons stay transform-only (via `.beelz summon`). Note: cast in normal form (no boss rig) the spawn usually still fires, but the cast animation may look off and a few scripted summons may no-op.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 786
+    },
+    {
+      "section": "Capture",
+      "key": "Capture_InclusiveMode",
+      "default": true,
+      "description": "v0.50.0 INCLUSIVE TESTING MODE (default ON). When true, ability capture AND the Devour jackpot ignore the DenyPatterns/DenyGuids lists and the Basic/Brutal difficulty gate, so abilities across ALL V-Bloods and NPCs are broadly capturable/devourable for testing. A small hardcoded junk filter (idle/spawn/death/etc. stubs) and the per-ability Enabled kill-switch (AbilityMap) still apply. Set to false for a curated server — the full deny-list + difficulty pipeline then returns.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 295
+    },
+    {
+      "section": "Capture",
+      "key": "Capture_ShareCreditMode",
+      "default": "KillerOnly",
+      "description": "Who gets capture rolls when a unit dies: KillerOnly | Proximity. Proximity grants every online player within Capture_ShareCreditRadius of the kill site their own independent roll.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 322
+    },
+    {
+      "section": "Capture",
+      "key": "Capture_ShareCreditRadius",
+      "default": 30,
+      "description": "Radius in world units (~meters) for Proximity share mode. Bloodcraft's analogous setting uses similar default. Ignored when ShareCreditMode = KillerOnly.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 327
+    },
+    {
+      "section": "Capture",
+      "key": "Curation_EnforceReviewStatus",
+      "default": true,
+      "description": "v0.115.0 CURATION GATE (default ON). When true, an ability whose ReviewStatus is 'Blocked' (incompatible / unwanted) or 'Hidden' (junk) is NOT capturable or grantable and is excluded from the player ability catalog + collection total — making ReviewStatus a real curation lever, not just a tracking note. Enforced even in Capture_InclusiveMode (it's a deliberate decision, like the per-ability Enabled kill-switch). Set to false to TEST a blocked ability without un-blocking it (e.g. inclusive testing where you want every tagged ability still reachable). Unreviewed/Reviewed/Approved are always collectible.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 304
+    },
+    {
+      "section": "Capture",
+      "key": "Grant_EnforceTransformOnly",
+      "default": false,
+      "description": "v0.50.0 (default OFF). When false, the per-ability 'transform-only' reservation (AbilityMap TransformOnly / TransformOnlyPatterns / TransformOnlyGuids) is NOT enforced — every ability can be granted/slotted/hotkeyed/devoured to the normal bar for testing. Set to true to honor those reservations again (abilities so marked become usable only via an actual transform). Per-ability Enabled=false is the separate hard kill-switch.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 314
+    },
+    {
+      "section": "Capture.DropChance",
+      "key": "DropChance_Ability_Regular",
+      "default": 0.05,
+      "description": "Per-ability chance (0.0-1.0) to capture each eligible ability from a regular mob kill. 1.0 = always (legacy behavior).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 348
+    },
+    {
+      "section": "Capture.DropChance",
+      "key": "DropChance_Ability_VBlood",
+      "default": 0.05,
+      "description": "Per-ability chance (0.0-1.0) to capture each eligible ability from a V-Blood kill.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 352
+    },
+    {
+      "section": "Capture.DropChance",
+      "key": "DropChance_Devour_Regular",
+      "default": "expr:legacyDevourRegular.Value",
+      "description": "Per-kill DEVOUR chance (0.0-1.0) on a regular mob. The Devour roll grants ALL of the unit's eligible abilities at once instead of one at a time. (Arbitrary-unit transformation is a postponed phase-two feature; only Dracula & Morgana, both V-Bloods, transform.)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 363
+    },
+    {
+      "section": "Capture.DropChance",
+      "key": "DropChance_Devour_VBlood",
+      "default": "expr:legacyDevourVBlood.Value",
+      "description": "Per-kill DEVOUR chance (0.0-1.0) on a V-Blood. The Devour roll grants ALL of its eligible abilities at once. (v0.98.0: this is now INDEPENDENT of the transformation roll — devouring a transform boss grants its abilities but NOT its form; the form has its own DropChance_TransformUnlock_VBlood.)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 371
+    },
+    {
+      "section": "Capture.DropChance",
+      "key": "DropChance_TransformUnlock_Regular",
+      "default": 1.0,
+      "description": "Per-kill chance (0.0-1.0) to unlock a non-V-Blood transform unit's TRANSFORMATION (e.g. the basic werewolf from the common werewolf NPC). v0.128.0 TEST-FRIENDLY DEFAULT = 1.0 (was 0.005) — LOWER for a balanced release. Independent of Devour/ability rolls.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 387
+    },
+    {
+      "section": "Capture.DropChance",
+      "key": "DropChance_TransformUnlock_VBlood",
+      "default": 1.0,
+      "description": "Per-kill chance (0.0-1.0) to unlock a V-Blood transform boss's TRANSFORMATION (Dracula, Morgana, Werewolf Chieftain, Geomancer/Golem, Tailor/Gargoyle, …). Independent of the Devour/ability rolls. v0.128.0 TEST-FRIENDLY DEFAULT = 1.0 (every transform-boss kill grants its form) so testers reliably get transforms — LOWER this for a balanced release (it was 0.0015, ~0.15%, before). Only fires for units the game can render as a player form. NOTE: changing this default only affects a FRESH config; an existing server keeps its .cfg value until you run `.beelz admin set DropChance_TransformUnlock_VBlood <v>`.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 379
+    },
+    {
+      "section": "Capture.DropChance",
+      "key": "DropChance_Transform_Regular",
+      "default": 0.0025,
+      "description": "(deprecated — renamed to DropChance_Devour_Regular; value migrated automatically)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 360
+    },
+    {
+      "section": "Capture.DropChance",
+      "key": "DropChance_Transform_VBlood",
+      "default": 0.0025,
+      "description": "(deprecated — renamed to DropChance_Devour_VBlood; value migrated automatically)",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 368
+    },
+    {
+      "section": "Capture.Pity",
+      "key": "Capture_PityIncrementPerKill",
+      "default": 0.0025,
+      "description": "v0.38.0 bad-luck protection for ABILITY captures: each kill whose ability roll gives nothing raises that roll's effective chance by this amount (0.0025 = +0.25%), resetting to baseline the moment it pays out. Tracked independently per source (Regular/V-Blood). The rare Devour jackpot has its own pity dial (Capture_PityIncrement_Devour). 0 = disabled (pure flat chance).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 393
+    },
+    {
+      "section": "Capture.Pity",
+      "key": "Capture_PityIncrement_Devour",
+      "default": "expr:Capture_PityIncrementPerKill.Value",
+      "description": "Bad-luck protection for the rare DEVOUR jackpot roll (separate from ability-capture pity). Each kill whose Devour roll fails raises the next Devour chance by this amount, reset on a Devour. Defaults to the ability pity increment; raise it to make a long dry streak reach a Devour sooner. 0 = disabled.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 408
+    },
+    {
+      "section": "Capture.Pity",
+      "key": "Capture_PityIncrement_Transform",
+      "default": "expr:Capture_PityIncrementPerKill.Value",
+      "description": "Bad-luck protection for the TRANSFORMATION-unlock roll (separate from ability + Devour pity). Each kill of a transform boss whose transform roll fails raises the next transform chance by this amount, reset when the transform unlocks. 0 = disabled.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 420
+    },
+    {
+      "section": "Capture.Pity",
+      "key": "Capture_PityMaxBonus",
+      "default": 1.0,
+      "description": "v0.38.0: cap on the accumulated ABILITY-capture pity bonus (1.0 = +100%, i.e. the chance can climb to a guaranteed payout over a long enough dry streak). Lower it (e.g. 0.5) to keep rare drops rare even on long streaks. 0 = uncapped.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 400
+    },
+    {
+      "section": "Capture.Pity",
+      "key": "Capture_PityMax_Devour",
+      "default": "expr:Capture_PityMaxBonus.Value",
+      "description": "Cap on the accumulated DEVOUR pity bonus. Defaults to the ability pity cap. 0 = uncapped.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 415
+    },
+    {
+      "section": "Capture.Pity",
+      "key": "Capture_PityMax_Transform",
+      "default": "expr:Capture_PityMaxBonus.Value",
+      "description": "Cap on the accumulated TRANSFORMATION pity bonus. Defaults to the ability pity cap. 0 = uncapped.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 425
+    },
+    {
+      "section": "Capture.Pity",
+      "key": "Capture_PitySessionBased",
+      "default": false,
+      "description": "v0.83.0: if true, a player's accumulated pity (bad-luck protection) RESETS when they log out (session-based). If false (default), pity is PERMANENT and carries across sessions. Session-based makes pity a within-session catch-up only; permanent rewards long-term grinding.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 429
+    },
+    {
+      "section": "Capture.Tier",
+      "key": "Capture_TierHighThreshold",
+      "default": 60,
+      "description": "UnitLevel at which a killed unit moves from Mid to High tier.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 335
+    },
+    {
+      "section": "Capture.Tier",
+      "key": "Capture_TierMidThreshold",
+      "default": 30,
+      "description": "UnitLevel at which a killed unit moves from Low to Mid tier (used by Capture_TierMultiplier_*).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 332
+    },
+    {
+      "section": "Capture.Tier",
+      "key": "Capture_TierMultiplier_High",
+      "default": 1.0,
+      "description": "Drop-chance multiplier applied to units in the High tier (UnitLevel >= HighThreshold).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 344
+    },
+    {
+      "section": "Capture.Tier",
+      "key": "Capture_TierMultiplier_Low",
+      "default": 1.0,
+      "description": "Drop-chance multiplier applied to units in the Low tier (UnitLevel < MidThreshold). 1.0 = no effect.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 338
+    },
+    {
+      "section": "Capture.Tier",
+      "key": "Capture_TierMultiplier_Mid",
+      "default": 1.0,
+      "description": "Drop-chance multiplier applied to units in the Mid tier.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 341
+    },
+    {
+      "section": "Damage",
+      "key": "Damage_FlatPolicy",
+      "default": "Unchanged",
+      "description": "v0.133.0: the FLAT (non-power) damage term of an attributed hit. 'Unchanged' (default) or 'Scaled' (× the same scale). %-of-max-HP damage is never scaled.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 749
+    },
+    {
+      "section": "Damage",
+      "key": "Damage_MaxFactor",
+      "default": 0,
+      "description": "v0.133.0: cap on the FINAL power factor of a scaled hit (Scale mode) — tames outlier boss abilities. 0 = off.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 744
+    },
+    {
+      "section": "Damage",
+      "key": "Damage_MinFactor",
+      "default": 0,
+      "description": "v0.133.0: floor on the FINAL power factor of a scaled hit (Scale mode). 0 = off. Must be <= Damage_MaxFactor when both are set (otherwise both are ignored, with a warning).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 739
+    },
+    {
+      "section": "Damage",
+      "key": "Damage_Mode",
+      "default": "Off",
+      "description": "v0.133.0: how DamageScale reaches captured-ability damage. 'Off' (default) = the legacy power window (a brief Physical+Spell power buff around the cast). 'Telemetry' = ALSO attribute every hit to the cast that caused it and log/count what per-hit scaling WOULD do, changing nothing (use `.beelz admin damage-stats`). 'Scale' = per-hit: multiply the power term (MainFactor) of each attributed hit from a captured cast by Defaults × ability DamageScale (× Grant_PowerScalingFactor when Boosted), clamped by Damage_MinFactor/MaxFactor; no power window is opened. Damage still follows the caster's own Spell/Physical power (level, gear, potions). Only player casts of CAPTURED abilities are touched — bosses stay vanilla. Hits that can't be tied to exactly one cast stay vanilla. If the game rejects the write, the mod falls back to Telemetry by itself and says so in the log + damage-stats.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 726
+    },
+    {
+      "section": "Damage",
+      "key": "Damage_ProvenanceRetentionSeconds",
+      "default": 120,
+      "description": "v0.133.0: how long (seconds) a cast stays matchable to NEW damage sources (projectiles, zones, DoTs spawned later). A source matched once keeps its match for its whole life, so this only bounds late-spawning parts. Minimum 30. Longer = more memory and more chance of an ambiguous (vanilla) hit.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 754
+    },
+    {
+      "section": "Damage",
+      "key": "Summon_PowerMode",
+      "default": "OwnerRelative",
+      "description": "v0.133.0: how a captured summon's power is set. 'OwnerRelative' = the minion's Physical/Spell power = YOUR power × Transform_SummonPowerFactor × the ability's summonpower (health untouched), so summons weaken with you after a level reset. 'Legacy' = the old behaviour: the unit's own baked stats × Transform_SummonPowerFactor (health included). Existing servers are migrated to Legacy.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 760
+    },
+    {
+      "section": "Diagnostics",
+      "key": "VerboseLogging",
+      "default": false,
+      "description": "Log every captured ability and filter decision to BepInEx\\LogOutput.log. Independent of in-chat verbosity.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 534
+    },
+    {
+      "section": "Forms",
+      "key": "Forms_AutoFillFromCaptures",
+      "default": false,
+      "description": "v0.137.0: when you enter a shapeshift form with NO per-form binds (.beelz form-grant) and NO universal binds, put your first six captured abilities on the form bar. Default false: the form keeps its own kit unless you bound something for it. Set true to restore the pre-0.137 behavior (note: a bar reset keeps captures, so with this on the captures return on the next form enter).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 858
+    },
+    {
+      "section": "Forms",
+      "key": "Forms_CustomAbilities_Enabled",
+      "default": true,
+      "description": "v0.48.0 [EXPERIMENTAL]: when you enter a vanilla shapeshift form (currently the Wolf/Bear test set) via the in-game shapeshift wheel, inject your current loadout's abilities onto the form's bar AND strip the form's break-on-cast trigger so the form HOLDS while you cast them (vanilla travel forms normally exit on the first cast). This is the feasibility probe for a full per-form-loadout feature (assign abilities per form, auto-applied when you shift into it, like the per-weapon loadouts). v0.75.0: now DEFAULT TRUE so per-form loadouts work out of the box — set false to restore stock vanilla form behavior. It changes vanilla form behavior for every player when on. The form buff keeps its own RemoveOnDisconnect, so logging out still exits the form cleanly.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 846
+    },
+    {
+      "section": "Hotkeys",
+      "key": "Hotkeys_Enabled",
+      "default": true,
+      "description": "Admin master switch for W4 named hotkey bindings (extra ability slots beyond the V Rising 6). When false, .beelz hotkey commands are blocked and no hotkey bindings can be created. The cast-trigger mechanism is BCH-side (server stores; BCH UI fires).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 538
+    },
+    {
+      "section": "Hotkeys",
+      "key": "Hotkeys_MaxPerPlayer",
+      "default": 5,
+      "description": "Maximum number of named hotkey bindings a player can create. 0 disables hotkey storage entirely.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 544
+    },
+    {
+      "section": "Interop",
+      "key": "Interop_SlotInjectionPriority",
+      "default": 0,
+      "description": "v0.120.0: the Priority value Beelzebub stamps on its spell-slot grant overrides — the ReplaceAbilityOnSlotBuff entries that put your captured abilities on slots 0-7. This ONLY matters when ANOTHER mod also writes the same slot. Bloodcraft, for example, writes its class/'shift' spell to slot 3 and its unarmed spells to slots 1+4 at Priority 0; at an equal priority the winner is load-order-dependent (nondeterministic). Set this to 1 (or higher) to make Beelzebub's bind WIN those contested slots deterministically; leave at 0 for neutral/legacy behavior; set negative to make Beelzebub YIELD so the other mod wins. Harmless on single-mod servers — nothing else competes there, so 0 and 1 look identical. The complementary lever is Bloodcraft's own ShiftSlot/UnarmedSlots flags. See docs/INTEROP_BLOODCRAFT.md.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 774
+    },
+    {
+      "section": "Notifications",
+      "key": "DefaultVerbosity",
+      "default": "Summary",
+      "description": "Default chat verbosity for new players: Silent | Summary | Verbose. Each player can override with .beelz verbosity <level>.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 435
+    },
+    {
+      "section": "Server",
+      "key": "Server_DifficultyMode",
+      "default": "Basic",
+      "description": "TX4: difficulty mode this server is configured for: Basic | Brutal. Used to gate Brutal-only ability captures and transform unlocks — abilities/transforms tagged Difficulty:Brutal in ability_rules.json are blocked on Basic servers. Also auto-treats any ability whose prefab name contains '_Hard_' as Brutal-only (unless an AbilityMap entry overrides). Admins set this once to match their server's game-difficulty preset.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 548
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_CooldownScope",
+      "default": "PerCategory",
+      "description": "How the transform cooldown budget is shared: 'PerCategory' (default — one cooldown bucket per Regular/V-Blood/Shard-Boss group, the legacy behavior), 'PerTransformation' (each unit has its OWN independent cooldown — e.g. 30 min/day PER form, so you can use every form), or 'Global' (a SINGLE cooldown across ALL transforms — e.g. 30 min/day total, one form at a time). Duration is per-unit when an override is set (.beelz admin transform-set <unit> duration <sec>), else the category default.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 526
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_CooldownSeconds_Regular",
+      "default": 0,
+      "description": "Cooldown in seconds after a Regular-mob transform ends before another Regular transform can start. 0 = no cooldown.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 487
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_CooldownSeconds_ShardBoss",
+      "default": 0,
+      "description": "v0.39.0: cooldown (seconds) after a shard-boss transform ends before another shard-boss transform can start. Independent of the regular/V-Blood cooldown buckets. 0 = no cooldown.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 514
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_CooldownSeconds_VBlood",
+      "default": 0,
+      "description": "Cooldown in seconds after a V-Blood transform ends before another V-Blood transform can start. 0 = no cooldown.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 491
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_DespawnBudgetPerFrame",
+      "default": 5,
+      "description": "v0.23.0: maximum number of summon entities destroyed per frame during the staged-despawn drain (revert, over-cap kills, etc.). V Rising's server crashes when ~36+ entities are destroyed in a single tick; staging across frames avoids this. Lower = safer but slower cleanup; higher = faster but risk crash. Default 5.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 625
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_DespawnSummonsOnDisconnect",
+      "default": true,
+      "description": "v0.23.0: when a player disconnects (logout, network drop, kick), queue their active summons for staged despawn. Mirrors Bloodcraft's familiar pattern. Set false to leave summons in-world during DC — useful if you want short reconnects to resume with intact summons, but risks accumulating offline minion clutter on long disconnects. Default true. NOTE (v0.43.7): while a player is actively TRANSFORMED, Transform_ReconnectGraceSeconds governs their summons instead of this setting (a kept transform keeps its summons).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 795
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_DurationSeconds_Regular",
+      "default": 60,
+      "description": "Auto-revert duration in seconds for Regular-mob transforms (when mode = Timed).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 479
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_DurationSeconds_ShardBoss",
+      "default": 60,
+      "description": "v0.39.0: auto-revert duration (seconds) for shard-boss transforms when Transform_Mode_ShardBoss = Timed.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 510
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_DurationSeconds_VBlood",
+      "default": 60,
+      "description": "Auto-revert duration in seconds for V-Blood transforms (when mode = Timed).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 483
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_Enabled",
+      "default": true,
+      "description": "Master switch for ALL transformations. false = no player can transform (the unlock still drops, but .beelz transform is refused). Ability capture + Devour are unaffected. Per-unit blocking is still '.beelz admin transform-set <unit> enabled false'.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 520
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_ManualDetonateCooldownSeconds",
+      "default": 5,
+      "description": "#3 (v0.36.0): cooldown in seconds between `.beelz detonate` manual detonations per player (fires a transformed boss's signature AoE — e.g. the Undead Priest's Nova — on demand). Prevents spamming the AoE. 0 = no cooldown. Only affects units with a registered detonation.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 689
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_MaxStacksPerSummonAbility",
+      "default": 3,
+      "description": "GLOBAL ability dial (applies to EVERY summon ability — transform summons AND standalone captured summons cast in normal form, since v0.45): maximum number of live ally-summons a player can have from a single summon ability at once. Subsequent casts are refused (or destroyed for natural-chain summons that V Rising spawns through its own pipeline). Stack decays as minions die. 0 = no cap (legacy behavior, prone to runaway). Default 3. v0.79.0: a PER-ABILITY override (.beelz admin ability <name> summoncap <n>) takes precedence over this global default for that ability.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 615
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_Mode_Regular",
+      "default": "Toggle",
+      "description": "Transformation mode for Regular-mob unlocks: Toggle | Timed | Disabled. Toggle = active until manual revert; Timed = auto-revert after duration; Disabled = transforms forbidden.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 471
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_Mode_ShardBoss",
+      "default": "Toggle",
+      "description": "v0.39.0: transformation mode for shard bosses: Toggle | Timed | Disabled. Lets admins, e.g., make the powerful shard-boss forms time-limited while leaving other V-Bloods as toggles.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 505
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_Mode_VBlood",
+      "default": "Toggle",
+      "description": "Transformation mode for V-Blood unlocks: Toggle | Timed | Disabled.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 475
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_MountedSummonMode",
+      "default": "expr:MountedSummonMode.Stash",
+      "description": "v0.42.0: what happens to a transformed player's ally-summons when they mount a horse. Stash (default) = auto-stash the summons on mount and restore them on dismount (like the bat-form/waygate stash) — they won't try to chase a galloping horse. Follow = summons stay in-world, leash to the mounted player and keep engaging in combat (the existing leash + combat plumbing carries them along; far ones teleport-follow). Only affects players who have summons active from a transform; requires Transform_SummonsAreAllies.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 671
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_NativeShapeshift_Enabled",
+      "default": false,
+      "description": "DEPRECATED (v0.44.0): inert — transformation is now Dracula/Morgana-only and non-boss units no longer transform (their kits are collected as abilities / Devour). Native animal-form transforms return in 'phase two'. — Z2 (v0.14.0): apply a native V Rising shapeshift form (Wolf/Bear/Rat/Spider/Toad) as the visual when a player transforms into a matching unit. WARNING: native shapeshift forms auto-exit when the player casts any ability NOT in the form's own moveset — which captured abilities always are — so the visual will drop the moment any spell fires. Default false: keep the player's vampire model and only swap the spell bar. Set true if you'd rather see the wolf model for a couple seconds at the cost of the visual ending on first cast.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 557
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_PhaseMode",
+      "default": "expr:PhaseControlMode.Manual",
+      "description": "v0.27.0: how multi-phase boss transforms (e.g. Dracula) switch phases. Manual = the player chooses with `.beelz phase <n>`. Auto = phases auto-advance as the transformed player loses health WHILE IN COMBAT (one-way; even-split thresholds by phase count — e.g. 3 phases advance at 66% and 33% HP), then RESET to phase 1 when combat ends, just like a boss resetting on leash. Only affects units with curated multi-phase ability sets.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 662
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_PlayerLeveled_MaxLevel",
+      "default": 90,
+      "description": "v0.19.0: max-level anchor for the PlayerLeveled scaling curve. Formula: factor = clamp(player.UnitLevel / this, 0.0, 1.0). At level 0 the transform's boss-stat bonus is 0; at this level it's the full boss tier. Default 90 = V Rising's typical max gear level. Bloodcraft servers with raised level caps should bump this to match (the curve continues to apply at this:1 ratio even above; clamp keeps it from exploding past 100% boss-tier).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 817
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_PowerScalingMode",
+      "default": "CuratedScales",
+      "description": "TX7 (v0.17.0): where transform power comes from. One of: CuratedScales (default — admin-curated *Scale fields from the TransformMap entry); PrefabAbsolute (auto-derive from the CHAR_ prefab — boss-tier regardless of player level); PlayerScaled (no overrides — V Rising's vanilla formula uses the player's natural stats, including any Bloodcraft expertise/blood/level buffs); PlayerLeveled (v0.19.0: boss-tier stats scaled by the player's current UnitLevel — weak transforms when the player is low-level, full boss tier at max level). Per-TransformMap-entry `PowerScalingMode` field overrides this for one unit.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 590
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_RealFormWhenAvailable",
+      "default": true,
+      "description": "DEPRECATED (v0.44.0): inert for the common path — only Dracula/Morgana transform now (they always use their form buff regardless of this flag); other units' native-form transforms are postponed to 'phase two'. — v0.33.0 (#17): for units that map to a real V Rising form/shapeshift buff (boss forms Dracula/Morgana, or native Wolf/Bear/Rat/Spider/Toad/Werewolf/Gargoyle), transform using that actual form buff (persistent ExoForm recipe) so the player gets the form's model+rig AND it survives ability casts. Default true. Units with no matching form keep the ability-only transform regardless. Set false to turn off real native-form transforms server-wide; this does NOT affect the curated boss forms (Dracula/Morgana), which always use their form buff.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 569
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_ReconnectGraceSeconds",
+      "default": 90,
+      "description": "v0.43.7: grace window (seconds) for a disconnected player's ACTIVE TRANSFORM and its summons. >0 (default 90) = on disconnect the transform is kept and its summons are stashed; if the player reconnects within this window, both are restored intact. If the window elapses with no reconnect, the transform is reverted and its summons despawned. 0 = revert immediately on disconnect (no grace). -1 = keep indefinitely until a manual revert. Independent of how they disconnected (logout, drop, kick). On EVERY login Beelzebub also reconciles state: a transform buff left stuck from a previous session (e.g. a server restart, which clears the in-memory transform record) is detected and cleared so the player always returns with a working ability bar.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 805
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_ShardBossNames",
+      "default": "Dracula,Adam,Solarus,Talzur,Winged Horror,Megara,Morgana,Gorecrusher",
+      "description": "v0.39.0: comma-separated list of SHARD-BOSS name tokens (the six primary shard-granting end bosses: Dracula, Adam the Firstborn, Solarus the Immaculate, The Winged Horror/Talzur, Megara the Serpent Queen, Gorecrusher the Behemoth). A transform target is a shard boss if its in-game display name OR its prefab name contains any token (case-insensitive). The default lists aliases for match robustness — 'Talzur'/'Winged Horror' for the Winged Horror, 'Megara'/'Morgana' for the serpent queen (her prefab is Blackfang_Morgana). Trim or extend this if a boss doesn't resolve in your game version. Shard bosses use the Transform_*_ShardBoss settings below and their own cooldown bucket, separate from other V-Bloods.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 495
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_SummonCooldownSeconds",
+      "default": 12,
+      "description": "v0.43.3: cooldown in seconds between `.beelz summon` manual signature-summon casts per player (force-casts a transformed unit's add-summon — e.g. the Toad King's frogs — that the boss normally only triggers at a low-HP soft phase). 0 = no cooldown. Only affects units with a registered summon.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 695
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_SummonCounterBuffGuid",
+      "default": 0,
+      "description": "v0.29.0: PrefabGUID (integer) of a buff to show on the player as a live summon-count indicator while transformed — its stack count = how many summon 'uses' you have active (toward Transform_MaxStacksPerSummonAbility). 0 = OFF (default). The indicator uses the chosen buff's OWN icon (V Rising buffs can't have their icon swapped at runtime), so set this to any buff whose icon you like — e.g. a consumable/blessing buff. The buff's gameplay effects are stripped automatically; only the icon + stack number remain.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 680
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_SummonLeashRadius",
+      "default": 30,
+      "description": "v0.23.1: max distance (world units) summons can wander from their player before being teleported back. Also triggers when summons enter Idle/Return BehaviourTreeState (means they gave up on combat). Default 30. Set 0 to disable leashing.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 632
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_SummonLifetimeSeconds",
+      "default": 30,
+      "description": "GLOBAL summon TIMEOUT (applies to EVERY summon ability — transform AND standalone): max lifetime in seconds for a summon cast-group before it is automatically despawned. Each cast of a summon ability starts its own timer. v0.79.0: default changed 0 → 30 so summons that would otherwise persist indefinitely fade after 30s (set 0 to make summons never expire). A PER-ABILITY override (.beelz admin ability <name> summontimeout <seconds>) takes precedence for that ability. Uses the same crash-safe staged despawn as revert/disconnect cleanup.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 638
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_SummonMatchPlayerLevel",
+      "default": true,
+      "description": "v0.43.6: when true (default), a summoned ally's UnitLevel is set to its owner's level on spawn — so a low-level boss-add stays relevant as you out-level it (V Rising's level-difference modifier keeps its damage/defense appropriate vs your tier of enemies). Applies to transform summons AND standalone signature summons. False = keep the unit's baked level.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 647
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_SummonPowerFactor",
+      "default": 1.0,
+      "description": "v0.43.6: multiplier applied to a summoned ally's PhysicalPower, SpellPower and MaxHealth on spawn. 1.0 = no change (default), 1.5 = +50% tankier/harder-hitting summons, 0.75 = -25%. This is the lever for summon DAMAGE output (UnitLevel mainly drives the level-difference modifier). Combine with Transform_SummonMatchPlayerLevel.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 655
+    },
+    {
+      "section": "Transformation",
+      "key": "Transform_SummonsAreAllies",
+      "default": true,
+      "description": "v0.20.0 (Task #74): when a summon ability fires during a Beelzebub transform (e.g. Stonebreaker reinforcements, Bishop of Shadows shadow soldiers), rebind the freshly-spawned minions as player-allies — they fight alongside the player instead of attacking them, and despawn cleanly on .beelz revert. Implementation: Harmony Prefix on LinkMinionToOwnerOnSpawnSystem.OnUpdate rewrites EntityOwner / FactionReference / Follower / Minion components (pattern: Bloodcraft FamiliarBindingSystem.ModifyFollowerFactionMinion). Set false to disable the rebind and let V Rising's vanilla spawn handling stand (most player-cast summons would still side with the player via the engine's native SetTeamToOwner machinery, but some chained summon patterns won't spawn anything without our intervention).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 601
+    }
+  ],
+  "unresolvedBinds": []
+}

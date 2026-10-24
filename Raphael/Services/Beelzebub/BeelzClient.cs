@@ -204,7 +204,95 @@ internal static class BeelzClient
         Transform(indexOrName);
     }
     public static void Phase(int n)                   => SendUser($".beelz phase {Num(n)}");
-    public static void Summon()                       => SendUser(".beelz summon");
+
+    // 0.73.0: phase switching through ONE shared in-flight lock, used by both the Transforms tab's Phase
+    // button (TryCyclePhase) and the transform overlay's Phase 1 / Phase 2 buttons (TryPhase). Beelzebub has
+    // no atomic "advance" command — bare `.beelz phase` only SHOWS the phases — so a cycle has to send an
+    // explicit `.beelz phase <n>` computed from the last observed phase. A second click before that switch
+    // lands would compute the same <n> again (or race the reply), so clicks are ignored while a switch is in
+    // flight. The lock is cleared when the observed phase changes (the server's transform-phase-shift event
+    // re-pulls `api active` → BeelzState.Active), when the transform ends / changes unit, or after 3 s.
+    private const float PHASE_LOCK_SECONDS = 3f;
+    private static bool   _phaseLock;
+    private static float  _phaseLockAt;
+    private static string _phaseLockUnit;
+    private static int    _phaseLockFrom;
+
+    /// <summary>True while a phase switch sent by Raphael hasn't been observed yet (max 3 s).</summary>
+    public static bool PhaseSwitchInFlight
+    {
+        get
+        {
+            if (!_phaseLock) return false;
+            var a = BeelzState.Active;
+            if (a == null || a.None || a.UnitGuid != _phaseLockUnit || a.Phase != _phaseLockFrom
+                || UnityEngine.Time.realtimeSinceStartup - _phaseLockAt >= PHASE_LOCK_SECONDS)
+            {
+                _phaseLock = false;
+                return false;
+            }
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Switch the active transform to phase <paramref name="n"/> unless a switch is already in flight.
+    /// Returns false (nothing sent) while locked or when not transformed. Asking for the phase you're
+    /// already in is sent (the server replies "Already in phase n") but doesn't arm the lock, since the
+    /// observed phase would never change.
+    /// </summary>
+    public static bool TryPhase(int n)
+    {
+        if (PhaseSwitchInFlight) return false;
+        var a = BeelzState.Active;
+        if (a == null || a.None) return false;
+        if (a.Phase != n)
+        {
+            _phaseLock = true;
+            _phaseLockAt = UnityEngine.Time.realtimeSinceStartup;
+            _phaseLockUnit = a.UnitGuid;
+            _phaseLockFrom = a.Phase;
+        }
+        Phase(n);
+        return true;
+    }
+
+    /// <summary>
+    /// Cycle the active transform to its next phase (wrapping back to the first). Returns false (nothing
+    /// sent) while a switch is in flight or when not transformed; <paramref name="next"/> is the phase sent.
+    /// </summary>
+    public static bool TryCyclePhase(out int next)
+    {
+        next = 0;
+        var a = BeelzState.Active;
+        if (a == null || a.None || PhaseSwitchInFlight) return false;
+        next = NextPhase(a);
+        return TryPhase(next);
+    }
+
+    // The phase after the active one. `api active` carries phases=<csv of available phase numbers> (Beelzebub
+    // ApiCommands.Active, e.g. "1,2" or "1,2,3"): take the smallest listed phase above the current one, else
+    // wrap to the smallest. Old/odd replies with no list fall back to the tform-binds phase count (min 2).
+    private static int NextPhase(BeelzActive a)
+    {
+        int cur = a.Phase;
+        int lowest = int.MaxValue, above = int.MaxValue;
+        if (!string.IsNullOrEmpty(a.Phases))
+        {
+            foreach (var part in a.Phases.Split(','))
+            {
+                if (!int.TryParse(part.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int p) || p <= 0) continue;
+                if (p < lowest) lowest = p;
+                if (p > cur && p < above) above = p;
+            }
+        }
+        if (above != int.MaxValue) return above;
+        if (lowest != int.MaxValue) return lowest;
+        int count = System.Math.Max(2, BeelzState.TformPhases(a.UnitGuid));
+        return cur >= count || cur < 1 ? 1 : cur + 1;
+    }
+
+    public static void Summon()                     => SendUser(".beelz summon");
     public static void Detonate()                     => SendUser(".beelz detonate");
     public static void Forget(int index)              => SendUser($".beelz forget {Num(index)}");
     public static void ForgetTransform(int index)     => SendUser($".beelz forget-transform {Num(index)}");

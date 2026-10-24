@@ -151,6 +151,7 @@ internal static class UrielProtocolService
 
         UrielState.Reset();
         UrielEvents.Reset();
+        UrielFeatureState.Reset();
     }
 
     // ---- inbound line router (called from ClientChatPatch for every [URIEL:*] line) ----
@@ -206,6 +207,8 @@ internal static class UrielProtocolService
         // Uriel 0.21.0 — the Castle Events tab probes with `.uriel event list` until then.
         if (line.Has("events"))
             UrielEvents.SetFromVersion(line.GetBool("events"), line.GetBool("playerevents"), Raphael.Services.MessageService.IsLocalAdmin());
+        // 0.73.0: since Uriel 0.22.0 `objectspawn=` follows the master switch too.
+        if (ready && !line.GetBool("objectspawn")) UrielFeatureState.NoteObjectsOff();
 
         if (!ready)
         {
@@ -316,10 +319,27 @@ internal static class UrielProtocolService
         {
             LogUtils.LogInfo($"[Uriel] err disabled for cmd={cmd} — object spawning is off on this server.");
             if (wasScanning) SetScanNote("Object spawning is disabled by the server admin.");
+            // 0.73.0 (Uriel 0.22.0): `.uriel api version` answers code=disabled whenever object spawning is off,
+            // which includes the master switch [General] Enabled = false. The reply carries no cmd=, so it counts
+            // as the version reply only while detection is waiting on a probe and no scan is running.
+            if (!wasScanning && !UrielState.Present && !DetectionGaveUp && _handshakeAttempts > 0) OnVersionDisabled();
             return;
         }
         LogUtils.LogDebug($"[Uriel] err cmd={cmd} code={code}");
         if (wasScanning) SetScanNote($"Server returned an error (code={code}) for '.uriel api {cmd}'.");
+    }
+
+    // Uriel answered the version probe with code=disabled: present, with object spawning off. ApiVersion stays 0,
+    // so no catalog or unlocked scan runs. This is the same single detection transition a ready=1 version makes
+    // (FireAvailability), not a new rail mechanism. Admins also get one automatic `.uriel features`, so they see
+    // in chat what is off; it isn't repeated on later probes (detection stops once Present).
+    private static void OnVersionDisabled()
+    {
+        UrielState.SetPresentDisabled();
+        UrielFeatureState.NoteReportedDisabled();
+        LogUtils.LogInfo("[Uriel] Uriel detected with object spawning off (code=disabled); its other tabs stay usable.");
+        FireAvailability();
+        if (MessageService.IsLocalAdmin()) UrielFeatureState.RequestFeatures();
     }
 
     // Parse a "cur/total" page token (e.g. "1/7"). Pages are 1-based in Uriel's wire API.

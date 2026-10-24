@@ -10,6 +10,10 @@ namespace Raphael.Services.Nyar;
 // decision: anything not read leaves its field empty with a "couldn't read" note, never a guess. A line the server
 // shortened to fit chat ("final wave adds: 4 bosses") is reported as unreadable. Pure; unit-tested on server-format
 // fixtures.
+// 0.73.0: the undead-hordes lines (Nyarlathotep 0.14.0, EventAdmin.cs InfestationLines / HordeMarchLines / MarchLine /
+// SpreadText / AtText at f340f75): origins, hunters and drift, the spread / growth / infest blocks, a horde march's start
+// and destination, and a destination wave's march line. Every pattern is anchored at both ends; coordinates use the
+// server's invariant "0.#" shape, so a malformed or shortened line reads as unread.
 
 /// <summary>One wave of a wave-list event as `event info` shows it.</summary>
 internal sealed class NyarWaveInfo
@@ -33,6 +37,85 @@ internal static class NyarInfoParse
     private static readonly Regex UnitsFormEntry = new(@"^(\d+) (CHAR_[A-Za-z0-9_]+)$", RegexOptions.Compiled);
     private static readonly Regex FixedBoss = new(@"^(CHAR_[A-Za-z0-9_]+) x(\d+)$", RegexOptions.Compiled);
     private static readonly Regex RollBoss = new(@"^(\d+)-(\d+) bosses from ([a-z0-9-]{1,24})$", RegexOptions.Compiled);
+
+    // A coordinate as the server prints it (FormattableString.Invariant "{x:0.#}").
+    private const string C = @"-?\d+(?:\.\d)?";
+    private static readonly Regex SpreadRx = new(@"^\+(\d)(?:-(\d))? per kill(?: from ([a-z0-9-]{1,24}))?, max (\d+), (\d+) per minute$", RegexOptions.Compiled);
+    private static readonly Regex OriginsRx = new(@"^origins: (\d+), at least (\d+) natives each, (\d+) m apart, (\d+) units each$", RegexOptions.Compiled);
+    private static readonly Regex HuntersRx = new(@"^hunters: (\d+) %, drift radius (\d+) m$", RegexOptions.Compiled);
+    private static readonly Regex InfestRx = new(@"^infest: hunters (\d+) %, drift radius (\d+) m, spread (.+)$", RegexOptions.Compiled);
+    private static readonly Regex StartPointRx = new($@"^start: at (?:(the starting admin)|{C} {C}(?: height {C})?)$", RegexOptions.Compiled);
+    private static readonly Regex StartHotspotRx = new(@"^start: the natives' hotspot nearest the destination, at least (\d+) m away$", RegexOptions.Compiled);
+    private static readonly Regex DestinationRx = new($@"^destination: (.+), radius (\d+), at (?:the starting admin|{C} {C}(?: height {C})?)$", RegexOptions.Compiled);
+    private static readonly Regex MarchRx = new($@"^march: from (?:the starting admin|\({C}, {C}\)) to (.+) \((?:the starting admin|{C}, {C})\) at (\d+(?:\.\d{{1,2}})?) m/s$", RegexOptions.Compiled);
+    private static readonly Regex HordeOfRx = new(@"^horde of (\d+): ", RegexOptions.Compiled);
+
+    /// <summary>One spread block ("+1-3 per kill from troops, max 300, 20 per minute") as its five set values, or null
+    /// when the text doesn't have that exact shape. "+2 per kill" is min = max = 2; no " from …" is pool none.</summary>
+    public static Dictionary<string, string> Spread(string text)
+    {
+        var m = SpreadRx.Match(text ?? "");
+        if (!m.Success) return null;
+        string min = m.Groups[1].Value, max = m.Groups[2].Success ? m.Groups[2].Value : min;
+        return new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["perKillMin"] = min, ["perKillMax"] = max, ["max"] = m.Groups[4].Value, ["perMinute"] = m.Groups[5].Value,
+            ["pool"] = m.Groups[3].Success ? m.Groups[3].Value : "none",
+        };
+    }
+
+    /// <summary>An infestation's "origins:" line → count, minNatives, minSpacing, perOrigin; null when unread.</summary>
+    public static string[] Origins(string line)
+    {
+        var m = OriginsRx.Match(line ?? "");
+        return m.Success ? new[] { m.Groups[1].Value, m.Groups[2].Value, m.Groups[3].Value, m.Groups[4].Value } : null;
+    }
+
+    /// <summary>"hunters: 50 %, drift radius 400 m" → { hunters, drift }; null when unread.</summary>
+    public static string[] Hunters(string line)
+    {
+        var m = HuntersRx.Match(line ?? "");
+        return m.Success ? new[] { m.Groups[1].Value, m.Groups[2].Value } : null;
+    }
+
+    /// <summary>"infest: hunters 60 %, drift radius 500 m, spread …" → hunters, drift and the spread text; null when unread.</summary>
+    public static string[] Infest(string line)
+    {
+        var m = InfestRx.Match(line ?? "");
+        return m.Success ? new[] { m.Groups[1].Value, m.Groups[2].Value, m.Groups[3].Value } : null;
+    }
+
+    /// <summary>A horde march's start: "point", "admin" or "hotspot" (with <paramref name="minDistance"/>), or null.</summary>
+    public static string Start(string line, out string minDistance)
+    {
+        minDistance = null;
+        var h = StartHotspotRx.Match(line ?? "");
+        if (h.Success) { minDistance = h.Groups[1].Value; return "hotspot"; }
+        var p = StartPointRx.Match(line ?? "");
+        return p.Success ? (p.Groups[1].Success ? "admin" : "point") : null;
+    }
+
+    /// <summary>A horde march's "destination: &lt;name&gt;, radius R, at …" → { name, radius }; null when unread. The name
+    /// may hold commas: the last ", radius N, at &lt;place&gt;" is the server's.</summary>
+    public static string[] Destination(string line)
+    {
+        var m = DestinationRx.Match(line ?? "");
+        return m.Success ? new[] { m.Groups[1].Value, m.Groups[2].Value } : null;
+    }
+
+    /// <summary>A destination wave's "march: from … to &lt;name&gt; (…) at S m/s" → { name, speed }; null when unread.</summary>
+    public static string[] March(string line)
+    {
+        var m = MarchRx.Match(line ?? "");
+        return m.Success ? new[] { m.Groups[1].Value, m.Groups[2].Value } : null;
+    }
+
+    /// <summary>A horde march's size from "horde of N: …"; 0 when absent.</summary>
+    public static int HordeSize(IReadOnlyList<string> lines)
+    {
+        foreach (var l in lines) { var m = HordeOfRx.Match(l); if (m.Success) return Int(m.Groups[1].Value); }
+        return 0;
+    }
 
     /// <summary>True when the event uses the wave-list form (`wave N:` lines).</summary>
     public static bool IsWaveList(IReadOnlyList<string> lines)
@@ -115,10 +198,11 @@ internal static class NyarInfoParse
     }
 
     /// <summary>The last wave's bosses (action.bosses) in set form: "" when there are none, null when the server
-    /// shortened the line or it can't be read. Also reads an apocalypse's "last horde adds:" line.</summary>
+    /// shortened the line or it can't be read. Also reads an apocalypse's "last horde adds:" line and a horde march's
+    /// "horde adds:" ("horde adds: 4 bosses at most", the shortened form, is unreadable).</summary>
     public static string FinalBosses(IReadOnlyList<string> lines)
     {
-        foreach (var head in new[] { "final wave adds: ", "last horde adds: " })
+        foreach (var head in new[] { "final wave adds: ", "last horde adds: ", "horde adds: " })
         {
             var items = Joined(lines, head);
             if (items.Length > 0) return BossItems(items);

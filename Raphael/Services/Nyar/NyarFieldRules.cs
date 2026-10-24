@@ -11,6 +11,10 @@ namespace Raphael.Services.Nyar;
 // looser, and the editor only uses it to say exactly what to fix before anything is sent; the server still checks
 // every value and its answer wins. Cross-field rules the client can't see (does a pool exist, the allied-group mix,
 // pursuit without Hunt, wave gaps) stay the server's. Pure: no Unity types, unit-tested in tests/Raphael.Logic.Tests.
+// 0.73.0: synced to Nyarlathotep 0.14.0 ("undead hordes", f340f75): entry counts and the pool-wave total 1-500
+// (Limits.MaxUnitsPerWave.Max), roamers.max 1-500, hordes.size 5-500, the destination fields, the Infestation and
+// HordeMarch fields (origins, hunters, driftRadius, start, the spread / growth / infest blocks) and their 600-604800 s
+// duration (Validation.cs HordeLimits / DestinationLimits, CommandArgs.cs SettableValue).
 
 /// <summary>How a field's value is entered in the form.</summary>
 internal enum NyarKind { Int, Dec2, Text }
@@ -51,7 +55,7 @@ internal static class NyarFieldRules
 {
     public const int MinPursuit = 15, MaxPursuit = 600;
     public const int MaxPools = 8, MaxPoolMembers = 30, MaxPoolName = 24;
-    public const int MaxUnitEntries = 10, MaxUnitCount = 50, MaxWaveUnits = 50;
+    public const int MaxUnitEntries = 10, MaxUnitCount = 500, MaxWaveUnits = 500;
     public const int MaxBossEntries = 3, MaxBossCount = 3, MaxRollBosses = 5, MaxWaveBosses = 5;
     public const int MaxNameLength = 96, MaxListChars = 4000;
     public const int MaxWave = 10, MaxFactions = 5;
@@ -73,6 +77,8 @@ internal static class NyarFieldRules
 
     /// <summary>The spec of <paramref name="field"/> (a wave / entry number in it may be a real number or N / M), or
     /// null for a field that isn't a single number or text (lists, choices, toggles).</summary>
+    /// <remarks><paramref name="apocalypse"/>: an apocalypse-type event (Apocalypse, Infestation or HordeMarch), whose duration is
+    /// 600-604800 s.</remarks>
     public static NyarSpec Spec(string field, bool apocalypse = false)
     {
         string f = Generic(field ?? "");
@@ -99,20 +105,49 @@ internal static class NyarFieldRules
             case "action.goal.name": return T(field, "Goal name", 32);
             case "action.hordes.count": return I(field, "Hordes", 1, 10);
             case "action.hordes.everyMinutes": return I(field, "Horde every", 5, 1440, 5, "min", false, 15, 30, 60);
-            case "action.hordes.size": return I(field, "Horde size", 5, 50, 1, "", false, 10, 20, 30);
-            case "action.roamers.max": return I(field, "Max roamers", 1, 100, 1, "", false, 10, 25, 50);
+            case "action.hordes.size": return I(field, "Horde size", 5, 500, 5, "", false, 10, 30, 100, 200);
+            case "action.roamers.max": return I(field, "Max roamers", 1, 500, 5, "", false, 25, 100, 250);
             case "action.marchSpeed":
                 var ms = D(field, "March speed", 0.5m, 5.0m, false, 1, 2, 3); ms.Unit = "m/s"; return ms;
+            case "action.destination.radius": return I(field, "Arrival radius", 10, 100, 5, "m", false, 20, 30, 50);
+            case "action.destination.name": return T(field, "Destination name", 40);
+            case "action.origins.count": return I(field, "Places", 1, 10, 1, "", false, 1, 3, 5);
+            case "action.origins.minNatives": return I(field, "Natives at each", 1, 20, 1, "", false, 3, 5, 10);
+            case "action.origins.minSpacing": return I(field, "Apart at least", 100, 2000, 50, "m", false, 200, 300, 500);
+            case "action.origins.perOrigin": return I(field, "Undead per place", 1, 100, 5, "", false, 5, 10, 20);
+            case "action.hunters": case "action.infest.hunters": return I(field, "Hunters", 0, 100, 5, "%", false, 0, 25, 50, 75);
+            case "action.driftRadius": case "action.infest.driftRadius": return I(field, "Drift radius", 0, 2000, 50, "m", false, 0, 200, 400, 800);
+            case "action.start.minDistance": return I(field, "Hotspot at least", 100, 3000, 50, "m", false, 300, 500, 1000);
             case "behaviour.range": return I(field, "Hunt range", MinHuntRange, MaxHuntRange, 5, "m", false, 20, 30, 60);
             case "location.near": return I(field, "Nearest", MinNear, MaxNear, 5, "m", false, 20, 30);
             case "location.far": return I(field, "Farthest", MinFar, MaxFar, 5, "m", false, 30, 40, 60);
         }
+        foreach (var b in SpreadBlocks)
+            if (f.StartsWith(b, StringComparison.Ordinal))
+                switch (f.Substring(b.Length))
+                {
+                    case "perKillMin": return I(field, "Per kill, at least", 0, 3, 1, "", false, 0, 1, 2);
+                    case "perKillMax": return I(field, "Per kill, at most", 0, 3, 1, "", false, 1, 2, 3);
+                    case "max": return I(field, "Most alive", 1, 500, 10, "", false, 100, 200, 400);
+                    case "perMinute": return I(field, "Per minute", 1, 30, 1, "", false, 10, 20, 30);
+                }
         foreach (var k in ModifierKeys)
             if (f == "action.modifiers." + k || f == "action.waveList.N.units.M." + k)
                 return Named(D(field, ModifierLabel(k), 0.5m, 3.0m, true, 1, 1.5m, 2), "×1 (off)");
         foreach (var k in StatKeys)
             if (f == "action.stats." + k)
                 return D(field, StatLabel(k), 1.0m, 3.0m, false, 1.25m, 1.5m, 2);
+        return null;
+    }
+
+    /// <summary>The three spread-shaped blocks (perKillMin, perKillMax, max, perMinute, pool): an infestation's spread, a
+    /// horde march's growth on the way and its spread once it infests. Longest first (infest.spread before spread).</summary>
+    public static readonly string[] SpreadBlocks = { "action.infest.spread.", "action.spread.", "action.growth." };
+
+    /// <summary>The block a field belongs to ("action.growth.max" → "action.growth."), or null.</summary>
+    public static string SpreadBlockOf(string field)
+    {
+        foreach (var b in SpreadBlocks) if (IsSpreadKey(field, b)) return b;
         return null;
     }
 
@@ -218,13 +253,14 @@ internal static class NyarFieldRules
         return d.ToString("0.0#", CultureInfo.InvariantCulture);
     }
 
-    /// <summary>A readable echo for a time value: "900 s = 15 min", "1440 min = 1 day"; "" when not a time.</summary>
+    /// <summary>A readable echo: "900 s = 15 min", "1440 min = 1 day", "1500 m = 1.5 km"; "" otherwise.</summary>
     public static string Echo(NyarSpec s, string value)
     {
         if (s == null || !TryRead(s, value, out var d)) return "";
         long n = (long)d;
         if (s.Unit == "s" && n >= 60) return $"= {Human(n)}";
         if (s.Unit == "min" && n >= 60) return $"= {Human(n * 60)}";
+        if (s.Unit == "m" && n >= 1000) return $"= {(d / 1000m).ToString("0.##", CultureInfo.InvariantCulture)} km";
         return "";
     }
 
@@ -306,8 +342,8 @@ internal static class NyarFieldRules
     }
 
     /// <summary>A units list (action.units, or action.waveList.N.units when <paramref name="waveList"/>): 1-10 entries
-    /// CHAR_name[:count] or pool:&lt;name&gt;:&lt;count&gt;, count 1-50 (default 1). action.units takes each name or pool
-    /// once; a wave's own list allows repeats. With any pool entry, at most 50 units in all.</summary>
+    /// CHAR_name[:count] or pool:&lt;name&gt;:&lt;count&gt;, count 1-500 (default 1). action.units takes each name or pool
+    /// once; a wave's own list allows repeats. With any pool entry, at most 500 units in all.</summary>
     public static string CheckUnitList(string value, bool waveList)
     {
         var parts = SplitList(value, MaxUnitEntries, out var why);
@@ -563,18 +599,25 @@ internal static class NyarFieldRules
     /// <summary>Changed fields in an order the server accepts: definition and condition fields first, then location /
     /// behaviour, then units-form fields, then waves in ascending order (each wave's units before its bosses and start
     /// rule), then the event's bosses, pools and pursuit last. A level / levelDelta pair: the "none" goes first, so the
-    /// server never sees both. Stable inside a group.</summary>
-    public static List<KeyValuePair<string, string>> OrderForSave(IEnumerable<KeyValuePair<string, string>> changes)
+    /// server never sees both. Stable inside a group.
+    /// 0.73.0: `action.destination` goes before its radius, name and the march speed (each is refused without one). In a
+    /// spread block (<see cref="SpreadBlocks"/>), perKillMax goes before perKillMin when the new minimum is above the
+    /// loaded maximum, else the minimum goes first, so no step leaves max below min (the server would disable the event
+    /// until it is enabled again). <paramref name="loaded"/> gives the server's value of a field ("" when unknown).</summary>
+    public static List<KeyValuePair<string, string>> OrderForSave(IEnumerable<KeyValuePair<string, string>> changes,
+        Func<string, string> loaded = null)
     {
+        var all = new List<KeyValuePair<string, string>>(changes);
         var list = new List<(int rank, int sub, int idx, KeyValuePair<string, string> kv)>();
         int i = 0;
-        foreach (var kv in changes)
+        foreach (var kv in all)
         {
             string f = kv.Key;
             int rank, sub = 0;
             if (f.StartsWith("action.pools.", StringComparison.Ordinal)) rank = 3;     // before any entry that names the pool
             else if (f == "name" || f == "durationSeconds" || f.StartsWith("conditions.", StringComparison.Ordinal)) rank = 0;
             else if (f == "location" || f == "action.behaviour" || f == "action.radius") rank = 1;
+            else if (f == "action.destination" || f == "action.start") { rank = 1; sub = 1; }
             else if (f.StartsWith("action.waveList.", StringComparison.Ordinal))
             {
                 var p = f.Split('.');
@@ -585,12 +628,73 @@ internal static class NyarFieldRules
             else if (f == "action.pursuit") rank = 6;
             else rank = 2;   // units form, modifiers, empower, apocalypse, loot / territory
             if ((f.EndsWith(".level", StringComparison.Ordinal) || f.EndsWith(".levelDelta", StringComparison.Ordinal)) && kv.Value != "none") sub += 5;
+            if (SpreadBlockOf(f) is { } block && (f.EndsWith(".perKillMin", StringComparison.Ordinal) || f.EndsWith(".perKillMax", StringComparison.Ordinal)))
+            {
+                bool maxFirst = MinAboveLoadedMax(all, block, loaded);
+                sub += f.EndsWith(".perKillMax", StringComparison.Ordinal) == maxFirst ? 0 : 1;
+            }
             list.Add((rank, sub, i++, kv));
         }
         list.Sort((x, y) => x.rank != y.rank ? x.rank.CompareTo(y.rank) : x.sub != y.sub ? x.sub.CompareTo(y.sub) : x.idx.CompareTo(y.idx));
         var outl = new List<KeyValuePair<string, string>>();
         foreach (var x in list) outl.Add(x.kv);
         return outl;
+    }
+
+    // The new perKillMin of <paramref name="block"/> (if changed) is above its loaded perKillMax.
+    private static bool MinAboveLoadedMax(List<KeyValuePair<string, string>> changes, string block, Func<string, string> loaded)
+    {
+        string newMin = null;
+        foreach (var kv in changes) if (kv.Key == block + "perKillMin") newMin = kv.Value;
+        if (newMin == null || loaded == null) return false;
+        return int.TryParse(newMin, NumberStyles.None, CultureInfo.InvariantCulture, out var a)
+            && int.TryParse(loaded(block + "perKillMax") ?? "", NumberStyles.None, CultureInfo.InvariantCulture, out var b) && a > b;
+    }
+
+    // ================================================================== undead hordes (0.73.0)
+
+    /// <summary>`action.destination`: here (the admin's position) or none (a SpawnWaves event only: removes the
+    /// destination and the march speed; a horde march always has one).</summary>
+    public static string CheckDestination(string value, bool allowNone)
+        => value == "here" || (allowNone && value == "none") ? null
+            : allowNone ? "Press Destination here (or No destination)." : "Press Destination here.";
+
+    /// <summary>A spread block's pool: a pool name or none.</summary>
+    public static string CheckSpreadPool(string value)
+        => value == "none" || IsPoolName(value) ? null : $"'{value}' isn't a pool name (a-z, 0-9 and -, up to 24), or pick no pool.";
+
+    /// <summary>The fields "Any other field" offers for an event of this kind (what the server's type gate accepts),
+    /// in picker order. Unknown / Other kinds get every field (the server decides).</summary>
+    public static List<string> FieldsFor(string[] all, bool spawnWaves, bool apocalypse, bool infestation, bool hordeMarch, bool empower)
+    {
+        var l = new List<string>();
+        foreach (var f in all)
+        {
+            bool ok;
+            if (f.StartsWith("action.stats.", StringComparison.Ordinal) || f == "action.factions") ok = empower;
+            else if (f.StartsWith("action.goal", StringComparison.Ordinal) || f.StartsWith("action.hordes.", StringComparison.Ordinal)
+                     || f.StartsWith("action.roamers.", StringComparison.Ordinal)) ok = apocalypse;
+            else if (f.StartsWith("action.origins.", StringComparison.Ordinal) || f == "action.hunters" || f == "action.driftRadius"
+                     || f.StartsWith("action.spread.", StringComparison.Ordinal)) ok = infestation;
+            else if (f.StartsWith("action.start", StringComparison.Ordinal) || IsSpreadKey(f, "action.growth.")
+                     || f.StartsWith("action.infest.", StringComparison.Ordinal)) ok = hordeMarch;
+            else if (f.StartsWith("action.destination", StringComparison.Ordinal)) ok = spawnWaves || hordeMarch;
+            else if (f == "action.marchSpeed") ok = spawnWaves || apocalypse || hordeMarch;
+            else if (f == "action.bosses") ok = spawnWaves || apocalypse || hordeMarch;
+            else if (f == "action.scope") ok = true;                                          // fits every type
+            else if (f.StartsWith("action.", StringComparison.Ordinal) || f == "location") ok = spawnWaves;   // units, waves, pools, pursuit, swarm growth …
+            else ok = true;                                                                    // name, duration, conditions, trigger
+            if (ok || !(spawnWaves || apocalypse || infestation || hordeMarch || empower)) l.Add(f);
+        }
+        return l;
+    }
+
+    // A spread key (perKillMin, perKillMax, max, perMinute, pool) of <paramref name="block"/>; "action.growth.addUnits"
+    // (a swarm's growth on spawn waves) is not one.
+    public static bool IsSpreadKey(string field, string block)
+    {
+        if (field == null || !field.StartsWith(block, StringComparison.Ordinal)) return false;
+        return field.Substring(block.Length) is "perKillMin" or "perKillMax" or "max" or "perMinute" or "pool";
     }
 
     // ================================================================== helpers

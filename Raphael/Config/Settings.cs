@@ -110,6 +110,8 @@ public class Settings
     // *triggers* under login-window pressure, worse when other client mods churn at
     // the same time. All default to full functionality; flip OFF only to diagnose.
     public const string COMPAT_SETTINGS_GROUP   = "Compatibility";
+    // 0.73.0: Bloodcraft transport options.
+    public const string BLOODCRAFT_SETTINGS_GROUP = "Bloodcraft";
 
     // ---- UI / general ----
     public static float UITransparency =>
@@ -625,6 +627,12 @@ public class Settings
     public static bool SuppressCommandFrameworkErrors =>
         (ConfigEntries[nameof(SuppressCommandFrameworkErrors)] as ConfigEntry<bool>)?.Value ?? true;
     public static void SetSuppressCommandFrameworkErrors(bool v) => SetBool(nameof(SuppressCommandFrameworkErrors), v);
+
+    // 0.73.0 (experimental): receive Bloodcraft data over Emberglass when the server sends it that way. Read once at
+    // Plugin.Load (EmberglassBloodcraftBridge.SettingAtLoad); a change applies after a game restart.
+    public static bool UseEmberglassBridge =>
+        (ConfigEntries[nameof(UseEmberglassBridge)] as ConfigEntry<bool>)?.Value ?? false;
+    public static void SetUseEmberglassBridge(bool v) => SetBool(nameof(UseEmberglassBridge), v);
     public static int GlobalQueryIntervalInSeconds { get; } = 2;
     public static int FamStatsQueryIntervalInSeconds
     {
@@ -1546,6 +1554,7 @@ public class Settings
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(ClearServerMessages),         true,  "Clear server and command messages from chat.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(SuppressFamiliarActionChatter), false, "Suppress the chat confirmation lines that Bloodcraft prints when you switch boxes / bind / unbind / move / smartbind familiars. The UI still updates normally (box list, contents, and overlays read from separate pipes). Off by default; toggle in Display settings.");
         InitConfigEntry(GENERAL_SETTINGS_GROUP, nameof(SuppressCommandFrameworkErrors), true,  "Hide command-framework (VCF) error chatter from chat — the '[error]', '[denied]', and 'parameter conversion error' lines that appear when a command Raphael sends (or an admin button clicked by a non-admin) isn't usable on this server. These are never Raphael's own data, so they're noise — especially on servers that only have Beelzebub / Kindred (no Bloodcraft). On by default. Since 0.67.2 this only hides errors caused by Raphael's own background queries — errors for commands you send yourself always show. Settings and Help → Chat & Diagnostics.");
+        InitConfigEntry(BLOODCRAFT_SETTINGS_GROUP, nameof(UseEmberglassBridge), false, "Experimental. Receive Bloodcraft's data over Emberglass when the server sends it that way (Bloodcraft 1.13.22+ with UseEmberglassEclipseBridge on) and the Emberglass client mod is installed. Off by default: data comes over chat. Has no effect while the Eclipse client mod is installed. Restart the game to apply.");
         InitConfigEntry(UI_SETTINGS_GROUP,      nameof(ShowProgressBars),            false, "Show experience progress and prestige progress as horizontal bars alongside the % numbers. Affects the XP overlay (XP%) and the Prestige info box (level/max). Off by default; toggle in Display settings.");
         InitConfigEntry(UI_SETTINGS_GROUP,      nameof(ShowOverlayBonusStats),       false, "Show the chosen bonus-stat names AND their current numeric values for your weapon expertise and blood legacy on the XP overlay. Auto-fetches .wep get + .bl get every 10s while the overlay is visible. Off by default for a minimal overlay; toggle in Display settings.");
         InitConfigEntry(UI_SETTINGS_GROUP,      nameof(ShowOverlayStatAcronyms),     false, "Abbreviate bonus-stat names on the overlays (Eclipse-style: PhysicalPower -> PhysPwr, SpellCriticalStrikeChance -> SpellCritCh, etc.) so each stat stays on one line and the wrapped sub-row can't overlap the bar/row around it at large text. Off = full names. Toggle in Display settings.");

@@ -15,7 +15,7 @@ namespace Raphael.UI.ModContent;
 // Beelzebub minions between STASHED and RESTORED with one click (.beelz summons
 // stash / restore). Summon management is a general Beelzebub feature (independent
 // of being transformed — Beelz v0.45), so it gets its own quick-access overlay
-// rather than living buried in the Transforms tab. Recall + Clear ride along for
+// rather than living buried in the Transforms tab. Clear rides along for
 // convenience.
 //
 // There's no live "are my summons stashed?" feed from the server (handoff §7.4),
@@ -69,7 +69,8 @@ public class BeelzSummonsOverlayPanel : ResizeablePanelBase
             "• Restore (.beelz summons restore) — bring the stashed minions back.\n" +
             "The label tracks what the next press will do (client-side — the server is authoritative).");
 
-        // Secondary one-shot buttons: Recall + Clear.
+        // Secondary one-shot button: Clear. (0.73.0: Recall removed — `.beelz tp` only stashes, which the
+        // toggle above already does. Clear's flexibleWidth fills the row on its own; no size change needed.)
         var row = UIFactory.CreateHorizontalGroup(ContentRoot, "BeelzSummonsRow",
             forceExpandWidth: true, forceExpandHeight: false,
             childControlWidth: true, childControlHeight: true,
@@ -77,12 +78,6 @@ public class BeelzSummonsOverlayPanel : ResizeablePanelBase
         UIFactory.SetLayoutElement(row,
             minWidth: 100, preferredWidth: 150, flexibleWidth: 1,
             minHeight: 24, preferredHeight: 28, flexibleHeight: 0);
-
-        var recallBtn = UIFactory.CreateButton(row, "BeelzSummonsRecall", "Recall");
-        UIFactory.SetLayoutElement(recallBtn.GameObject,
-            minWidth: 48, preferredWidth: 72, flexibleWidth: 1, minHeight: 22, preferredHeight: 26, flexibleHeight: 0);
-        recallBtn.OnClick = () => Send(".beelz tp");
-        TooltipHover.Attach(recallBtn.GameObject, "Recall your summons to you (.beelz tp).");
 
         var clearBtn = UIFactory.CreateButton(row, "BeelzSummonsClear", "Clear");
         UIFactory.SetLayoutElement(clearBtn.GameObject,

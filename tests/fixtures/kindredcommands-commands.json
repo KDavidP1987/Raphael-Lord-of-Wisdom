@@ -1,0 +1,3420 @@
+{
+  "mod": "KindredCommands",
+  "source": "Raphael Lord of Wisdom/LearningMods/KindredCommands-main",
+  "sourceVersion": "2.5.8",
+  "sourceCommit": null,
+  "generatorVersion": 1,
+  "commands": [
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "afk",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "AFK animation, locking WASD movement. Use again to remove.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "AFKCommand",
+      "file": "Commands/AFKCommands.cs",
+      "line": 9
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "assignsteamID",
+      "shortHand": "asid",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Assigns a steamID to a player",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        },
+        {
+          "name": "steamid",
+          "type": "ulong",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AssignSteamID",
+      "file": "Commands/InfoCommands.cs",
+      "line": 106
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "autoadminauth",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Adds/Removes yourself from the auto AdminAuth list",
+      "params": [],
+      "verbDispatch": false,
+      "method": "AddAutoAuthAdmin",
+      "file": "Commands/StaffCommands.cs",
+      "line": 134
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "bloodpotion",
+      "shortHand": "bp",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Creates a Potion with specified Blood Type, Quality, and amount",
+      "params": [
+        {
+          "name": "type",
+          "type": "BloodType",
+          "optional": true,
+          "default": "expr:BloodType.Frailed"
+        },
+        {
+          "name": "quality",
+          "type": "float",
+          "optional": true,
+          "default": 100
+        },
+        {
+          "name": "quantity",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GiveBloodPotionCommand",
+      "file": "Commands/BloodCommands.cs",
+      "line": 13
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "bloodpotionmix",
+      "shortHand": "bpm",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Creates a Potion with two specified Blood Types, Qualities, secondary trait option and amount",
+      "params": [
+        {
+          "name": "primaryType",
+          "type": "BloodType",
+          "optional": true,
+          "default": "expr:BloodType.Frailed"
+        },
+        {
+          "name": "primaryQuality",
+          "type": "float",
+          "optional": true,
+          "default": 100
+        },
+        {
+          "name": "secondaryType",
+          "type": "BloodType",
+          "optional": true,
+          "default": "expr:BloodType.Frailed"
+        },
+        {
+          "name": "secondaryQuality",
+          "type": "float",
+          "optional": true,
+          "default": 100
+        },
+        {
+          "name": "secondaryTrait",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        },
+        {
+          "name": "quantity",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GiveBloodMerlotCommand",
+      "file": "Commands/BloodCommands.cs",
+      "line": 39
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "buff",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "buff",
+          "type": "BuffInput",
+          "optional": false
+        },
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "duration",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "immortal",
+          "type": "bool",
+          "optional": true,
+          "default": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BuffCommand",
+      "file": "Commands/BuffCommand.cs",
+      "line": 38
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "checklevel",
+      "shortHand": "cl",
+      "adminOnly": false,
+      "usage": null,
+      "description": "Check the level of a player",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "CheckLevel",
+      "file": "Commands/InfoCommands.cs",
+      "line": 25
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "claim",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Claims the Castle Heart you are standing next to for a specified player",
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "CastleClaim",
+      "file": "Commands/CastleCommands.cs",
+      "line": 21
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "clanplotsowned",
+      "shortHand": "cpo",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reports the number of plots owned by each clan",
+      "params": [
+        {
+          "name": "page",
+          "type": "int?",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ClanPlotsOwned",
+      "file": "Commands/CastleCommands.cs",
+      "line": 344
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "cleancontainerlessshards",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Destroys all items that are not in a container",
+      "params": [],
+      "verbDispatch": false,
+      "method": "CleanContainerlessShards",
+      "file": "Commands/MiscCommands.cs",
+      "line": 37
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "customspawn",
+      "shortHand": "cspwn",
+      "adminOnly": true,
+      "usage": "customspawn <Prefab Name> [<BloodType> <BloodQuality> <Consumable(\"true/false\")> <Duration> <level>]",
+      "description": "Spawns a modified NPC at your current position.",
+      "params": [
+        {
+          "name": "unit",
+          "type": "CharacterUnit",
+          "optional": false
+        },
+        {
+          "name": "type",
+          "type": "BloodType",
+          "optional": true,
+          "default": "expr:BloodType.Frailed"
+        },
+        {
+          "name": "quality",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "consumable",
+          "type": "bool",
+          "optional": true,
+          "default": true
+        },
+        {
+          "name": "duration",
+          "type": "int",
+          "optional": true,
+          "default": -1
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "CustomSpawnNpc",
+      "file": "Commands/SpawnNpcCommands.cs",
+      "line": 81
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "customspawnat",
+      "shortHand": "cspwnat",
+      "adminOnly": true,
+      "usage": "customspawnat <Prefab Name> <X> <Z> <Y> [<BloodType> <BloodQuality> <Consumable(\"true/false\")> <Duration> <level>]",
+      "description": "Spawns a modified NPC at a specific location.",
+      "params": [
+        {
+          "name": "unit",
+          "type": "CharacterUnit",
+          "optional": false
+        },
+        {
+          "name": "x",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "y",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "z",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "type",
+          "type": "BloodType",
+          "optional": true,
+          "default": "expr:BloodType.Frailed"
+        },
+        {
+          "name": "quality",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "consumable",
+          "type": "bool",
+          "optional": true,
+          "default": true
+        },
+        {
+          "name": "duration",
+          "type": "int",
+          "optional": true,
+          "default": -1
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "CustomSpawnNpcAt",
+      "file": "Commands/SpawnNpcCommands.cs",
+      "line": 88
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "debuff",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "buff",
+          "type": "BuffInput",
+          "optional": false
+        },
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DebuffCommand",
+      "file": "Commands/BuffCommand.cs",
+      "line": 48
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "despawnnpc",
+      "shortHand": "dspwn",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Despawns CHAR_ npcs",
+      "params": [
+        {
+          "name": "character",
+          "type": "CharacterUnit",
+          "optional": false
+        },
+        {
+          "name": "radius",
+          "type": "float",
+          "optional": true,
+          "default": 25
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DespawnNpc",
+      "file": "Commands/SpawnNpcCommands.cs",
+      "line": 164
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "everyonedaywalker",
+      "shortHand": "ed",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Toggles daywalker for everyone",
+      "params": [],
+      "verbDispatch": false,
+      "method": "EveryoneDaywalker",
+      "file": "Commands/MiscCommands.cs",
+      "line": 77
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "fly",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Toggle fly mode for a player.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Fly",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 261
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "flydown",
+      "shortHand": "fv",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set fly height down a floor",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Down",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 295
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "flyheight",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Sets the fly height for the user",
+      "params": [
+        {
+          "name": "height",
+          "type": "float",
+          "optional": true,
+          "default": 30
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetFlyHeight",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 327
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "flylevel",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set fly height to a specific level",
+      "params": [
+        {
+          "name": "floor",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Floor",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 312
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "flyobstacleheight",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set the height to fly above any obstacles",
+      "params": [
+        {
+          "name": "height",
+          "type": "float",
+          "optional": true,
+          "default": 7
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetFlyObstacleHeight",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 337
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "flyup",
+      "shortHand": "f^",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set fly height up a floor",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Up",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 278
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "forcerespawn",
+      "shortHand": "fr",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Sets the chain transition time for nearby spawn chains to now to force them to respawn if they can",
+      "params": [
+        {
+          "name": "range",
+          "type": "float",
+          "optional": true,
+          "default": 10
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChainTransition",
+      "file": "Commands/MiscCommands.cs",
+      "line": 14
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "freezeheart",
+      "shortHand": "Freezes the time left on a castle heart, keeping it from ever decaying",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [],
+      "verbDispatch": false,
+      "method": "NeverDecay",
+      "file": "Commands/CastleCommands.cs",
+      "line": 265
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "frozenhearts",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Lists all the castle hearts that will never decay",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "NeverDecayList",
+      "file": "Commands/CastleCommands.cs",
+      "line": 287
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "give",
+      "shortHand": "g",
+      "adminOnly": true,
+      "usage": "<Prefab GUID or name> [quantity=1]",
+      "description": "Gives the specified item to the player",
+      "params": [
+        {
+          "name": "item",
+          "type": "ItemParameter",
+          "optional": false
+        },
+        {
+          "name": "quantity",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GiveItem",
+      "file": "Commands/GiveItemCommands.cs",
+      "line": 9
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "globalbatvision",
+      "shortHand": "gbv",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Allows players to see entities while in batform",
+      "params": [],
+      "verbDispatch": false,
+      "method": "BatVision",
+      "file": "Commands/MiscCommands.cs",
+      "line": 95
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "god",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GodCommand",
+      "file": "Commands/GodCommands.cs",
+      "line": 16
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "idcheck",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "searches for a player by steamid",
+      "params": [
+        {
+          "name": "steamid",
+          "type": "ulong",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SteamIdCheck",
+      "file": "Commands/InfoCommands.cs",
+      "line": 90
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "incomingdecay",
+      "shortHand": "incd",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reports which territories have the least time remaining",
+      "params": [],
+      "verbDispatch": false,
+      "method": "PlotsDecayingNext",
+      "file": "Commands/CastleCommands.cs",
+      "line": 95
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "killplayer",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Kills the target player",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "KillPlayer",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 422
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "listbuffs",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Lists the buffs a player has",
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ListBuffsCommand",
+      "file": "Commands/BuffCommand.cs",
+      "line": 56
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "longestofflinecastles",
+      "shortHand": "loc",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Check when a player was last online.",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "LastOnlineAll",
+      "file": "Commands/InfoCommands.cs",
+      "line": 115
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "mortal",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "MortalCommand",
+      "file": "Commands/GodCommands.cs",
+      "line": 42
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "openplots",
+      "shortHand": "op",
+      "adminOnly": false,
+      "usage": null,
+      "description": "Reports all the territories with open and/or decaying plots.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "OpenPlots",
+      "file": "Commands/CastleCommands.cs",
+      "line": 142
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "pace",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Pace at the closest NPC near you",
+      "params": [],
+      "verbDispatch": false,
+      "method": "TogglePace",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 350
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "ping",
+      "shortHand": "p",
+      "adminOnly": false,
+      "usage": null,
+      "description": "Shows your latency.",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PingCommand",
+      "file": "Commands/PingCommands.cs",
+      "line": 8
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "playerheartcount",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Set the number of hearts a player has",
+      "params": [
+        {
+          "name": "amount",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PlayerHeartCount",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 437
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "playerinfo",
+      "shortHand": "pinfo",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Displays information about a player.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PlayerInfo",
+      "file": "Commands/InfoCommands.cs",
+      "line": 33
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "plotinfo",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reports information about the territory specified",
+      "params": [
+        {
+          "name": "territoryIndex",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PlotInfo",
+      "file": "Commands/CastleCommands.cs",
+      "line": 429
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "plotsowned",
+      "shortHand": "po",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reports the number of plots owned by each player",
+      "params": [
+        {
+          "name": "page",
+          "type": "int?",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PlotsOwned",
+      "file": "Commands/CastleCommands.cs",
+      "line": 223
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "reloadadmin",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reloads the admin list.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ReloadCommand",
+      "file": "Commands/StaffCommands.cs",
+      "line": 75
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "reloadstaff",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reloads the staff config.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ReloadStaff",
+      "file": "Commands/StaffCommands.cs",
+      "line": 46
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "relocatereset",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "clear the timer for relocation on a castle",
+      "params": [],
+      "verbDispatch": false,
+      "method": "RelocateReset",
+      "file": "Commands/CastleCommands.cs",
+      "line": 47
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "removestaff",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Removes someones staff rank.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveStaff",
+      "file": "Commands/StaffCommands.cs",
+      "line": 63
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "rename",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Rename another player.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        },
+        {
+          "name": "newName",
+          "type": "NewName",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RenameOther",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 19
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "rename",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Rename yourself.",
+      "params": [
+        {
+          "name": "newName",
+          "type": "NewName",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RenameMe",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 26
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "resetcooldown",
+      "shortHand": "cd",
+      "adminOnly": true,
+      "usage": "Instantly cooldown all ability & skills for the player.",
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ResetCooldownCommand",
+      "file": "Commands/CooldownCommands.cs",
+      "line": 11
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "revealmap",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reveal the map for a player.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RevealMap",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 220
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "revealmapforallplayers",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reveal the map for all players.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "RevealMapForAllPlayers",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 233
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "revive",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ReviveCommand",
+      "file": "Commands/ReviveCommands.cs",
+      "line": 12
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "revivetarget",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [],
+      "verbDispatch": false,
+      "method": "ReviveTargetCommand",
+      "file": "Commands/ReviveCommands.cs",
+      "line": 23
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "setstaff",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Sets someones staff rank.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        },
+        {
+          "name": "rank",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AddStaff",
+      "file": "Commands/StaffCommands.cs",
+      "line": 53
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "settime",
+      "shortHand": "st",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Sets the game time to the day and hour",
+      "params": [
+        {
+          "name": "day",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "hour",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetTime",
+      "file": "Commands/MiscCommands.cs",
+      "line": 25
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "spawnban",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Shows which GUIDs are banned and why.",
+      "params": [
+        {
+          "name": "character",
+          "type": "CharacterUnit",
+          "optional": false
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SpawnBan",
+      "file": "Commands/SpawnNpcCommands.cs",
+      "line": 201
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "spawnhorse",
+      "shortHand": "sh",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Spawns a horse",
+      "params": [
+        {
+          "name": "speed",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "acceleration",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "rotation",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "num",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SpawnHorse",
+      "file": "Commands/SpawnNpcCommands.cs",
+      "line": 179
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "spawnnpc",
+      "shortHand": "spwn",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Spawns CHAR_ npcs",
+      "params": [
+        {
+          "name": "character",
+          "type": "CharacterUnit",
+          "optional": false
+        },
+        {
+          "name": "count",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": true,
+          "default": -1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SpawnNpc",
+      "file": "Commands/SpawnNpcCommands.cs",
+      "line": 41
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "spectate",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Toggles spectate on the target player",
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "returnToStart",
+          "type": "bool",
+          "optional": true,
+          "default": true
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SpectateCommand",
+      "file": "Commands/GodCommands.cs",
+      "line": 57
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "staff",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Shows online Staff members.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "WhoIsOnline",
+      "file": "Commands/StaffCommands.cs",
+      "line": 16
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "staydown",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Downs the target player until they get revived- respawns will not get them up.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PermDownPlayer",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 430
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "swapplayers",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Switches the steamIDs of two players.",
+      "params": [
+        {
+          "name": "player1",
+          "type": "FoundPlayer",
+          "optional": false
+        },
+        {
+          "name": "player2",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SwapPlayers",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 83
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "teleport",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Teleport a player to a specified coordinate.",
+      "params": [
+        {
+          "name": "x",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "y",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "z",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Teleport",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 251
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "teleporthorse",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "teleports horses to you",
+      "params": [
+        {
+          "name": "radius",
+          "type": "float",
+          "optional": true,
+          "default": 5
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TeleportHorse",
+      "file": "Commands/SpawnNpcCommands.cs",
+      "line": 208
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "teleporttoplot",
+      "shortHand": "tpp",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Teleports you to the castle heart of the specified territory",
+      "params": [
+        {
+          "name": "territoryIndex",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TeleportToPlot",
+      "file": "Commands/CastleCommands.cs",
+      "line": 390
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "thawheart",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Removes the frozen time from a castle heart and resumes ticking down",
+      "params": [],
+      "verbDispatch": false,
+      "method": "NeverDecayRemove",
+      "file": "Commands/CastleCommands.cs",
+      "line": 321
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "time",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Reports the server time.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "GetTimeCommand",
+      "file": "Commands/AnnounceCommands.cs",
+      "line": 9
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "toggleadmin",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Adds/Removes a player to the admin list, authing and deauthing.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ToggleAdminCommand",
+      "file": "Commands/StaffCommands.cs",
+      "line": 83
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "unbindplayer",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Unbinds a SteamID from a player's save.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "UnbindPlayer",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 69
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "unlock",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Unlocks a player's skills, journal, etc.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "UnlockPlayer",
+      "file": "Commands/PlayerCommands.cs",
+      "line": 103
+    },
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "whereami",
+      "shortHand": "wai",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Gives your current position",
+      "params": [],
+      "verbDispatch": false,
+      "method": "WhereAmI",
+      "file": "Commands/InfoCommands.cs",
+      "line": 18
+    },
+    {
+      "group": "announce",
+      "groupShort": null,
+      "name": "add",
+      "shortHand": "a",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Announce something to the server at a set time in server time.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "time",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "oneTime",
+          "type": "bool",
+          "optional": true,
+          "default": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AnnounceCommand",
+      "file": "Commands/AnnounceCommands.cs",
+      "line": 20
+    },
+    {
+      "group": "announce",
+      "groupShort": null,
+      "name": "change",
+      "shortHand": "c",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Change an existing announcement.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "time",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "oneTime",
+          "type": "bool",
+          "optional": true,
+          "default": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChangeAnnouncementCommand",
+      "file": "Commands/AnnounceCommands.cs",
+      "line": 55
+    },
+    {
+      "group": "announce",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": "l",
+      "adminOnly": true,
+      "usage": null,
+      "description": "List all announcements.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListAnnouncementsCommand",
+      "file": "Commands/AnnounceCommands.cs",
+      "line": 62
+    },
+    {
+      "group": "announce",
+      "groupShort": null,
+      "name": "remove",
+      "shortHand": "r",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove an announcement.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveAnnouncementCommand",
+      "file": "Commands/AnnounceCommands.cs",
+      "line": 94
+    },
+    {
+      "group": "bloodbound",
+      "groupShort": "blb",
+      "name": "add",
+      "shortHand": "a",
+      "adminOnly": true,
+      "usage": "<Prefab GUID or name>",
+      "description": "Adds Blood-Bound attribute to items",
+      "params": [
+        {
+          "name": "descriptor",
+          "type": "BloodBoundItemParameter",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AddBloodBound",
+      "file": "Commands/BloodBound/BloodBoundCommands.cs",
+      "line": 16
+    },
+    {
+      "group": "bloodbound",
+      "groupShort": "blb",
+      "name": "remove",
+      "shortHand": "r",
+      "adminOnly": true,
+      "usage": "<Prefab GUID or name>",
+      "description": "Removes Blood-Bound attribute from items",
+      "params": [
+        {
+          "name": "descriptor",
+          "type": "BloodBoundItemParameter",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveBloodBound",
+      "file": "Commands/BloodBound/BloodBoundCommands.cs",
+      "line": 35
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "attackspeed",
+      "shortHand": "as",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "speed",
+          "type": "float",
+          "optional": true,
+          "default": 10
+        },
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AttackSpeed",
+      "file": "Commands/GodCommands.cs",
+      "line": 157
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "batvision",
+      "shortHand": "bv",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BatVision",
+      "file": "Commands/GodCommands.cs",
+      "line": 287
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "damage",
+      "shortHand": "d",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "damage",
+          "type": "float",
+          "optional": true,
+          "default": 10000
+        },
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Damage",
+      "file": "Commands/GodCommands.cs",
+      "line": 183
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "fly",
+      "shortHand": "f",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Fly",
+      "file": "Commands/GodCommands.cs",
+      "line": 303
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "health",
+      "shortHand": "h",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "health",
+          "type": "int",
+          "optional": true,
+          "default": 100000
+        },
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Health",
+      "file": "Commands/GodCommands.cs",
+      "line": 209
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "immaterial",
+      "shortHand": "i",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Immaterial",
+      "file": "Commands/GodCommands.cs",
+      "line": 389
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "invincible",
+      "shortHand": "inv",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Invincible",
+      "file": "Commands/GodCommands.cs",
+      "line": 406
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "noaggro",
+      "shortHand": "na",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "NoAggro",
+      "file": "Commands/GodCommands.cs",
+      "line": 321
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "noblooddrain",
+      "shortHand": "nb",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "NoBlooddrain",
+      "file": "Commands/GodCommands.cs",
+      "line": 338
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "nocooldown",
+      "shortHand": "nc",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "NoCooldown",
+      "file": "Commands/GodCommands.cs",
+      "line": 355
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "nodurability",
+      "shortHand": "nd",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "NoDurability",
+      "file": "Commands/GodCommands.cs",
+      "line": 372
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "players",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "provides a list of all boosted players",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListBoostedPlayers",
+      "file": "Commands/GodCommands.cs",
+      "line": 461
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "removeattackspeed",
+      "shortHand": "ras",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveAttackSpeed",
+      "file": "Commands/GodCommands.cs",
+      "line": 168
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "removedamage",
+      "shortHand": "rd",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveDamage",
+      "file": "Commands/GodCommands.cs",
+      "line": 194
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "removehealth",
+      "shortHand": "rh",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveHealth",
+      "file": "Commands/GodCommands.cs",
+      "line": 220
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "removespeed",
+      "shortHand": "rs",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveSpeed",
+      "file": "Commands/GodCommands.cs",
+      "line": 246
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "removeyield",
+      "shortHand": "ry",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveYield",
+      "file": "Commands/GodCommands.cs",
+      "line": 272
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "shrouded",
+      "shortHand": "sh",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Shrouded",
+      "file": "Commands/GodCommands.cs",
+      "line": 423
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "speed",
+      "shortHand": "s",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "speed",
+          "type": "float",
+          "optional": true,
+          "default": "expr:DEFAULT_FAST_SPEED"
+        },
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Speed",
+      "file": "Commands/GodCommands.cs",
+      "line": 235
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "state",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BoostState",
+      "file": "Commands/GodCommands.cs",
+      "line": 90
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "suninvulnerable",
+      "shortHand": "suninv",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SunInvulnerable",
+      "file": "Commands/GodCommands.cs",
+      "line": 440
+    },
+    {
+      "group": "boost",
+      "groupShort": "bst",
+      "name": "yield",
+      "shortHand": "y",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "yield",
+          "type": "float",
+          "optional": true,
+          "default": 10
+        },
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Yield",
+      "file": "Commands/GodCommands.cs",
+      "line": 261
+    },
+    {
+      "group": "boss",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": "ls",
+      "adminOnly": false,
+      "usage": null,
+      "description": "Lists all locked bosses.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListLockedBossesCommand",
+      "file": "Commands/BossCommands.cs",
+      "line": 183
+    },
+    {
+      "group": "boss",
+      "groupShort": null,
+      "name": "lock",
+      "shortHand": "l",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Locks the specified boss from spawning.",
+      "params": [
+        {
+          "name": "boss",
+          "type": "FoundVBlood",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "LockBossCommand",
+      "file": "Commands/BossCommands.cs",
+      "line": 144
+    },
+    {
+      "group": "boss",
+      "groupShort": null,
+      "name": "lockprimal",
+      "shortHand": "lp",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Locks the specified primal boss from spawning.",
+      "params": [
+        {
+          "name": "primalBoss",
+          "type": "FoundPrimal",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "LockPrimalBossCommand",
+      "file": "Commands/BossCommands.cs",
+      "line": 163
+    },
+    {
+      "group": "boss",
+      "groupShort": null,
+      "name": "modify",
+      "shortHand": "m",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Modify the level of the specified nearest boss.",
+      "params": [
+        {
+          "name": "boss",
+          "type": "FoundVBlood",
+          "optional": false
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ModifyBossCommand",
+      "file": "Commands/BossCommands.cs",
+      "line": 17
+    },
+    {
+      "group": "boss",
+      "groupShort": null,
+      "name": "modifyprimal",
+      "shortHand": "mp",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Modify the level of the specified nearest primal boss.",
+      "params": [
+        {
+          "name": "boss",
+          "type": "FoundPrimal",
+          "optional": false
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ModifyPrimalBossCommand",
+      "file": "Commands/BossCommands.cs",
+      "line": 52
+    },
+    {
+      "group": "boss",
+      "groupShort": null,
+      "name": "teleportto",
+      "shortHand": "tt",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Teleports you to the named boss. (If multiple specify the number of which one)",
+      "params": [
+        {
+          "name": "boss",
+          "type": "FoundVBlood",
+          "optional": false
+        },
+        {
+          "name": "whichOne",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "TeleportToBossCommand",
+      "file": "Commands/BossCommands.cs",
+      "line": 87
+    },
+    {
+      "group": "boss",
+      "groupShort": null,
+      "name": "unlock",
+      "shortHand": "u",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Unlocks the specified boss allowing it to spawn.",
+      "params": [
+        {
+          "name": "boss",
+          "type": "FoundVBlood",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "UnlockBossCommand",
+      "file": "Commands/BossCommands.cs",
+      "line": 154
+    },
+    {
+      "group": "boss",
+      "groupShort": null,
+      "name": "unlockprimal",
+      "shortHand": "up",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Unlocks the specified primal boss allowing it to spawn.",
+      "params": [
+        {
+          "name": "primalBoss",
+          "type": "FoundPrimal",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "UnlockPrimalBossCommand",
+      "file": "Commands/BossCommands.cs",
+      "line": 173
+    },
+    {
+      "group": "clan",
+      "groupShort": "c",
+      "name": "add",
+      "shortHand": "a",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Adds a player to a clan",
+      "params": [
+        {
+          "name": "playerToAdd",
+          "type": "OnlinePlayer",
+          "optional": false
+        },
+        {
+          "name": "clanName",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AddToClan",
+      "file": "Commands/ClanCommands.cs",
+      "line": 18
+    },
+    {
+      "group": "clan",
+      "groupShort": "c",
+      "name": "castles",
+      "shortHand": "c",
+      "adminOnly": true,
+      "usage": null,
+      "description": "List castles owned by a clan",
+      "params": [
+        {
+          "name": "clanName",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ListClanCastles",
+      "file": "Commands/ClanCommands.cs",
+      "line": 475
+    },
+    {
+      "group": "clan",
+      "groupShort": "c",
+      "name": "changerole",
+      "shortHand": "cr",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Change clan role of a player",
+      "params": [
+        {
+          "name": "player",
+          "type": "OnlinePlayer",
+          "optional": false
+        },
+        {
+          "name": "newRole",
+          "type": "ClanRoleEnum",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChangeClanRole",
+      "file": "Commands/ClanCommands.cs",
+      "line": 350
+    },
+    {
+      "group": "clan",
+      "groupShort": "c",
+      "name": "kick",
+      "shortHand": "k",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Removes a player from a clan",
+      "params": [
+        {
+          "name": "playerToRemove",
+          "type": "OnlinePlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemoveFromClan",
+      "file": "Commands/ClanCommands.cs",
+      "line": 58
+    },
+    {
+      "group": "clan",
+      "groupShort": "c",
+      "name": "list",
+      "shortHand": "l",
+      "adminOnly": false,
+      "usage": null,
+      "description": "List clans on the server",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ListClans",
+      "file": "Commands/ClanCommands.cs",
+      "line": 289
+    },
+    {
+      "group": "clan",
+      "groupShort": "c",
+      "name": "members",
+      "shortHand": "m",
+      "adminOnly": false,
+      "usage": null,
+      "description": "List members",
+      "params": [
+        {
+          "name": "clanName",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ListClanMembers",
+      "file": "Commands/ClanCommands.cs",
+      "line": 325
+    },
+    {
+      "group": "clan",
+      "groupShort": "c",
+      "name": "rename",
+      "shortHand": "rn",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Rename a clan",
+      "params": [
+        {
+          "name": "oldClanName",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "newClanName",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "leaderName",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RenameClan",
+      "file": "Commands/ClanCommands.cs",
+      "line": 367
+    },
+    {
+      "group": "dropitems",
+      "groupShort": "Commands for managing dropped items.",
+      "name": "clear",
+      "shortHand": "c",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Clears all dropped items within a radius of the player.",
+      "params": [
+        {
+          "name": "radius",
+          "type": "float",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ClearDroppedItems",
+      "file": "Commands/DroppedItemCommands.cs",
+      "line": 51
+    },
+    {
+      "group": "dropitems",
+      "groupShort": "Commands for managing dropped items.",
+      "name": "clearall",
+      "shortHand": "ca",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Clears all dropped items in the world.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ClearAllDroppedItems",
+      "file": "Commands/DroppedItemCommands.cs",
+      "line": 59
+    },
+    {
+      "group": "dropitems",
+      "groupShort": "Commands for managing dropped items.",
+      "name": "clearallshards",
+      "shortHand": "cas",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Clears all dropped shards in the world.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ClearAllDroppedShards",
+      "file": "Commands/DroppedItemCommands.cs",
+      "line": 74
+    },
+    {
+      "group": "dropitems",
+      "groupShort": "Commands for managing dropped items.",
+      "name": "clearshards",
+      "shortHand": "cs",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Clears all dropped shards within a radius of the player.",
+      "params": [
+        {
+          "name": "radius",
+          "type": "float",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ClearDroppedShards",
+      "file": "Commands/DroppedItemCommands.cs",
+      "line": 66
+    },
+    {
+      "group": "dropitems",
+      "groupShort": "Commands for managing dropped items.",
+      "name": "lifetime",
+      "shortHand": "lt",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Sets the lifetime of dropped items in seconds.",
+      "params": [
+        {
+          "name": "seconds",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetDroppedItemLifetime",
+      "file": "Commands/DroppedItemCommands.cs",
+      "line": 10
+    },
+    {
+      "group": "dropitems",
+      "groupShort": "Commands for managing dropped items.",
+      "name": "lifetimewhendisabled",
+      "shortHand": "ltwd",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Sets the lifetime of dropped items when disabled in seconds.",
+      "params": [
+        {
+          "name": "seconds",
+          "type": "int",
+          "optional": true,
+          "default": 300
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetDroppedItemLifetimeWhenDisabled",
+      "file": "Commands/DroppedItemCommands.cs",
+      "line": 28
+    },
+    {
+      "group": "dropitems",
+      "groupShort": "Commands for managing dropped items.",
+      "name": "removelifetime",
+      "shortHand": "rlt",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Removes the lifetime of dropped items.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "RemoveDroppedItemLifetime",
+      "file": "Commands/DroppedItemCommands.cs",
+      "line": 21
+    },
+    {
+      "group": "dropitems",
+      "groupShort": "Commands for managing dropped items.",
+      "name": "shardlifetime",
+      "shortHand": "slt",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Sets the lifetime of dropped shards when disabled in seconds.",
+      "params": [
+        {
+          "name": "seconds",
+          "type": "int",
+          "optional": true,
+          "default": 3600
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetDroppedShardLifetimeWhenDisabled",
+      "file": "Commands/DroppedItemCommands.cs",
+      "line": 39
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "break",
+      "shortHand": "b",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Breaks all gear.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BreakGearCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 28
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "breakall",
+      "shortHand": "ba",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Breaks all gear within a range.",
+      "params": [
+        {
+          "name": "range",
+          "type": "float",
+          "optional": true,
+          "default": 10
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BreakAllCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 51
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "destroyallshards",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Destroys all soulshards in the world, containers, and inventories",
+      "params": [],
+      "verbDispatch": false,
+      "method": "DestroyAllShards",
+      "file": "Commands/GearCommands.cs",
+      "line": 227
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "headgear",
+      "shortHand": "hg",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Toggles headgear loss on death.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "HeadgearBloodBoundCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 66
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "repair",
+      "shortHand": "r",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Repairs all gear.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RepairCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 19
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "repairall",
+      "shortHand": "ra",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Repairs all gear within a range.",
+      "params": [
+        {
+          "name": "range",
+          "type": "float",
+          "optional": true,
+          "default": 10
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RepairAllCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 36
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "soulsharddurability",
+      "shortHand": "ssd",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Sets the durability on all soulshards in the player's inventory to a specified amount",
+      "params": [
+        {
+          "name": "durability",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ShardDurabilityCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 168
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "soulsharddurabilitytime",
+      "shortHand": "ssdt",
+      "adminOnly": true,
+      "usage": null,
+      "description": "How many seconds will soulshards last before they break",
+      "params": [
+        {
+          "name": "seconds",
+          "type": "int?",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ShardDurabilityTimeCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 208
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "soulshardflight",
+      "shortHand": "ssf",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Toggles soulshard flight restrictions.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "SoulshardsFlightRestrictedCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 79
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "soulshardlimit",
+      "shortHand": "ssl",
+      "adminOnly": true,
+      "usage": null,
+      "description": "How many soulshards can be dropped before a boss won't drop a new one if the relic Unique setting is active.",
+      "params": [
+        {
+          "name": "limit",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "shardType",
+          "type": "RelicType",
+          "optional": true,
+          "default": "expr:RelicType.None"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SoulshardLimitCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 108
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "soulshardstatus",
+      "shortHand": "sss",
+      "adminOnly": false,
+      "usage": null,
+      "description": "Reports the current status of soulshards.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "SoulshardStatusCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 126
+    },
+    {
+      "group": "gear",
+      "groupShort": null,
+      "name": "togglesoulsharddropmanagement",
+      "shortHand": "tssdm",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Toggles whether KindredCommands will do soulshard drop management.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ToggleSoulshardDropManagementCommand",
+      "file": "Commands/GearCommands.cs",
+      "line": 95
+    },
+    {
+      "group": "prisoner",
+      "groupShort": null,
+      "name": "feed",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Change one of the feed items that isn't gruel",
+      "params": [
+        {
+          "name": "feed",
+          "type": "FoundPrisonerFeed",
+          "optional": false
+        },
+        {
+          "name": "healthChangeMin",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "healthChangeMax",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "miseryChangeMin",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "miseryChangeMax",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "bloodQualityChangeMin",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "bloodQualityChangeMax",
+          "type": "float",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChangeFeed",
+      "file": "Commands/PrisonerCommands.cs",
+      "line": 43
+    },
+    {
+      "group": "prisoner",
+      "groupShort": null,
+      "name": "feeddefault",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Restores a feed prisoner to default settings",
+      "params": [
+        {
+          "name": "feed",
+          "type": "FoundPrisonerFeed",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DefaultFeed",
+      "file": "Commands/PrisonerCommands.cs",
+      "line": 53
+    },
+    {
+      "group": "prisoner",
+      "groupShort": null,
+      "name": "feedsettings",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show settings of a feed prisoner",
+      "params": [
+        {
+          "name": "feed",
+          "type": "FoundPrisonerFeed",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "FeedSettings",
+      "file": "Commands/PrisonerCommands.cs",
+      "line": 60
+    },
+    {
+      "group": "prisoner",
+      "groupShort": null,
+      "name": "gruel",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "adjust gruel details",
+      "params": [
+        {
+          "name": "chance",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "min",
+          "type": "float",
+          "optional": false
+        },
+        {
+          "name": "max",
+          "type": "float",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AdjustGruel",
+      "file": "Commands/PrisonerCommands.cs",
+      "line": 13
+    },
+    {
+      "group": "prisoner",
+      "groupShort": null,
+      "name": "gruelsettings",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "show current gruel settings",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ShowGruelSettings",
+      "file": "Commands/PrisonerCommands.cs",
+      "line": 33
+    },
+    {
+      "group": "prisoner",
+      "groupShort": null,
+      "name": "grueltransform",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "set the transform for gruel",
+      "params": [
+        {
+          "name": "prefab",
+          "type": "CharacterUnit",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GruelTransform",
+      "file": "Commands/PrisonerCommands.cs",
+      "line": 26
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "allow",
+      "shortHand": "a",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Allows the specified player to enter gated regions.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AllowPlayerCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 99
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "ban",
+      "shortHand": "b",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Bans the specified player from entering a region.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        },
+        {
+          "name": "region",
+          "type": "FoundRegion",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BanPlayerCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 106
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "gate",
+      "shortHand": "g",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Gates the specified region.",
+      "params": [
+        {
+          "name": "region",
+          "type": "FoundRegion",
+          "optional": false
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GateRegionCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 40
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": "l",
+      "adminOnly": false,
+      "usage": null,
+      "description": "Lists all locked and gated regions.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListRegionsCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 56
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "listbans",
+      "shortHand": "lb",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Lists all players banned from entering a region.",
+      "params": [
+        {
+          "name": "region",
+          "type": "FoundRegion",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ListBansCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 122
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "listplayers",
+      "shortHand": "lp",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Lists all players allowed to enter disallowed regions.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListPlayersCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 150
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "lock",
+      "shortHand": "l",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Locks the specified region.",
+      "params": [
+        {
+          "name": "region",
+          "type": "FoundRegion",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "LockRegionCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 14
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "remove",
+      "shortHand": "r",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Removes the specified player from the allowed list.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RemovePlayerCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 143
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "unban",
+      "shortHand": "ub",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Unbans the specified player from entering a region.",
+      "params": [
+        {
+          "name": "player",
+          "type": "FoundPlayer",
+          "optional": false
+        },
+        {
+          "name": "region",
+          "type": "FoundRegion",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "UnbanPlayerCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 114
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "ungate",
+      "shortHand": "ug",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Ungates the specified region.",
+      "params": [
+        {
+          "name": "region",
+          "type": "FoundRegion",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "UngateRegionCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 47
+    },
+    {
+      "group": "region",
+      "groupShort": null,
+      "name": "unlock",
+      "shortHand": "ul",
+      "adminOnly": true,
+      "usage": null,
+      "description": "Unlocks the specified region.",
+      "params": [
+        {
+          "name": "region",
+          "type": "FoundRegion",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "UnlockRegionCommand",
+      "file": "Commands/RegionCommands.cs",
+      "line": 27
+    },
+    {
+      "group": "search",
+      "groupShort": null,
+      "name": "item",
+      "shortHand": "i",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "search",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SearchItem",
+      "file": "Commands/SearchCommands.cs",
+      "line": 13
+    },
+    {
+      "group": "search",
+      "groupShort": null,
+      "name": "npc",
+      "shortHand": "n",
+      "adminOnly": true,
+      "usage": null,
+      "description": null,
+      "params": [
+        {
+          "name": "search",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SearchNPC",
+      "file": "Commands/SearchCommands.cs",
+      "line": 62
+    },
+    {
+      "group": "servant",
+      "groupShort": null,
+      "name": "add",
+      "shortHand": "a",
+      "adminOnly": true,
+      "usage": "Adds a servant to an empty coffin",
+      "description": null,
+      "params": [
+        {
+          "name": "character",
+          "type": "CharacterUnit",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AddServant",
+      "file": "Commands/ServantCommands.cs",
+      "line": 243
+    },
+    {
+      "group": "servant",
+      "groupShort": null,
+      "name": "change",
+      "shortHand": "ch",
+      "adminOnly": true,
+      "usage": "Changes the servant in the coffin to a different servant",
+      "description": null,
+      "params": [
+        {
+          "name": "character",
+          "type": "CharacterUnit",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChangeServant",
+      "file": "Commands/ServantCommands.cs",
+      "line": 128
+    },
+    {
+      "group": "servant",
+      "groupShort": null,
+      "name": "completemission",
+      "shortHand": "cm",
+      "adminOnly": true,
+      "usage": "Completes the mission of the servant in the coffin",
+      "description": null,
+      "params": [],
+      "verbDispatch": false,
+      "method": "CompleteMissionServant",
+      "file": "Commands/ServantCommands.cs",
+      "line": 212
+    },
+    {
+      "group": "servant",
+      "groupShort": null,
+      "name": "convert",
+      "shortHand": "c",
+      "adminOnly": true,
+      "usage": "Instantly converts a servant in a coffin",
+      "description": null,
+      "params": [],
+      "verbDispatch": false,
+      "method": "ConvertServant",
+      "file": "Commands/ServantCommands.cs",
+      "line": 53
+    },
+    {
+      "group": "servant",
+      "groupShort": null,
+      "name": "heal",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Cures the servant of injuries",
+      "params": [],
+      "verbDispatch": false,
+      "method": "HealServant",
+      "file": "Commands/ServantCommands.cs",
+      "line": 162
+    },
+    {
+      "group": "servant",
+      "groupShort": null,
+      "name": "perfect",
+      "shortHand": "p",
+      "adminOnly": true,
+      "usage": "Makes the servant from the coffin perfect expertise",
+      "description": null,
+      "params": [],
+      "verbDispatch": false,
+      "method": "PerfectServant",
+      "file": "Commands/ServantCommands.cs",
+      "line": 75
+    },
+    {
+      "group": "servant",
+      "groupShort": null,
+      "name": "revive",
+      "shortHand": "r",
+      "adminOnly": true,
+      "usage": "Revives the servant in the coffin",
+      "description": null,
+      "params": [],
+      "verbDispatch": false,
+      "method": "ReviveServant",
+      "file": "Commands/ServantCommands.cs",
+      "line": 184
+    }
+  ]
+}

@@ -4,9 +4,32 @@
 [CHANGELOG.md](https://github.com/KDavidP1987/Raphael-Lord-of-Wisdom/blob/main/CHANGELOG.md).
 Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
-**Current: v0.72.0** (pre-1.0 beta).
+**Current: v0.73.0** (pre-1.0 beta).
 
 ---
+
+## 0.73.0 — Complete in-game guides and a Bloodcraft progress reset
+
+Works with Bloodcraft 1.13.26, Nyarlathotep 0.14.0 and Uriel 0.22.0.
+
+- Every mod now has one complete guide under Settings and Help (Bloodcraft, Beelzebub, Uriel, Faust, Nyarlathotep,
+  Kindred): a quick start, how it works, every player and admin command, server settings with defaults, and
+  troubleshooting. Wrong commands in the old guides are fixed.
+- Admins: **Reset Bloodcraft progress** (Bloodcraft → Admin) resets a player's prestige, weapon expertise, blood
+  legacies, professions and level, one checked command at a time, with pause, retry, skip and stop. Works for offline
+  players.
+- Nyarlathotep 0.14.0 undead hordes: the event editor has forms for **Infestation** and **Horde march** events, and
+  a Destination card for spawn waves. Unit counts go up to 500, and templates get an Undead hordes group.
+- Uriel 0.22.0: **Admin: Controls** (formerly Admin: Config) shows which Uriel features are switched on and has
+  **Stop all events**, **Remove all units**, **Remove all objects** and **Restore vanilla**, each with Arm + Confirm.
+  Features the server has switched off are greyed with the reason on every Uriel tab, never hidden.
+- Experimental, off by default: an **Emberglass bridge** for servers that send Bloodcraft data over Emberglass, for
+  players who also have the Emberglass client installed.
+- V Rising Basics tidied up, now covering Nyarlathotep and Uriel's Castle Events.
+- Fixed: Kindred admin buttons that sent commands KindredCommands doesn't have (staff, castle hearts, plots, prisoner
+  settings); buttons for commands KindredCommands disables are removed. Beelzebub Phase now cycles, and the wipe warning
+  and slot list are corrected. Bloodcraft Change class form, the right shard name and prestige reset values. The
+  Nyarlathotep editor background stays gray.
 
 ## 0.72.0 — Nyarlathotep wave variety and a friendlier event editor
 

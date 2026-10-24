@@ -135,13 +135,14 @@ public static partial class MessageService
     /// decision in a per-intercept slot, so subsequent regular EnqueueMessage
     /// calls aren't affected.
     /// </summary>
-    public static void EnqueueMessageSilent(string text)
+    /// <returns>0.73.0: true when the chat event was created (callers may ignore it).</returns>
+    public static bool EnqueueMessageSilent(string text)
     {
-        if (string.IsNullOrEmpty(text)) return;
+        if (string.IsNullOrEmpty(text)) return false;
         if (!_isInitialized)
         {
             LogUtils.LogWarning($"EnqueueMessageSilent('{text}') ignored — character/user not bound yet.");
-            return;
+            return false;
         }
         // 0.17.1: silent commands are NOT blocked under Eclipse. The crash fix is
         // skipping the passive PROTOCOL layer (registration + stream decode) — see
@@ -162,7 +163,7 @@ public static partial class MessageService
         // arming, but if the command didn't match any arming branch we
         // need to clear so the next call isn't accidentally tagged auto.
         _nextCommandIsBchAuto = false;
-        SendMessage(text);
+        return SendMessage(text);
     }
 
     public static void SetCharacter(Entity entity)
@@ -258,7 +259,7 @@ public static partial class MessageService
         }
     }
 
-    private static void SendMessage(string text)
+    private static bool SendMessage(string text)
     {
         try
         {
@@ -273,10 +274,12 @@ public static partial class MessageService
             networkEntity.Write(new FromCharacter { Character = _localCharacter, User = _localUser });
             networkEntity.Write(NetworkEventType);
             networkEntity.Write(chatMessageEvent);
+            return true;
         }
         catch (Exception ex)
         {
             LogUtils.LogError($"MessageService.SendMessage failed: {ex}");
+            return false;
         }
     }
 

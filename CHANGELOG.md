@@ -1,5 +1,134 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.73.0 — Complete in-game guides, a Bloodcraft progress reset for admins, and Bloodcraft 1.13.26
+
+Works with Bloodcraft 1.13.26 (chat commands and data are unchanged since 1.13.21), Nyarlathotep 0.14.0 and Uriel
+0.22.0.
+
+### New — every mod has a complete guide
+
+- **One guide per mod** under Settings and Help: Bloodcraft, Beelzebub, Uriel, Faust, Nyarlathotep and Kindred. Each
+  opens with a short quick start; the rest is folded underneath: how it works, Raphael's tabs, every player and admin
+  command with its arguments, the server settings with their defaults, and troubleshooting. You shouldn't need
+  GitHub or Thunderstore to play or run a mod.
+- **Nyarlathotep** now has its full command reference (events, actions, waves, pools, bosses, pursuit, locations,
+  regions, pillars, templates, unit watch, the kill switch) and its config sections.
+- **Faust** lists all its commands and its access model.
+- **Corrected commands**: the guides were checked against each mod's source, and wrong or outdated commands were fixed
+  (for example the Bloodcraft quest and familiar commands, the exoform wording, and Faust's `admin set key=value`).
+  Commands that wipe data carry a warning.
+- **Quick Start** is rewritten as a one-minute tour that points to each guide. The old per-mod Quick Start and Help
+  tabs now open the merged guide.
+- **V Rising Basics** and **Game Guide** now use the same guide layout as the mod guides. V Rising Basics: double
+  headings removed, the duplicate "Scholar" fixed, and Nyarlathotep and Uriel's Castle Events added.
+
+### New — Nyarlathotep 0.14.0: undead hordes in the event editor
+
+- **Infestation** and **Horde march** events now get a full form in Admin: Events → Edit… instead of "no form fields
+  here":
+  - Infestation: where the dead rise (origins, natives needed, spacing, units per origin), the living dead (hunters %,
+    drift radius) and the spread per kill.
+  - Horde march: the start (**Start here**, or the natives' hotspot at least N m away), the destination, growth on the
+    way, what happens on arrival, and the bosses.
+  - The per-kill spread is two 0-3 choices that stay in order, plus "most alive", "per minute" and a pool picker
+    listing the event's own pools.
+- **Destination waves**: a spawn-waves event gets a Destination card: **Destination here**, **No destination** (press
+  twice), then radius, name and march speed. The buttons are disabled, with the reason, while fan-out, region lock, an
+  arena or pursuit would make the server refuse it.
+- **Up to 500 units**: unit counts, pool waves, horde size and roamers now go up to 500, matching the server. A hint
+  explains that the server's cfg (MaxUnitsPerWave, MaxTrackedUnits) still trims a start, which says "capped".
+  Counters that go past 99 get -10 / +10.
+- An event the server reports as not ready keeps the values Raphael already read, and shows the reason.
+- Templates: a new **Spawns — Undead hordes** group holds zombie-apocalypse, undead-infestation and
+  undead-horde-march.
+- The Nyarlathotep guide covers 0.14.0: infestations, horde marches, destination waves, the 500 limits, the 36
+  templates and the new per-tick ceilings.
+- The left rail is untouched by the editor; a release test guards it.
+
+### New — Uriel 0.22.0: server controls for admins
+
+- **Admin: Config is now Admin: Controls** (same place in the left rail, nothing else moves):
+  - **What's switched on** lists every Uriel switch the server reports: the master switch, stair swap, object
+    spawning, NPC units and castle events, event doors, public chests, prison cells and paid shares, each with its
+    config key. It reads `.uriel features` when the tab opens and on **Refresh**.
+  - **Undo what Uriel did** has four buttons: **Stop all events**, **Remove all units**, **Remove all objects** and
+    **Restore vanilla**. Each is an **Arm** + **Confirm** pair: Arm asks the server what it would remove, Confirm
+    opens once the server answers, shows a countdown, and needs a second press. The server's reply shows under the
+    buttons, including any part of Restore vanilla that failed. Replies to commands typed in chat show separately and
+    never press a button.
+  - The object-spawning handshake card stays below them.
+- **Switched-off features are greyed, never hidden.** When the server says a feature is off (from the features reply
+  or a refusal in chat), its buttons on Storage Sharing, Prisons, Stairs, Object Spawning, Object Catalog and Castle
+  Events grey out with a note naming the switch, such as "Paid shares are off on this server
+  ([PublicStorage] CostsEnabled)". Features the server hasn't reported stay usable, so Uriel 0.21.0 servers work as
+  before.
+- When object spawning or the whole mod is off, Uriel 0.22.0 answers the handshake with "disabled". Raphael now
+  counts that as Uriel being present: the tabs light up with their buttons greyed instead of staying dark. Admins get
+  one automatic features check.
+- The left rail is untouched: the feature switches have their own event and never move a tab group. A release test
+  guards it.
+- The Uriel guide covers 0.22.0: the new tab, the four cleanup commands, the master switch, paid shares, event doors,
+  the boot-time reset, and a "Turning Uriel off, or restoring vanilla" entry.
+
+### New — Reset Bloodcraft progress (Bloodcraft → Admin)
+
+- Bloodcraft has no single "reset this player" command, so Raphael sends the admin commands one after another:
+  every prestige type, every weapon expertise, every blood legacy, every profession, then the level (editable,
+  default 10, Bloodcraft's default starting level). Optional, off by default: re-roll the daily and weekly quests, and
+  set the active familiar to level 1.
+- Works for offline players (type the exact name). Before you start, it shows how many commands it will send; Start
+  needs a second click.
+- One command at a time, each waiting for Bloodcraft's reply. A system the server has turned off is skipped. If a
+  reply doesn't come, the run pauses and asks whether to retry the step, skip it or stop. An unknown player or a
+  refused command pauses it too.
+- Live step log and a final report; **Retry failed and unknown** re-sends only what didn't confirm. Stop at any time
+  (a command already sent can't be recalled). The other Bloodcraft admin forms are locked while a reset runs.
+- What an admin can't reset (class, stat choices, familiars) is listed, with the commands the player runs.
+
+### New — Emberglass bridge (experimental, off by default)
+
+- Bloodcraft 1.13.22+ can send its data over **Emberglass** instead of chat when the server turns that on. If you also
+  have the Emberglass client installed, turn on **Use Emberglass bridge** (Settings and Help → Connection, Bloodcraft
+  card) and restart the game, or your Bloodcraft stats stay empty on such a server. Players without Emberglass are not
+  affected. Not used while the Eclipse client mod is installed (Eclipse handles it).
+- The Connection tab shows the bridge's status, and suggests turning it on when your client has Emberglass and
+  Bloodcraft isn't answering over chat.
+
+### Fixed
+
+- **Kindred admin buttons that did nothing.**
+  - The staff, castle-heart and plot buttons used command names KindredCommands doesn't have (`.staff …`, `.castle …`).
+    They now send the real ones (`.reloadstaff`, `.setstaff`, `.incomingdecay`, `.freezeheart`, `.plotsowned` and so
+    on).
+  - Gruel and feed settings now use `.prisoner gruelsettings` / `.prisoner feedsettings <feed>`.
+  - Buttons for commands KindredCommands 2.5.8 itself disables are gone: hair visibility, unbind everyone, the server
+    wipe steps, and repair clan data.
+  - "List All Bosses" is now **List Locked Bosses**, which is what it lists.
+  - Player fields no longer claim "blank for self". Names with spaces (announcements, clan names, staff ranks, boss
+    names) are sent in quotes. Soul shard durability accepts decimals.
+  - The Server and World tabs grey out until you are authed as admin, like the Players tab.
+  - Every Kindred admin command is now checked against KindredCommands' source by the release tests.
+- **Beelzebub:**
+  - The wipe warning now says it also removes transform unlocks, hotkeys and presets.
+  - The slot list shows all 8 slots.
+  - The Recall buttons, which only stashed, are removed (use Stash / Restore).
+  - **Phase** now switches to the next phase, and a double click can't send it twice.
+- **Uriel:** the duplicate **Force-purge plot** button is removed (it does the same as Purge plot now).
+- **Bloodcraft:**
+  - Class change costs Greater Stygian Shards (not "Shattered Bone").
+  - Prestige resets level, expertise and legacy to 0 (not 10 / 1).
+  - A **Change class** form joins Select first class.
+  - The class shift spell accepts 0 (the default spell).
+- **Nyarlathotep event editor:** the background no longer flips between purple and gray; it stays gray.
+- Minus signs the game font can't draw (shown as squares) are now plain hyphens.
+
+### Changed
+
+- README: Bloodcraft compatibility is now 1.13.26, Nyarlathotep 0.14.0 (API 8) and Uriel 0.22.0 (API 1); Emberglass
+  is listed as an optional client mod.
+- Release preflight checks the guides for glyphs the game font lacks and that their command lists match each mod's
+  source.
+
 ## 0.72.0 — Nyarlathotep wave variety, a friendlier event editor, and a steadier left rail
 
 Works with Nyarlathotep 0.13.0-rc.3 (api 8). Older 0.13 builds still work; the new fields need rc.3.

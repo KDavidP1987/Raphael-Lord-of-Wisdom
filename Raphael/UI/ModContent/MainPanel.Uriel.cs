@@ -43,6 +43,7 @@ public partial class MainPanel
         UrielProtocolService.ScanNoteChanged += RebuildUrielCatalogRows;   // live scan status
         UrielProtocolService.ScanNoteChanged += RefreshUrielStateReadout;
         UrielBuildMode.ActiveChanged += RefreshUrielBuildToggle;
+        UrielFeatureState.Changed += OnUrielFeaturesChanged;   // 0.73.0: feature gates + Admin: Controls
         _urielSubscribed = true;
     }
 
@@ -57,6 +58,11 @@ public partial class MainPanel
         UrielProtocolService.ScanNoteChanged -= RebuildUrielCatalogRows;
         UrielProtocolService.ScanNoteChanged -= RefreshUrielStateReadout;
         UrielBuildMode.ActiveChanged -= RefreshUrielBuildToggle;
+        UrielFeatureState.Changed -= OnUrielFeaturesChanged;
+        StopUrielControlsTicker();
+        _urielGateTargets.Clear();
+        _urielGateNotes.Clear();
+        _urielCtlButtons.Clear();
         UnsubscribeUrielEvents();
         _urielSubscribed = false;
     }
@@ -129,6 +135,9 @@ public partial class MainPanel
 
     private void BuildUrielStorageTab(GameObject page)
     {
+        EnsureUrielSubscribed();
+        const PanelType tab = PanelType.UrielStorageTab;
+        UrielGatesBegin(tab);
         var intro = AddCard(page, "UrielStorageIntro");
         AddSectionHeading(intro, "Storage sharing");
         AddBodyText(intro,
@@ -155,16 +164,18 @@ public partial class MainPanel
         // --- Quick share ---
         var quick = AddCard(page, "UrielStorageQuick");
         AddSectionHeading(quick, "Quick share (nearest chest)");
+        AddUrielGateNote(tab, quick, UrielFeature.Chests);
         var qRow = MakeUrielRow(quick, "UrielStorageQuickRow");
-        AddUrielButton(qRow, "UrielShareTake", "Share: take-only",
-            "Share the nearest chest so anyone can TAKE from it (.uriel share nearest permission take).",
-            () => UrielClient.Share("permission take"), 150);
-        AddUrielButton(qRow, "UrielShareGive", "Share: give-only",
-            "Share the nearest chest so anyone can DEPOSIT into it (.uriel share nearest permission give).",
-            () => UrielClient.Share("permission give"), 150);
-        AddUrielButton(qRow, "UrielShareBoth", "Share: give + take",
-            "Share the nearest chest for both deposit and withdrawal (.uriel share nearest permission givetake).",
-            () => UrielClient.Share("permission givetake"), 160);
+        UrielGate(tab, UrielFeature.Chests,
+            AddUrielButton(qRow, "UrielShareTake", "Share: take-only",
+                "Share the nearest chest so anyone can TAKE from it (.uriel share nearest permission take).",
+                () => UrielClient.Share("permission take"), 150),
+            AddUrielButton(qRow, "UrielShareGive", "Share: give-only",
+                "Share the nearest chest so anyone can DEPOSIT into it (.uriel share nearest permission give).",
+                () => UrielClient.Share("permission give"), 150),
+            AddUrielButton(qRow, "UrielShareBoth", "Share: give + take",
+                "Share the nearest chest for both deposit and withdrawal (.uriel share nearest permission givetake).",
+                () => UrielClient.Share("permission givetake"), 160));
 
         // --- Advanced builder: permission + limits + cost stacked into one command ---
         var build = AddCard(page, "UrielStorageBuild");
@@ -183,6 +194,8 @@ public partial class MainPanel
         _urielLimitHoursInput  = AddUrielLabeledInput(build, "UrielLimitHours",  "Limit window (hours)",            "blank = none");
         _urielCostItemInput    = AddUrielLabeledInput(build, "UrielCostItem",    "Cost item id (per stack)",         "blank = free");
         _urielCostAmountInput  = AddUrielLabeledInput(build, "UrielCostAmount",  "Cost amount",                      "blank = free");
+        UrielGate(tab, UrielFeature.Costs, _urielCostItemInput, _urielCostAmountInput);
+        AddUrielGateNote(tab, build, UrielFeature.Chests, UrielFeature.Costs);
 
         var findRow = MakeUrielRow(build, "UrielFindRow");
         _urielFindItemInput = UIFactory.CreateInputField(findRow, "UrielFindItemInput", "Find item id by name…");
@@ -192,27 +205,30 @@ public partial class MainPanel
             () => { var n = _urielFindItemInput?.Text?.Trim(); if (!string.IsNullOrEmpty(n)) UrielClient.FindItem(n); }, 130);
 
         var applyRow = MakeUrielRow(build, "UrielApplyRow");
-        AddUrielButton(applyRow, "UrielShareCustom", "Share with these rules",
+        UrielGate(tab, UrielFeature.Chests, AddUrielButton(applyRow, "UrielShareCustom", "Share with these rules",
             "Combine the settings above into one command and apply to the nearest chest (.uriel share nearest permission … limitwithdrawal … limithours … cost …).",
-            ApplyUrielCustomShare, 200);
+            ApplyUrielCustomShare, 200));
 
         // --- Pay chest + my shares ---
         var manage = AddCard(page, "UrielStorageManage");
         AddSectionHeading(manage, "Pay chest & my shares");
+        AddUrielGateNote(tab, manage, UrielFeature.Chests, UrielFeature.Costs);
         var mRow = MakeUrielRow(manage, "UrielManageRow");
-        AddUrielButton(mRow, "UrielPayChest", "Set pay chest",
+        UrielGate(tab, UrielFeature.Costs, AddUrielButton(mRow, "UrielPayChest", "Set pay chest",
             "Designate the nearest PRIVATE general chest to receive cost payments from your shared containers (.uriel paychest nearest).",
-            () => UrielClient.PayChest(), 130);
-        AddUrielButton(mRow, "UrielUnshare", "Unshare nearest",
+            () => UrielClient.PayChest(), 130));
+        var unshare = AddUrielButton(mRow, "UrielUnshare", "Unshare nearest",
             "Revert the nearest shared chest back to private (.uriel unshare nearest).",
             () => UrielClient.Unshare(), 130);
         var mRow2 = MakeUrielRow(manage, "UrielManageRow2");
-        AddUrielButton(mRow2, "UrielShared", "List my shares",
-            "List every container you've shared, with its full rules, in chat (.uriel shared).",
-            () => UrielClient.Shared(), 150);
-        AddUrielButton(mRow2, "UrielUnshareMine", "Unshare ALL mine",
-            "Bulk-revert every container you've shared or control (.uriel unsharemine).",
-            () => UrielClient.UnshareMine(), 160);
+        // With public chests off, Uriel refuses these too (ShareCommands.Ready); Restore vanilla undoes shares then.
+        UrielGate(tab, UrielFeature.Chests, unshare,
+            AddUrielButton(mRow2, "UrielShared", "List my shares",
+                "List every container you've shared, with its full rules, in chat (.uriel shared).",
+                () => UrielClient.Shared(), 150),
+            AddUrielButton(mRow2, "UrielUnshareMine", "Unshare ALL mine",
+                "Bulk-revert every container you've shared or control (.uriel unsharemine).",
+                () => UrielClient.UnshareMine(), 160));
 
         RefreshUrielStorageStatus();
     }
@@ -258,7 +274,9 @@ public partial class MainPanel
         sb.Append("permission ").Append(_urielSharePermission);
         if (TryReadPositiveInt(_urielLimitStacksInput, out int stacks)) sb.Append(" limitwithdrawal ").Append(stacks);
         if (TryReadPositiveInt(_urielLimitHoursInput, out int hours))   sb.Append(" limithours ").Append(hours);
-        if (TryReadPositiveInt(_urielCostItemInput, out int itemId) && TryReadPositiveInt(_urielCostAmountInput, out int amt))
+        // 0.73.0: with paid shares off the cost fields are greyed, so a value left in them isn't sent.
+        if (UrielFeatureState.Model.Gate(UrielFeature.Costs).Enabled
+            && TryReadPositiveInt(_urielCostItemInput, out int itemId) && TryReadPositiveInt(_urielCostAmountInput, out int amt))
             sb.Append(" cost ").Append(itemId).Append(' ').Append(amt);
         UrielClient.Share(sb.ToString());
     }
@@ -319,6 +337,9 @@ public partial class MainPanel
 
     private void BuildUrielPrisonTab(GameObject page)
     {
+        EnsureUrielSubscribed();
+        const PanelType tab = PanelType.UrielPrisonTab;
+        UrielGatesBegin(tab);
         var intro = AddCard(page, "UrielPrisonIntro");
         AddSectionHeading(intro, "Public prison cells");
         AddBodyText(intro,
@@ -328,16 +349,18 @@ public partial class MainPanel
 
         var actions = AddCard(page, "UrielPrisonActions");
         AddSectionHeading(actions, "Share / unshare the nearest cell");
+        AddUrielGateNote(tab, actions, UrielFeature.Cells);
         var r1 = MakeUrielRow(actions, "UrielPrisonRow1");
-        AddUrielButton(r1, "UrielPrisonShare", "Share cell",
-            "Share the nearest prison cell so everyone can feed/extract (.uriel share nearest — auto-detects cell vs chest).",
-            () => UrielClient.Share(), 130);
-        AddUrielButton(r1, "UrielPrisonUnshare", "Unshare cell",
-            "Revert the nearest shared cell (.uriel unshare nearest).",
-            () => UrielClient.Unshare(), 130);
-        AddUrielButton(r1, "UrielPrisonInfo", "Show rules",
+        UrielGate(tab, UrielFeature.Cells,
+            AddUrielButton(r1, "UrielPrisonShare", "Share cell",
+                "Share the nearest prison cell so everyone can feed/extract (.uriel share nearest — auto-detects cell vs chest).",
+                () => UrielClient.Share(), 130),
+            AddUrielButton(r1, "UrielPrisonUnshare", "Unshare cell",
+                "Revert the nearest shared cell (.uriel unshare nearest).",
+                () => UrielClient.Unshare(), 130));
+        UrielGate(tab, UrielFeature.Cells, AddUrielButton(r1, "UrielPrisonInfo", "Show rules",
             "Show the nearest cell's sharing rules in chat (.uriel info nearest).",
-            () => UrielClient.Info(), 120);
+            () => UrielClient.Info(), 120));
 
         var take = AddCard(page, "UrielPrisonTake");
         AddSectionHeading(take, "Take the prisoner");
@@ -346,9 +369,9 @@ public partial class MainPanel
             "relays it for you. <b>Have Dominating Presence ready</b> before you click — the charmed prisoner " +
             "follows you and you'll want to get it home before the charm runs out.");
         var r2 = MakeUrielRow(take, "UrielPrisonRow2");
-        AddUrielButton(r2, "UrielTakePrisoner", "Take prisoner (nearest cell)",
+        UrielGate(tab, UrielFeature.Cells, AddUrielButton(r2, "UrielTakePrisoner", "Take prisoner (nearest cell)",
             "Take the prisoner from the nearest shared cell — it becomes subdued and follows you (.uriel takeprisoner nearest). Ready Dominating Presence first.",
-            () => UrielClient.TakePrisoner(), 230);
+            () => UrielClient.TakePrisoner(), 230));
 
         AddSpacer(page, 6);
         var soon = AddCard(page, "UrielPrisonSoon");
@@ -363,6 +386,9 @@ public partial class MainPanel
 
     private void BuildUrielStairsTab(GameObject page)
     {
+        EnsureUrielSubscribed();
+        const PanelType tab = PanelType.UrielStairsTab;
+        UrielGatesBegin(tab);
         var intro = AddCard(page, "UrielStairsIntro");
         AddSectionHeading(intro, "Stair restyle");
         AddBodyText(intro,
@@ -373,26 +399,28 @@ public partial class MainPanel
 
         var styles = AddCard(page, "UrielStairsStyles");
         AddSectionHeading(styles, "Swap to a style (nearest stairs)");
+        AddUrielGateNote(tab, styles, UrielFeature.Stairs);
         var row = MakeUrielRow(styles, "UrielStairsStyleRow");
         foreach (var style in UrielClient.StairStyles)
         {
             string s = style;   // capture
-            AddUrielButton(row, $"UrielStair_{s}", s,
+            UrielGate(tab, UrielFeature.Stairs, AddUrielButton(row, $"UrielStair_{s}", s,
                 $"Restyle the nearest staircase to '{s}' (.uriel stairswap {s} nearest). DLC-locked styles reply with the needed DLC.",
-                () => UrielClient.StairSwap(s), 95);
+                () => UrielClient.StairSwap(s), 95));
         }
 
         var actions = AddCard(page, "UrielStairsActions");
         var r2 = MakeUrielRow(actions, "UrielStairsRow2");
-        AddUrielButton(r2, "UrielStairNext", "Next style",
-            "Cycle the nearest staircase to the next style (.uriel stairswap next nearest).",
-            () => UrielClient.StairNext(), 120);
-        AddUrielButton(r2, "UrielStairStyles", "Show styles",
-            "List the nearest stair's shape, current style and the styles you own, in chat (.uriel stairstyles nearest).",
-            () => UrielClient.ShowStairStyles(), 120);
-        AddUrielButton(r2, "UrielStairRemove", "Remove stairs",
-            "Cleanly delete the nearest staircase, leaving connected floors/walls intact (.uriel removestairs nearest).",
-            () => UrielClient.RemoveStairs(), 130);
+        UrielGate(tab, UrielFeature.Stairs,
+            AddUrielButton(r2, "UrielStairNext", "Next style",
+                "Cycle the nearest staircase to the next style (.uriel stairswap next nearest).",
+                () => UrielClient.StairNext(), 120),
+            AddUrielButton(r2, "UrielStairStyles", "Show styles",
+                "List the nearest stair's shape, current style and the styles you own, in chat (.uriel stairstyles nearest).",
+                () => UrielClient.ShowStairStyles(), 120),
+            AddUrielButton(r2, "UrielStairRemove", "Remove stairs",
+                "Cleanly delete the nearest staircase, leaving connected floors/walls intact (.uriel removestairs nearest).",
+                () => UrielClient.RemoveStairs(), 130));
 
         AddSpacer(page, 6);
         var soon = AddCard(page, "UrielStairsSoon");
@@ -461,6 +489,8 @@ public partial class MainPanel
         // AddBodyText (not AddInfoLabel) so the multi-line collection-progress + scan-diagnostic text
         // WRAPS and grows instead of being clipped to a single line.
         _urielObjectsProgressLabel = AddBodyText(progress, "—");
+        UrielGatesBegin(PanelType.UrielObjectsTab);
+        AddUrielGateNote(PanelType.UrielObjectsTab, progress, UrielFeature.Objects);
         var pr = MakeUrielRow(progress, "UrielObjProgressRow");
         AddUrielButton(pr, "UrielObjRefresh", "Refresh my unlocked list",
             "Re-pull your unlocked prefabs from the server (.uriel api unlocked).",
@@ -634,9 +664,13 @@ public partial class MainPanel
         AddUrielTextCell(row, $"<color={Theme.MutedBodyHex}>{o.Category}</color>", ColCat, 0);
         AddUrielTextCell(row, $"<color={Theme.MutedBodyHex}>{o.Guid}</color>", ColId, 0);
         if (owned)
-            AddUrielButton(row, $"UrielSpawn_{o.Guid}", "Spawn",
+        {
+            var spawn = AddUrielButton(row, $"UrielSpawn_{o.Guid}", "Spawn",
                 $"Spawn {o.DisplayName} at your location ({_urielSpawnDurability}{(_urielSpawnRespawn ? " + respawn" : "")}), then position it with the Move build-hotkey.",
                 () => UrielClient.Spawn(o.Guid, _urielSpawnDurability, _urielSpawnRespawn), 84);
+            // 0.73.0: rows are rebuilt when the object-spawning gate changes (OnUrielFeaturesChanged).
+            spawn.SetEnabled(UrielFeatureState.Model.Gate(UrielFeature.Objects).Enabled);
+        }
         else
             AddUrielTextCell(row, "<color=#888888>locked</color>", ColAction, 0);
     }
@@ -1290,7 +1324,7 @@ public partial class MainPanel
 
         // Height offset (0.20.0) — flush-to-ground correction in metres. Positive raises, negative lowers;
         // "clear" (or 0) removes it. Unlike the limits above this applies to EVERYONE, admins included.
-        _urielCfgYOffsetInput = AddUrielLabeledInput(cfgCard, "UrielCfgYOff", "Height offset — metres (+up / −down, or 'clear')", "e.g. 0.25 or -0.4");
+        _urielCfgYOffsetInput = AddUrielLabeledInput(cfgCard, "UrielCfgYOff", "Height offset — metres (+up / -down, or 'clear')", "e.g. 0.25 or -0.4");
         var yoffRow = MakeUrielRow(cfgCard, "UrielCfgYOffRow");
         AddUrielButton(yoffRow, "UrielCfgSetYOff", "Set height for this object",
             "Auto-correct how flush this object sits with the ground on every spawn/move (.uriel objcfg <obj> yoffset <metres>). Applies to everyone.",
@@ -1365,9 +1399,8 @@ public partial class MainPanel
         AddUrielConfirmButton(pRow, "UrielPurgePlot", "Purge plot",
             "Remove ALL Uriel-spawned objects on the plot you're standing in (.uriel purgeplot).",
             () => UrielClient.SendUser(".uriel purgeplot"), 120, UrielDanger);
-        AddUrielConfirmButton(pRow, "UrielForcePurgePlot", "Force-purge plot",
-            "Force-remove EVERY Uriel-like indestructible object in this plot, even untracked ones; native build pieces + breakables are left (.uriel forcepurgeplot).",
-            () => UrielClient.SendUser(".uriel forcepurgeplot"), 150, UrielWipe);
+        // 0.73.0: the "Force-purge plot" button was removed — Uriel's .uriel forcepurgeplot is now the
+        // same command as purgeplot (kept upstream as a second name), so it was a duplicate.
         var fRow = MakeUrielRow(plotCard, "UrielPlotRow2");
         AddUrielButton(fRow, "UrielForceDespawnArm", "Arm force-despawn",
             "Arm a record-ignoring removal of the object you're AIMING at — the server replies naming the prefab (.uriel forcedespawn).",
@@ -1424,187 +1457,10 @@ public partial class MainPanel
         }
     }
 
-    // ============================ ADMIN: CONFIG ============================
-
-    private void BuildUrielAdminConfigTab(GameObject page)
-    {
-        var content = BeginAdminGate(page);
-        AddBodyText(content,
-            "Each Uriel feature has a server admin kill-switch. When a feature is disabled, its commands reply " +
-            "“disabled by the server admin”, and Raphael hides/disables the matching controls. The object-spawn " +
-            "switches below are read live from the handshake; the storage / prison / stair switches aren't on " +
-            "the wire yet (run the matching command to confirm).");
-
-        var card = AddCard(content, "UrielAdminConfigCard");
-        AddSectionHeading(card, "Object spawning (live from handshake)");
-        AddBodyText(card, UrielState.Present
-            ? $"Object spawning: <b>{(UrielState.ObjectSpawnEnabled ? "ENABLED" : "disabled")}</b>\n" +
-              $"Collection master: <b>{(UrielState.CollectionEnabled ? "ENABLED" : "disabled")}</b>\n" +
-              $"Discovery mode: <b>{(string.IsNullOrEmpty(UrielState.DiscoveryMode) ? "—" : UrielState.DiscoveryMode)}</b>" +
-              (UrielState.DiscoveryChance > 0 ? $"  ·  chance {UrielState.DiscoveryChance}%" : "") + "\n" +
-              $"Admin-only spawning: <b>{(UrielState.ObjectSpawnAdminOnly ? "yes" : "no")}</b>\n" +
-              $"Prefabs: total {UrielState.TotalPrefabs} · discoverable {UrielState.DiscoverablePrefabs} · blocked {UrielState.BlockedPrefabs}"
-            : "Uriel not detected on this server.");
-
-        AddSpacer(content, 6);
-        var soon = AddCard(content, "UrielAdminConfigSoon");
-        AddSectionHeading(soon, "Coming next");
-        AddUrielSoonNote(soon,
-            "Live readouts + toggles for the storage (PublicStorage.Enabled), prison (PublicStorage.PrisonEnabled) " +
-            "and stair-swap (StairSwap.Enabled) kill-switches arrive as Uriel exposes them on the wire.");
-    }
+    // ADMIN: CONTROLS (the old Admin: Config) lives in MainPanel.UrielControls.cs (0.73.0).
 
     // ============================ HELP: URIEL QUICK START ============================
 
-    private void BuildUrielQuickStartTab(GameObject page)
-    {
-        AddGuideSection(page, "Uriel — what it is",
-            "Uriel (\"Lord of Hosts\") is a SERVER-SIDE mod, separate from Bloodcraft and Beelzebub — a server " +
-            "can run any combination. When it's present it adds five things: <b>shared storage</b> (open a chest " +
-            "to everyone, with optional permissions / limits / costs), <b>public prisons</b> (shared cells anyone " +
-            "can feed/extract, plus a way to take the prisoner), <b>stair restyling</b> (change a placed " +
-            "staircase's look in place), <b>object spawning</b> (collect world-object prefabs and spawn what " +
-            "you've unlocked), and <b>Castle Events</b> (alpha, off unless the admin turns it on: lay out mob and " +
-            "boss groups in a castle and run timed clears). Raphael is the client UI; the Uriel tab group only appears when the server " +
-            "actually has the mod.");
-
-        AddGuideSection(page, "1. Share a chest",
-            "Stand next to one of your placed castle chests and open <b>Uriel → Storage Sharing</b>. Pick " +
-            "<b>Share: take-only / give-only / give + take</b> — that's it, the chest is now public for everyone. " +
-            "<b>Show rules</b> reports the chest's current settings; <b>Unshare nearest</b> reverts it; <b>List my " +
-            "shares</b> shows everything you've opened up. The buttons always act on the chest NEAREST you, so a " +
-            "UI click never grabs the wrong one.");
-
-        AddGuideSection(page, "2. Share a prison cell",
-            "Same idea for prison cells, on the <b>Prisons</b> tab — once shared, feed/extract show up natively in " +
-            "the cell for everyone. To take a shared prisoner for yourself, ready <b>Dominating Presence</b>, then " +
-            "press <b>Take prisoner</b>; the prisoner is subdued and follows you home.");
-
-        AddGuideSection(page, "3. Restyle stairs",
-            "On the <b>Stairs</b> tab, stand by a staircase and click one of the six styles to swap its look " +
-            "instantly (the shape stays the same). Some styles need a DLC; if you don't own one, Uriel tells you " +
-            "which. <b>Show styles</b> lists the current style and the ones you own.");
-
-        AddGuideSection(page, "4. Spawn objects you've unlocked",
-            "Play to unlock world-object prefabs (some unlock by destroying them). Open <b>Object Spawning</b>, " +
-            "press <b>Refresh my unlocked list</b>, and click <b>Spawn</b> next to anything you've unlocked to " +
-            "place it on your plot. The progress line shows how much of the collectible set you've found.");
-
-        AddGuideSection(page, "5. Run a castle event (alpha)",
-            "If the server admin has turned Castle Events on, open <b>Castle Events</b>. Type a group name, walk to " +
-            "where units should appear and press <b>Mob marker here</b> / <b>Boss marker here</b>; stand by a door and " +
-            "press <b>Bind nearest door</b>. Build a squad on <b>Event Library</b> (or give each marker its own unit), " +
-            "then press <b>Start</b>. The run panel shows the clock, groups cleared and bosses left.");
-
-        AddGuideSection(page, "Don't see the Uriel tabs?",
-            "They only appear once Raphael confirms Uriel on your server — which can lag a few seconds after switching " +
-            "servers. If the group is greyed or missing:\n" +
-            "• Click the greyed <b>URIEL</b> header — it opens a small panel with <b>Re-check now</b> (restarts " +
-            "detection) and <b>Force-enable tabs</b> (shows them anyway).\n" +
-            "• Or open <b>Settings and Help → Connection</b> → <b>Re-detect Uriel</b>.\n" +
-            "• To make the tabs always show, set UrielAvailability = On in kdpen.Raphael.cfg.\n\n" +
-            "See <b>Uriel Help</b> for the full command reference.");
-    }
-
     // ============================ HELP: URIEL HELP (reference) ============================
 
-    // Argument placeholders use (parentheses), NOT <angle brackets>, so TMP doesn't treat them as tags.
-    private void BuildUrielModHelpTab(GameObject page)
-    {
-        AddGuideSection(page, "Uriel — the complete guide",
-            "Uriel (\"Lord of Hosts\") is a server-side V Rising mod bundling four community features, each with " +
-            "its own admin kill-switch: public storage, public prisons, stair restyling, and object spawning. " +
-            "Raphael is the client UI; the two talk over chat (just like Raphael ↔ Bloodcraft / Beelzebub). " +
-            "Exact limits and toggles are set by the server admin, so behaviour varies by server. You don't need " +
-            "to type any of the commands below — the Uriel tabs send them for you — but they're listed so you " +
-            "know exactly what each button does and can use chat directly.");
-
-        AddGuideSection(page, "Targeting: why buttons say “nearest”",
-            "Uriel commands act on a container/cell/staircase. By default they use whatever your aim is pointing " +
-            "at, but clicking a UI panel leaves your aim pointing anywhere — so every Raphael button appends the " +
-            "<b>nearest</b> token, which targets the closest qualifying object to YOU instead. After a “nearest” " +
-            "action, the chat reply names the object that was affected so you can confirm it hit the right one.");
-
-        AddCollapsibleHelpDetail(page, "Player — storage sharing",
-            "• .uriel share (nearest) — share the nearest chest (auto-detects chest vs prison cell).\n" +
-            "• .uriel share (nearest) permission (take|give|givetake) — set who can take/deposit.\n" +
-            "• .uriel share (nearest) limithours (h) — withdrawal cooldown per player.\n" +
-            "• .uriel share (nearest) limitwithdrawal (n) — max stacks per player.\n" +
-            "• .uriel share (nearest) cost (itemId) (amount) — charge per withdrawal (0 0 = free). Modifiers STACK " +
-            "in one command, any order.\n" +
-            "• .uriel unshare (nearest) — revert one container.   • .uriel unsharemine — revert everything you control.\n" +
-            "• .uriel shared — list your shares with full rules.   • .uriel info (nearest) — the nearest container's rules.\n" +
-            "• .uriel paychest (nearest) — designate a private chest to receive cost payments.\n" +
-            "• .uriel finditem (name) — look up an item's numeric id for cost rules (≤8 results).");
-
-        AddCollapsibleHelpDetail(page, "Player — prisons",
-            "• .uriel share (nearest) — share a prison cell (feed/extract then appear natively for everyone).\n" +
-            "• .uriel takeprisoner (nearest) — take the prisoner from the nearest shared cell; it's subdued and " +
-            "follows you. Ready Dominating Presence first.\n" +
-            "• .uriel unshare (nearest) / .uriel info (nearest) — same as storage.");
-
-        AddCollapsibleHelpDetail(page, "Player — stairs",
-            "• .uriel stairswap (style) (nearest) — restyle the nearest staircase. Styles: stone1, stone2, stone3, " +
-            "gloomrot, projectk, strongblade (some DLC-locked).\n" +
-            "• .uriel stairswap next (nearest) — cycle to the next style.\n" +
-            "• .uriel stairstyles (nearest) — the stair's shape, current style, and the styles you own.\n" +
-            "• .uriel removestairs (nearest) — cleanly delete the staircase (leaves floors/walls intact).");
-
-        AddCollapsibleHelpDetail(page, "Player — object spawning",
-            "• .uriel spawn (guid) — spawn an unlocked prefab onto your plot (Raphael's Spawn buttons send this).\n" +
-            "• .uriel catalog (page) / .uriel unlocks — the full prefab list / your unlocked set in chat.\n" +
-            "• .uriel notify (on|off) — per-player unlock messages.\n" +
-            "• .uriel despawn / move / rotate / spawninfo / spawnlist — manage objects you've placed (own plot).\n" +
-            "• .uriel raise (metres) / .uriel lower (metres) — nudge the nearest object you placed up/down so it sits " +
-            "flush with the ground instead of floating or sinking (default 0.25m; Raphael's Raise/Lower buttons send this).\n" +
-            "• Build hotkeys — Object Spawning → Building hotkeys lets you bind keys to move / rotate / remove " +
-            "the nearest spawned object while a TEMPORARY Build Mode is on (resets off every login).\n" +
-            "• Machine API (what Raphael calls): .uriel api version | catalog (page) | unlocked (page) — return " +
-            "[URIEL:*] lines Raphael parses into the Object Spawning tab. Turn on Uriel → Settings → Diagnostics to " +
-            "see this traffic in the log.");
-
-        AddCollapsibleHelpDetail(page, "Castle Events (alpha, off by default)",
-            "Everything acts on the castle plot you stand in: your own castle (clan counts), any castle for admins. " +
-            "Needs CastleEvents.Enabled; players also need CastleEvents.PlayerEvents.\n" +
-            "• .uriel event marker (group) (mob|boss) [unit|-] [count] [level] [contain|-] — a marker at your feet; the " +
-            "group's floor is the one you stand on. Contain: plot, room, storey, a leash in metres (3-60), or room,15.\n" +
-            "• .uriel event door / undoor (group) — the castle door within 6 m stays shut until the group falls.\n" +
-            "• .uriel event squad (group) (squad|-) · remove (#id|group) · list.\n" +
-            "• .uriel event start [template|-] [options] · stop · status · history.\n" +
-            "• Options, one comma-separated word: easy|normal|hard|brutal, level=N, level+N, auto+N, hp*X, dmg*X, " +
-            "speed*X, aspd*X (0.1-10), limit=15m, faction=keep.\n" +
-            "• Library: .uriel squad create|add|extend|remove|weight|show|list|delete, .uriel floor create|assign|show|" +
-            "list|delete, .uriel template create|floor|options|show|list|delete.\n" +
-            "• Admin: .uriel unit spawn|list|kill|despawn|clear|purge|status|rooms|probe|probemap|door.\n" +
-            "• Chat cuts a line at about 120 characters; Raphael refuses to send a longer one. Use short unit names " +
-            "(Foreman_VBlood works for CHAR_Bandit_Foreman_VBlood) and add long lists with extend.");
-
-        AddGuideSection(page, "Admin commands",
-            "All admin commands require V Rising admin status (the server enforces it — a non-admin just gets a " +
-            "rejection). Raphael surfaces the safe read-only ones on the Uriel Admin tabs now; targeted/destructive " +
-            "ones (with confirm gating) follow in a later pass.");
-
-        AddCollapsibleHelpDetail(page, "Admin — sharing",
-            "• .uriel sharedall (name|steamId) — list all shares (optionally for one player).\n" +
-            "• .uriel unshareplayer (name|steamId) — revert one player's shares.\n" +
-            "• .uriel unshareall — revert every share on the server.\n" +
-            "• .uriel sharedebug — full state dump. Admins may also aim+share/unshare/modify ANY container.");
-
-        AddCollapsibleHelpDetail(page, "Admin — objects",
-            "• .uriel block / unblock / blocklist — manage the spawn blocklist.\n" +
-            "• .uriel grant / revoke / grantall — manage a player's unlocked prefabs.\n" +
-            "• .uriel unlocks (player) — inspect a player's unlocked set.\n" +
-            "• .uriel objcfg (obj) max|cost|indestructible|respawn|yoffset|clear|show — per-object spawn limits for players.\n" +
-            "   yoffset (metres, +up/−down) is a flush-to-ground height correction that applies to EVERYONE, admins included.\n" +
-            "• .uriel objcfgglobal (field) — the global default spawn limit / height offset.   • .uriel objcfglist — list all conditions.\n" +
-            "• .uriel bossmap — boss→prefab mapping.   • .uriel purgeplot — clear a plot.\n" +
-            "• .uriel purgeorphans — server-wide: remove objects whose castle heart is gone.\n" +
-            "• .uriel forcedespawn (confirm) / .uriel forcepurgeplot — record-ignoring recovery for untracked " +
-            "objects (arm → names the prefab → confirm within 30s).");
-
-        AddGuideSection(page, "Kill-switches",
-            "Each feature can be turned off by the server admin: PublicStorage.Enabled (storage), " +
-            "PublicStorage.PrisonEnabled (prisons), StairSwap.Enabled (stairs), and the object-collection master " +
-            "switch. A disabled feature replies “disabled by the server admin”, and Raphael hides its controls.");
-    }
 }

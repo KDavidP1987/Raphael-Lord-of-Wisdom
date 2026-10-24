@@ -405,15 +405,27 @@ public partial class MainPanel
 
     private static List<NyarEntry> Clone(List<NyarEntry> rows) => rows.Select(r => r.Clone()).ToList();
 
-    // "[-] n [+]" for a count inside a list row; every press commits (and redraws).
+    // "[-] n [+]" for a count inside a list row; every press commits (and redraws). A count that goes past 99 (units, up
+    // to 500 since 0.73.0) also gets "-10" / "+10" and a wider cell.
     private void NyarMiniCount(GameObject row, string label, int value, int min, int max, Action<int> commit)
     {
+        bool big = max >= 100;
         if (label.Length > 0) NyarCell(row, Muted(label), label.Length > 2 ? 44 : 14);
+        if (big)
+        {
+            var dn10 = AddUrielButton(row, "NyarCntDn10", "-10", $"Ten less (at least {min}).", () => commit(Math.Max(min, value - 10)), 34);
+            dn10.SetEnabled(value > min);
+        }
         var dn = AddUrielButton(row, "NyarCntDn", "-", $"One less (at least {min}).", () => commit(Math.Max(min, value - 1)), 28);
         dn.SetEnabled(value > min);
-        NyarCell(row, $"<b>{value}</b>", 26);
+        NyarCell(row, $"<b>{value}</b>", big ? 34 : 26);
         var up = AddUrielButton(row, "NyarCntUp", "+", $"One more (at most {max}).", () => commit(Math.Min(max, value + 1)), 28);
         up.SetEnabled(value < max);
+        if (big)
+        {
+            var up10 = AddUrielButton(row, "NyarCntUp10", "+10", $"Ten more (at most {max}).", () => commit(Math.Min(max, value + 10)), 34);
+            up10.SetEnabled(value < max);
+        }
     }
 
     // ---------------------------------------------------------------- unit names

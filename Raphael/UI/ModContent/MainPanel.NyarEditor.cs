@@ -18,6 +18,8 @@ namespace Raphael.UI.ModContent;
 // buttons, list rows; MainPanel.NyarControls.cs); the form shows only the fields of the event's shape (units form or
 // wave list); changed fields are marked and go out one by one or with "Save all changes" through a NyarBatch (paced,
 // stops at the first refusal); pools are edited as rows and saved through the same batch.
+// 0.73.0: the undead-hordes types (Infestation, HordeMarch) and a destination on spawn waves (MainPanel.NyarHordes.cs);
+// a definition the server holds invalid keeps its last values (NyarForm ReasonOnly) instead of losing the form.
 public partial class MainPanel
 {
     private string _nyarEditId = "";
@@ -116,7 +118,12 @@ public partial class MainPanel
             }
             foreach (var kv in stepsOf)
                 if (okOf.TryGetValue(kv.Key, out var ok) && ok == kv.Value) _nyarForm.MarkSaved(kv.Key);
+            // An immediate set (Destination here, Start here) isn't a form change: record what the server took.
+            for (int i = 0; i < b.Acknowledged && i < b.Steps.Count; i++)
+                if (NyarImmediateKeys.Contains(b.Steps[i].Field)) _nyarForm.Acknowledge(b.Steps[i].Field, b.Steps[i].Value);
             if (b.State == NyarBatchState.Stopped && b.Current != null) _nyarForm.MarkRefused(b.Current.FormKey, b.RefusedMessage);
+            // Stopped after some steps went through: re-read, so the form matches what the server now holds.
+            if (b.State == NyarBatchState.Stopped && b.Acknowledged > 0) _nyarEdBatchReread = true;
         }
         if (_nyarEdBatchReread && _nyarEditId.Length > 0) NyarClient.EventInfo(_nyarEditId);
         _nyarEdBatchReread = false;
@@ -124,6 +131,12 @@ public partial class MainPanel
     }
 
     // ---------------------------------------------------------------- saving
+
+    /// <summary>Sets sent at once (not form values) whose confirmed value the form records.</summary>
+    private static readonly HashSet<string> NyarImmediateKeys = new(StringComparer.Ordinal) { "action.destination", "action.start" };
+
+    /// <summary>Sets that change other fields on the server: the editor re-reads `event info` after them.</summary>
+    private static bool NyarRereadAfter(string key) => key is "action.destination" or "action.start" or "action.start.minDistance";
 
     private string NyarKeyLabel(string key)
     {
@@ -139,15 +152,31 @@ public partial class MainPanel
             case "action.factions": return "factions";
             case "action.loot": return "loot";
             case "action.allowTerritory": return "claimed territory";
+            case "action.destination": return "destination";
+            case "action.start": return "start";
         }
+        // A spread block's key says which block: "growth: most alive", "spread: drawn from".
+        string block = NyarFieldRules.SpreadBlockOf(key);
+        string prefix = block switch
+        {
+            "action.growth." => "growth: ", "action.infest.spread." => "spread on arrival: ", "action.spread." => "spread: ", _ => "",
+        };
+        if (block == null && key.StartsWith("action.infest.", StringComparison.Ordinal)) prefix = "on arrival: ";
+        if (block != null && key.EndsWith(".pool", StringComparison.Ordinal)) return prefix + "drawn from";
         var s = NyarFieldRules.Spec(key);
-        return s != null ? s.Label.TrimEnd(' ', '×').ToLowerInvariant() : key;
+        return prefix + (s != null ? s.Label.TrimEnd(' ', '×').ToLowerInvariant() : key);
     }
 
     /// <summary>The client-side check of one form key (null = fine). Same per-value rules as the server.</summary>
     private string NyarCheckKey(string key, string value)
     {
-        bool apo = _nyarForm.Load.Kind == NyarEventKind.Apocalypse;
+        bool apo = NyarForm.IsApocalypseFamily(_nyarForm.Load.Kind);
+        switch (key)
+        {
+            case "action.destination": return NyarFieldRules.CheckDestination(value, allowNone: _nyarForm.Load.Kind != NyarEventKind.HordeMarch);
+            case "action.start": return value == "here" ? null : "Press Start here.";
+        }
+        if (NyarFieldRules.SpreadBlockOf(key) != null && key.EndsWith(".pool", StringComparison.Ordinal)) return NyarFieldRules.CheckSpreadPool(value);
         if (key.EndsWith(".start", StringComparison.Ordinal)) return NyarForm.CheckStart(value);
         switch (key)
         {
@@ -229,9 +258,10 @@ public partial class MainPanel
         foreach (var c in changes)
         {
             if (c.Key == $"action.waveList.{waves + 1}.units") reread = true;     // a new wave: re-read the shape after
+            if (NyarRereadAfter(c.Key)) reread = true;
             foreach (var s in NyarForm.SetsFor(c.Key, c.Value)) { expanded.Add(s); formKeyOf[s.Key] = c.Key; }
         }
-        var ordered = NyarFieldRules.OrderForSave(expanded);
+        var ordered = NyarFieldRules.OrderForSave(expanded, _nyarForm.Loaded);
         NyarBeginAction();
         if (!NyarState.SupportsTwins)
         {
@@ -273,7 +303,9 @@ public partial class MainPanel
 
     private void BuildNyarInlineEditor(GameObject parent, NyarDef d)
     {
-        var ed = AddCard(parent, "NyarEditor", new Color(0.16f, 0.12f, 0.22f, 0.9f), padding: 8, innerSpacing: 3);
+        // 0.73.0: untinted. A tint is a "Tint" child, which RedrawNyarEditor's NyarClear destroyed, so the card
+        // flipped between purple (full rebuild) and gray (redraw). Theme.CardBackground on both paths now.
+        var ed = AddCard(parent, "NyarEditor", padding: 8, innerSpacing: 3);
         _nyarEdHost = ed;
         BuildNyarEditorBody(ed, d);
     }
@@ -301,11 +333,14 @@ public partial class MainPanel
         AddNyarResultLine(ed);
         AddNyarErrorLine(ed);
 
-        // Still-missing reason (B7): the server saved the definition but holds it disabled until it is valid.
-        if (d.State == "disabled" && !string.IsNullOrEmpty(d.Reason) && d.Reason != "disabled")
+        // Still-missing reason (B7): the server saved the definition but holds it disabled until it is valid. The def row
+        // has it after a re-read; an `event info` reply of only the reason has it first.
+        string notReady = d.State == "disabled" && !string.IsNullOrEmpty(d.Reason) && d.Reason != "disabled" ? d.Reason
+            : _nyarForm.Load.NotReady.Length > 0 ? _nyarForm.Load.NotReady : "";
+        if (notReady.Length > 0)
         {
             var box = AddCard(ed, "NyarEdNotReady", new Color(0.35f, 0.28f, 0.05f, 0.9f), padding: 6, innerSpacing: 2);
-            AddBodyText(box, $"<color={NyarChangedHex}><b>Not ready yet:</b> {NyarText(d.Reason)}. It clears once the definition is valid; then press Enable.</color>",
+            AddBodyText(box, $"<color={NyarChangedHex}><b>Not ready yet:</b> {NyarText(notReady)}. It clears once the definition is valid; then press Enable.</color>",
                 Theme.ScaledUI(12));
         }
 
@@ -326,6 +361,8 @@ public partial class MainPanel
             () => { _nyarForm.Undo(); RedrawNyarEditor(); }, 110);
 
         var load = _nyarForm.Load;
+        if (load.NotReady.Length > 0 && load.Kind != NyarEventKind.Unknown)
+            NyarNote(ed, Muted("The server describes an event only once it is valid, so these are the last values read plus the changes saved since."));
         var showRow = MakeUrielRow(ed, "NyarEdInfoToggle");
         AddUrielButton(showRow, "NyarEdInfoBtn", _nyarEdShowInfo ? "Hide server text" : "Show server text",
             "The definition exactly as the server describes it (.nyar event info).", () => { _nyarEdShowInfo = !_nyarEdShowInfo; RedrawNyarEditor(); }, 130);
@@ -338,20 +375,32 @@ public partial class MainPanel
         NyarNote(ed, Muted("Each field shows the server's range; - / + and the quick picks stay inside it. A changed field is marked " +
                            "<color=#FFD75A>• changed</color>: press its <b>Set</b>, or <b>Save all changes</b>. The server checks every value."));
 
-        bool apo = load.Kind == NyarEventKind.Apocalypse;
+        bool apo = NyarForm.IsApocalypseFamily(load.Kind);
         AddSectionHeading(ed, "▸ Basics");
         NyarTextField(ed, "name", 240, "the name players see", "The name in banners and the event list.");
-        NyarFieldStepper(ed, "durationSeconds", apo, "How long the event runs.");
+        // Opened on an invalid definition: the kind isn't known yet, so only the fields every type takes.
+        bool kindKnown = load.Kind != NyarEventKind.Unknown;
+        if (kindKnown) NyarFieldStepper(ed, "durationSeconds", apo, "How long the event runs.");
 
         AddSectionHeading(ed, "▸ Conditions");
         NyarFieldStepper(ed, "conditions.minPlayers", hint: "Players that must be online for it to start (0 = any).");
         NyarFieldStepper(ed, "conditions.cooldownMinutes", hint: "Minutes before it can run again (0 = no cooldown).");
         NyarFieldStepper(ed, "conditions.chancePercent", hint: "Chance it starts each time it's triggered.");
 
+        if (!kindKnown)
+        {
+            NyarNote(ed, $"<color={NyarChangedHex}>The server sends only its reason while this definition is invalid, so Raphael can't tell its type. " +
+                         "Fix what the reason names (Any other field isn't offered until then), or press Reload values.</color>");
+            NyarRefreshAll();
+            return;
+        }
+
         switch (load.Kind)
         {
             case NyarEventKind.Empower: BuildNyarEmpowerSection(ed); break;
             case NyarEventKind.Apocalypse: BuildNyarApocalypseSection(ed, id); break;
+            case NyarEventKind.Infestation: BuildNyarInfestationSection(ed); break;
+            case NyarEventKind.HordeMarch: BuildNyarHordeMarchSection(ed, id); break;
             case NyarEventKind.UnitsForm:
             case NyarEventKind.WaveList: BuildNyarSpawnSections(ed, id); break;
             default:
@@ -369,6 +418,8 @@ public partial class MainPanel
         NyarEventKind.WaveList => "Spawn waves — each wave has its own units",
         NyarEventKind.Empower => "Empowerment",
         NyarEventKind.Apocalypse => "Apocalypse",
+        NyarEventKind.Infestation => "Infestation — the dead rise at the faction's graveyards and spread",
+        NyarEventKind.HordeMarch => "Horde march — one horde marches to a destination, then infests",
         _ => "",
     };
 
@@ -454,7 +505,7 @@ public partial class MainPanel
         NyarFieldStepper(ed, "action.marchSpeed");
         AddSectionHeading(ed, "▸ Bosses with the last horde");
         NyarListEditor(ed, "action.bosses", bosses: true, waveList: false, "Bosses", "Up to 3 bosses, 1-3 of each.", allowPools: false);
-        NyarNote(ed, Muted("The apocalypse's units, faction and hotspots aren't settable by command — they live in events.json (edit it, then Reload from disk)."));
+        NyarHordeNotes(ed, "The apocalypse's units, faction, hotspots and pools aren't settable by command — they live in events.json (edit it, then Reload from disk).");
     }
 
     // ---------------------------------------------------------------- spawn waves
@@ -471,11 +522,15 @@ public partial class MainPanel
             advice: () =>
             {
                 string p = _nyarForm.Get("action.pursuit");
+                if (p.Length > 0 && p != "none" && _nyarForm.Get("action.destination") == "here")
+                    return "pursuit and a destination can't both be set — the server refuses it.";
                 return p.Length > 0 && p != "none" && NyarHuntRange(_nyarForm.Get("action.behaviour")) == 0
                     ? "pursuit needs Behaviour: Hunt players — the server disables the event otherwise." : null;
             });
         NyarYesNo(ed, "action.loot", "Drops loot", "Whether event units drop loot.");
         NyarYesNo(ed, "action.allowTerritory", "Claimed territory", "Whether units may spawn on claimed castle territory.");
+
+        BuildNyarDestinationCard(ed, id);
 
         if (load.Kind == NyarEventKind.UnitsForm) BuildNyarUnitsForm(ed);
         else BuildNyarWaveList(ed);
@@ -547,7 +602,7 @@ public partial class MainPanel
         NyarFieldStepper(ed, "action.waves");
         NyarFieldStepper(ed, "action.intervalSeconds", hint: "Time from one wave to the next.");
         NyarListEditor(ed, "action.units", bosses: false, waveList: false, "Units per wave",
-            "1-10 entries, 1-50 of each. A unit already in the list gets its count raised.");
+            "1-10 entries, 1-500 of each. A unit already in the list gets its count raised. " + NyarCapHint);
         BuildNyarLevel(ed);
         foreach (var k in NyarForm.ModifierKeys) NyarFieldStepper(ed, "action.modifiers." + k);
 
@@ -624,7 +679,7 @@ public partial class MainPanel
         {
             NyarNote(ed, Muted($"New wave {sw}: pick its units and press Set (or Save all). Its bosses and start time can be set once it exists. " +
                                "It starts when the wave before it is cleared until you change that."));
-            NyarListEditor(ed, $"action.waveList.{sw}.units", bosses: false, waveList: true, $"Wave {sw} units", "1-10 entries, 1-50 of each; a unit may appear twice.");
+            NyarListEditor(ed, $"action.waveList.{sw}.units", bosses: false, waveList: true, $"Wave {sw} units", "1-10 entries, 1-500 of each; a unit may appear twice.");
             return;
         }
         var info = waves.FirstOrDefault(x => x.N == sw);
@@ -660,7 +715,8 @@ public partial class MainPanel
         if (info.HasExtras)
             NyarNote(ed, $"<color={NyarChangedHex}>Some units in this wave have their own level, multipliers or chance. Saving this wave's units replaces " +
                          "them — set those again under Any other field (action.waveList.N.units.M.…).</color>");
-        NyarListEditor(ed, $"action.waveList.{sw}.units", bosses: false, waveList: true, $"Wave {sw} units", "1-10 entries, 1-50 of each; a unit may appear twice.");
+        NyarListEditor(ed, $"action.waveList.{sw}.units", bosses: false, waveList: true, $"Wave {sw} units",
+            "1-10 entries, 1-500 of each; a unit may appear twice. " + NyarCapHint);
         NyarListEditor(ed, $"action.waveList.{sw}.bosses", bosses: true, waveList: true, $"Wave {sw} bosses",
             "This wave's own bosses: up to 3 entries, 5 bosses at most in all.");
         if (count > 1)
@@ -883,7 +939,10 @@ public partial class MainPanel
         NyarNote(ed, Muted("Every field the server takes. Pick one; its value control follows the field's type and range."));
         var fr = MakeUrielRow(ed, "NyarEdOtherPick");
         NyarCell(fr, "Field", 150);
-        var fieldOpts = new[] { "Pick a field…" }.Concat(NyarSettableFields).ToArray();
+        var k = _nyarForm.Load.Kind;
+        var offered = NyarFieldRules.FieldsFor(NyarSettableFields, NyarForm.IsSpawnWaves(k), k == NyarEventKind.Apocalypse,
+            k == NyarEventKind.Infestation, k == NyarEventKind.HordeMarch, k == NyarEventKind.Empower);
+        var fieldOpts = new[] { "Pick a field…" }.Concat(offered).ToArray();
         int picked = Math.Max(0, Array.IndexOf(fieldOpts, _nyarEditOtherField));
         int ddGen = _nyarEdGen;
         var ddObj = UIFactory.CreateDropdown(fr, "NyarEdFieldPicker", out var fieldDd, fieldOpts[picked], 11, i =>
@@ -947,12 +1006,18 @@ public partial class MainPanel
         if (hasM) { if (_nyarOtherM.Length == 0) { NyarNote(ed, Muted("Pick the unit entry above.")); return; } field = System.Text.RegularExpressions.Regex.Replace(field, @"\.M(?=\.|$)", "." + _nyarOtherM); }
         if (field.Contains("NAME")) { if (!NyarFieldRules.IsPoolName(_nyarOtherName)) { NyarNote(ed, Muted("Pick or type a pool name above.")); return; } field = field.Replace("NAME", _nyarOtherName); }
 
-        var spec = NyarFieldRules.Spec(field, _nyarForm.Load.Kind == NyarEventKind.Apocalypse);
-        if (spec != null && spec.Kind != NyarKind.Text) { NyarFieldStepper(ed, field, _nyarForm.Load.Kind == NyarEventKind.Apocalypse); return; }
+        if (field is "action.destination" or "action.start")
+        {
+            NyarNote(ed, Muted(field == "action.start" ? "Use Start here in the Start section above (sent at once)." : "Use Destination here in the Destination section above (sent at once)."));
+            return;
+        }
+        bool family = NyarForm.IsApocalypseFamily(_nyarForm.Load.Kind);
+        var spec = NyarFieldRules.Spec(field, family);
+        if (spec != null && spec.Kind != NyarKind.Text) { NyarFieldStepper(ed, field, family); return; }
         if (NyarBoolFields.Contains(NyarFieldRules.Generic(field))) { NyarYesNo(ed, field, NyarText(field), field); return; }
         string gen2 = NyarFieldRules.Generic(field);
         if (gen2 == "action.units" || gen2 == "action.waveList.N.units")
-        { NyarListEditor(ed, field, false, gen2 != "action.units", "Units", "1-10 entries, 1-50 of each."); return; }
+        { NyarListEditor(ed, field, false, gen2 != "action.units", "Units", "1-10 entries, 1-500 of each."); return; }
         if (gen2 == "action.bosses" || gen2 == "action.waveList.N.bosses")
         { NyarListEditor(ed, field, true, gen2 != "action.bosses", "Bosses", "Up to 3 entries."); return; }
         if (gen2 == "action.waveList.N")

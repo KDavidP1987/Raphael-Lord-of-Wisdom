@@ -3,7 +3,7 @@
 The engineering roadmap. The short player-facing version is the **Roadmap** section of
 [`README.md`](../README.md#roadmap). This file adds the detail needed to start an item.
 
-Last reviewed: **v0.72.0** (2026-10-16).
+Last reviewed: **v0.73.0** (2026-10-17).
 
 Status: **Planned** (agreed, not started) · **Spike** (needs a prototype first) · **Waiting** (needs a
 server-mod release) · **Deferred** · **Done**.
@@ -23,6 +23,10 @@ server-mod release) · **Deferred** · **Done**.
 | Tabbed chat window | Done | Shipped as the standalone chat window, set up from **Game UI → Overview**. |
 | Client-only tab group | Done | Shipped as the **Game UI** group, shown on every server. |
 | Rename from BloodCraftHub | Done | See [`RENAME_TO_RAPHAEL.md`](../RENAME_TO_RAPHAEL.md). |
+| Complete in-game guides (one per mod) | Done | 0.73.0. Data in `Services/Guides/`, checked against generated manifests (`tools/guide-commands.py`, `tests/fixtures/`). Regenerate the manifests when a mod ships a release; preflight -Mode Release fails while they are stale. |
+| Bloodcraft: Reset Bloodcraft progress | Done | 0.73.0. Admin card; sends Bloodcraft's admin commands one at a time and correlates each reply (`Services/Bloodcraft/BcReset.cs`). |
+| Bloodcraft: Emberglass bridge | Spike | 0.73.0 ships it opt-in and experimental. Promote once tested with Emberglass on client and server (`UseEmberglassEclipseBridge=true`). |
+| Kindred Admin buttons that send commands KindredCommands 2.5.8 lacks | Done (0.73.0) | Real commands now; dead buttons removed; every template checked against the KindredCommands manifest by the release tests. |
 
 ## Server-mod integrations
 
@@ -38,6 +42,7 @@ Each item waits on the server mod named. The source docs live in that mod's repo
 | Nyarlathotep | Exact pre-fill in the event editor | Waiting | Needs `.nyar api fields event <id>` (contract §10.5). 0.72.0 parses far more of the `event info` text (waves, bosses, pools, pursuit, modifiers) and marks what it couldn't read. Feedback §5. |
 | Nyarlathotep | Apocalypse "goal: starting admin" can't start | Done | Fixed server-side in 0.13.0-rc.2 (`d492bd5`). Raphael keeps the Goal here button; the workaround text shows only on rc.1. |
 | Nyarlathotep | Wave variety: per-wave lists, pools, bosses, pursuit; grouped templates | Done | 0.72.0, for Nyarlathotep 0.13.0-rc.3 (`RAPHAEL_HANDOFF_WAVE_VARIETY.md`). |
+| Nyarlathotep | Undead hordes: Infestation and Horde march forms, destination waves, 500-unit limits, Undead hordes template group | Done | 0.73.0, for Nyarlathotep 0.14.0 (`RAPHAEL_HANDOFF_UNDEAD_HORDES.md`). |
 | Nyarlathotep | Communications (api 10): notice push, catch-up read, scheduled messages | Waiting | `RAPHAEL_HANDOFF_API8.md` §6 |
 | Nyarlathotep | Stats: `me` / `top` reads, hide / show, share | Waiting | Contract: PLANNED. Raphael tabs are built and gated. |
 | Nyarlathotep | Defended zones: `zones` read, add / remove | Waiting | Contract: PLANNED. Raphael tab is built and gated (`NyarState.SupportsZoneReads`). |
@@ -48,6 +53,8 @@ Each item waits on the server mod named. The source docs live in that mod's repo
 | Uriel | Castle Events: layout, run panel, live readout, Event Library, Admin: Units | Done | Shipped in 0.70.0 on Uriel 0.21.0's chat replies (`Services/Uriel/UrielEvents.cs`). Not yet tested in game: run handoff §9. |
 | Uriel | Castle Events wire API (`[URIEL:layout]`, `evrun` pushes, `err cmd=`) | Waiting | Raphael confirmed handoff §7 with six amendments: `docs/URIEL_CASTLE_EVENTS_API_REPLY.md`. Gate on Uriel's ApiVersion bump; keep the text parsing as the fallback. |
 | Uriel | Castle Events run overlay (separate from the tab) | Planned | The readout lives on the Castle Events tab and in toasts today. |
+| Uriel | Admin: Controls (feature switches, four cleanup buttons) and greyed off features | Done | 0.73.0 on Uriel 0.22.0's chat text (`Services/Uriel/UrielFeatures.cs`). |
+| Uriel | `.uriel api features` machine line, and a per-admin arm token for killswitch / purgeall / unit purge | Waiting | Uriel keeps one shared arm per command and reads switches from human text today; ask for both with the next ApiVersion bump. |
 
 ---
 

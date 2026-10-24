@@ -10,8 +10,11 @@ namespace Raphael.Services.Nyar;
 // the values the server holds (PLAN.md §B2 change 7); NyarForm tracks what the admin changed since, what the server
 // confirmed (green "saved") and what it refused (change 8). Values are always in `event set` form. A field Read()
 // could not take from the reply is in Unread: the form shows an empty control with a "couldn't read" note, never a guess.
+// 0.73.0 (PLAN-NYAR014.md): the undead-hordes types (Infestation, HordeMarch) and a destination wave's march line. The
+// server describes an invalid definition with one line ("<id> disabled: <reason>", EventAdmin.cs:843): Read marks that
+// reply ReasonOnly and Apply keeps the last full load (plus what the server acknowledged since) with NotReady set.
 
-internal enum NyarEventKind { Unknown, UnitsForm, WaveList, Empower, Apocalypse, Other }
+internal enum NyarEventKind { Unknown, UnitsForm, WaveList, Empower, Apocalypse, Infestation, HordeMarch, Other }
 
 /// <summary>What one `event info` reply says about an event.</summary>
 internal sealed class NyarFormLoad
@@ -26,6 +29,16 @@ internal sealed class NyarFormLoad
     public string LocationKind = "";
     /// <summary>A growth event shows its modifiers on each generated wave, not in the spawn line.</summary>
     public bool Growth;
+    /// <summary>The reply was only "&lt;id&gt; disabled: &lt;reason&gt;" (the server describes an event once it is valid).</summary>
+    public bool ReasonOnly;
+    /// <summary>The server's reason while the definition is invalid: from a ReasonOnly reply kept over the last full load.</summary>
+    public string NotReady = "";
+    /// <summary>A horde march's start: "point", "admin", "hotspot" or "" (unread).</summary>
+    public string StartKind = "";
+    /// <summary>A horde march's size, the sum of its units ("horde of N"); 0 when unread.</summary>
+    public int HordeSize;
+    /// <summary>What the reply shows that a destination can't be combined with ("pursuit", "fan-out" …); empty when none.</summary>
+    public readonly List<string> DestinationConflicts = new();
 }
 
 internal sealed class NyarForm
@@ -41,6 +54,14 @@ internal sealed class NyarForm
         "action.modifiers.moveSpeed", "action.modifiers.attackSpeed" };
 
     private static readonly Regex Head = new(@"^\S+ ""(.*)"" (?:enabled|disabled) pillar ", RegexOptions.Compiled);
+    private static readonly Regex ReasonLine = new(@"^(\S+) disabled: (.+)$", RegexOptions.Compiled);
+    private static readonly Regex MarchSpeedRx = new(@", march (\d+(?:\.\d{1,2})?) m/s$", RegexOptions.Compiled);
+    private static readonly Regex FanOutRx = new(@"(?:^spawn: |; )fanOut \d+ players ", RegexOptions.Compiled);
+    private const string RegionLockLine = "region lock: on";   // EventAdmin.RegionLockLine
+
+    /// <summary>Apocalypse, Infestation and HordeMarch: one runs at a time, and their duration is 600-604800 s.</summary>
+    public static bool IsApocalypseFamily(NyarEventKind k) => k is NyarEventKind.Apocalypse or NyarEventKind.Infestation or NyarEventKind.HordeMarch;
+    public static bool IsSpawnWaves(NyarEventKind k) => k is NyarEventKind.UnitsForm or NyarEventKind.WaveList;
 
     public NyarFormLoad Load { get; private set; } = new();
     public bool HaveLoad { get; private set; }
@@ -59,6 +80,19 @@ internal sealed class NyarForm
         void Put(string field, string value) { if (value == null) r.Unread.Add(field); else v[field] = value; }
         string Find(string prefix) { foreach (var l in lines) if (l.StartsWith(prefix, StringComparison.Ordinal)) return l; return null; }
         string M(string text, string rx) { if (text == null) return null; var m = Regex.Match(text, rx); return m.Success ? m.Groups[1].Value : null; }
+        void PutSpread(string block, Dictionary<string, string> spread)
+        {
+            foreach (var k in new[] { "perKillMin", "perKillMax", "max", "perMinute", "pool" })
+                Put(block + k, spread != null && spread.TryGetValue(k, out var s) ? s : null);
+        }
+
+        // An invalid definition: the server sends only its reason (an id has no spaces; never a head line).
+        if (lines.Count == 1 && !Head.IsMatch(lines[0]) && ReasonLine.Match(lines[0]) is { Success: true } why)
+        {
+            r.ReasonOnly = true;
+            r.NotReady = why.Groups[2].Value;
+            return r;
+        }
 
         var h = Head.Match(lines[0]);
         Put("name", h.Success ? h.Groups[1].Value : null);
@@ -82,6 +116,42 @@ internal sealed class NyarForm
             Put("action.hordes.size", M(hordes, @", size (\d+) "));
             Put("action.roamers.max", M(Find("roamers: "), @", max (\d+),"));
             Put("action.bosses", Bosses(NyarInfoParse.FinalBosses(lines)));
+            r.Pools = NyarInfoParse.Pools(lines, out r.PoolsComplete);
+            return r;
+        }
+
+        if (Find("action: infestation of the ") != null)
+        {
+            r.Kind = NyarEventKind.Infestation;
+            var o = NyarInfoParse.Origins(Find("origins: "));
+            Put("action.origins.count", o?[0]); Put("action.origins.minNatives", o?[1]);
+            Put("action.origins.minSpacing", o?[2]); Put("action.origins.perOrigin", o?[3]);
+            var hu = NyarInfoParse.Hunters(Find("hunters: "));
+            Put("action.hunters", hu?[0]); Put("action.driftRadius", hu?[1]);
+            PutSpread("action.spread.", NyarInfoParse.Spread(After(Find("spread: "), "spread: ")));
+            r.Pools = NyarInfoParse.Pools(lines, out r.PoolsComplete);
+            return r;
+        }
+
+        var march = Find("action: horde march of the ");
+        if (march != null)
+        {
+            r.Kind = NyarEventKind.HordeMarch;
+            var sp = MarchSpeedRx.Match(march);
+            Put("action.marchSpeed", sp.Success ? sp.Groups[1].Value : null);
+            r.StartKind = NyarInfoParse.Start(Find("start: "), out var minDistance) ?? "";
+            if (r.StartKind == "hotspot") v["action.start.minDistance"] = minDistance;
+            else if (r.StartKind == "") r.Unread.Add("action.start.minDistance");
+            v["action.destination"] = "here";   // a horde march always has one
+            var dest = NyarInfoParse.Destination(Find("destination: "));
+            Put("action.destination.name", dest?[0]); Put("action.destination.radius", dest?[1]);
+            PutSpread("action.growth.", NyarInfoParse.Spread(After(Find("growth: "), "growth: ")));
+            var inf = NyarInfoParse.Infest(Find("infest: "));
+            Put("action.infest.hunters", inf?[0]); Put("action.infest.driftRadius", inf?[1]);
+            PutSpread("action.infest.spread.", NyarInfoParse.Spread(inf?[2]));
+            Put("action.bosses", Bosses(NyarInfoParse.FinalBosses(lines)));
+            r.HordeSize = NyarInfoParse.HordeSize(lines);
+            r.Pools = NyarInfoParse.Pools(lines, out r.PoolsComplete);
             return r;
         }
 
@@ -113,6 +183,23 @@ internal sealed class NyarForm
         v["action.pursuit"] = pursuit > 0 ? Inv(pursuit) : "none";
         Put("action.bosses", Bosses(NyarInfoParse.FinalBosses(lines)));
         r.Pools = NyarInfoParse.Pools(lines, out r.PoolsComplete);
+
+        // A destination wave (0.14.0): "march: from … to <name> (…) at <speed> m/s". Its radius isn't printed.
+        var marchLine = Find("march: ");
+        if (marchLine == null) v["action.destination"] = "none";
+        else
+        {
+            v["action.destination"] = "here";
+            var mv = NyarInfoParse.March(marchLine);
+            Put("action.destination.name", mv?[0]); Put("action.marchSpeed", mv?[1]);
+            r.Unread.Add("action.destination.radius");
+        }
+        // What a destination can't be combined with, as far as the reply shows it.
+        if (r.LocationKind is "aroundplayer" or "region") r.DestinationConflicts.Add("location");
+        if (pursuit > 0) r.DestinationConflicts.Add("pursuit");
+        if (Find(RegionLockLine) != null) r.DestinationConflicts.Add("region lock");
+        if (Find("arena: ") != null) r.DestinationConflicts.Add("arena");
+        foreach (var l in lines) if (FanOutRx.IsMatch(l)) { r.DestinationConflicts.Add("fan-out"); break; }
 
         if (waveList)
         {
@@ -146,15 +233,26 @@ internal sealed class NyarForm
     // "" (no bosses) → "none", the value that clears them; null stays unread.
     private static string Bosses(string setForm) => setForm == null ? null : setForm.Length == 0 ? "none" : setForm;
 
+    // The text after a line's head, or null.
+    private static string After(string line, string head) => line == null ? null : line.Substring(head.Length);
+
     // ================================================================== editing state
 
     /// <summary>Take a fresh reply. A field the admin changed keeps its change unless the server now holds that very
-    /// value; an unchanged one follows the server. Saved / refused marks are cleared (the reply is the new truth).</summary>
+    /// value; an unchanged one follows the server. Saved / refused marks are cleared (the reply is the new truth).
+    /// A ReasonOnly reply keeps the last full load (with every value acknowledged since) and only sets NotReady; with no
+    /// full load yet, the form has the reason alone.</summary>
     public void Apply(NyarFormLoad load)
     {
+        if (load != null && load.ReasonOnly && Load.Kind != NyarEventKind.Unknown)
+        {
+            Load.NotReady = load.NotReady;
+            _saved.Clear(); _refused.Clear();
+            return;
+        }
         var old = Load;
         Load = load ?? new NyarFormLoad();
-        HaveLoad = load != null && load.Kind != NyarEventKind.Unknown;
+        HaveLoad = load != null && (load.Kind != NyarEventKind.Unknown || load.ReasonOnly);
         foreach (var k in new List<string>(_cur.Keys))
         {
             string was = old.Values.TryGetValue(k, out var o) ? o : "";
@@ -201,9 +299,37 @@ internal sealed class NyarForm
     /// <summary>The server confirmed <paramref name="field"/>: its value is now the loaded one.</summary>
     public void MarkSaved(string field)
     {
-        if (_cur.TryGetValue(field, out var c)) { Load.Values[field] = c; Load.Unread.Remove(field); _cur.Remove(field); _order.Remove(field); }
+        if (_cur.TryGetValue(field, out var c)) { Load.Values[field] = c; Load.Unread.Remove(field); _cur.Remove(field); _order.Remove(field); SideEffects(field, c); }
         _refused.Remove(field);
         _saved.Add(field);
+    }
+
+    /// <summary>An immediate set (Destination here, Start here …) the server confirmed: its value is now the loaded one,
+    /// so it survives a ReasonOnly reply.</summary>
+    public void Acknowledge(string field, string value)
+    {
+        value ??= "";
+        Load.Values[field] = value;
+        Load.Unread.Remove(field);
+        if (_cur.TryGetValue(field, out var c) && c == value) { _cur.Remove(field); _order.Remove(field); }
+        SideEffects(field, value);
+    }
+
+    // What a confirmed set also changes on the server: no destination drops its name, radius and march speed; a start
+    // here replaces a hotspot start, and a hotspot distance replaces a point start.
+    private void SideEffects(string field, string value)
+    {
+        if (field == "action.destination" && value == "none")
+        {
+            foreach (var k in new[] { "action.destination.name", "action.destination.radius", "action.marchSpeed" })
+            { Load.Values.Remove(k); Load.Unread.Remove(k); }
+        }
+        else if (field == "action.start" && value == "here")
+        {
+            Load.StartKind = "point";
+            Load.Values.Remove("action.start.minDistance"); Load.Unread.Remove("action.start.minDistance");
+        }
+        else if (field == "action.start.minDistance") Load.StartKind = "hotspot";
     }
 
     public void MarkRefused(string field, string message) { _saved.Remove(field); _refused[field] = message ?? ""; }

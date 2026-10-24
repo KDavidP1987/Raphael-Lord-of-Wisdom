@@ -83,6 +83,15 @@ internal static class UrielState
         Fire(PresenceChanged);
     }
 
+    /// <summary>0.73.0: the version probe got `[URIEL:err] code=disabled` (Uriel 0.22.0: object spawning or the
+    /// whole mod is off). Uriel is there, but its object-spawn API isn't answering.</summary>
+    internal static void SetPresentDisabled()
+    {
+        ApiVersion = 0; PluginVersion = ""; Ready = true; Present = true;
+        ObjectSpawnEnabled = false; CollectionEnabled = false;
+        Fire(PresenceChanged);
+    }
+
     internal static void SetCatalog(IReadOnlyList<UrielObject> all, int total, int discoverable, string fromCacheVersion = "")
     {
         Catalog = all ?? Array.Empty<UrielObject>();

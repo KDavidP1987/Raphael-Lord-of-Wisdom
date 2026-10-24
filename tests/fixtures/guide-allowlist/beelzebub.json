@@ -1,0 +1,18 @@
+{
+  "commands": [],
+  "settings": [
+    {
+      "mod": "beelzebub",
+      "section": "Announcements",
+      "key": "Broadcast_CollectionComplete_Messages",
+      "reason": "default is a pipe-separated message pool full of emoji the game font cannot render, so it cannot be shown in a Default cell; described in prose under Server configuration > Announcements and edited via .beelz admin broadcast-msg"
+    },
+    {
+      "mod": "beelzebub",
+      "section": "Announcements",
+      "key": "Broadcast_Leaderboard_Messages",
+      "reason": "default is a pipe-separated message pool full of emoji the game font cannot render, so it cannot be shown in a Default cell; described in prose under Server configuration > Announcements and edited via .beelz admin broadcast-msg"
+    }
+  ],
+  "unresolvedBinds": []
+}

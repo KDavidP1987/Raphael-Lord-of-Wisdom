@@ -124,8 +124,10 @@ public class BeelzTransformOverlayPanel : ResizeablePanelBase
                 forceExpandWidth: true, forceExpandHeight: false, childControlWidth: true, childControlHeight: true,
                 spacing: 4, padding: new Vector4(0, 0, 0, 0));
             UIFactory.SetLayoutElement(ctl, minWidth: MinWidth - 12, flexibleWidth: 1, minHeight: 24, preferredHeight: 26, flexibleHeight: 0);
-            AddOverlayButton(ctl, "BeelzTfOvP1", "Phase 1", "Switch to phase 1 (.beelz phase 1).", () => { BeelzClient.Phase(1); SetStatus("Switching to phase 1…"); });
-            AddOverlayButton(ctl, "BeelzTfOvP2", "Phase 2", "Switch to phase 2 (.beelz phase 2).", () => { BeelzClient.Phase(2); SetStatus("Switching to phase 2…"); });
+            // 0.73.0: phase clicks go through BeelzClient's shared in-flight lock (also used by the Transforms
+            // tab's Phase cycle button), so a switch can't be re-sent / raced before the last one lands.
+            AddOverlayButton(ctl, "BeelzTfOvP1", "Phase 1", "Switch to phase 1 (.beelz phase 1). Ignored for a moment while the last switch lands.", () => OnPhaseClick(1));
+            AddOverlayButton(ctl, "BeelzTfOvP2", "Phase 2", "Switch to phase 2 (.beelz phase 2). Ignored for a moment while the last switch lands.", () => OnPhaseClick(2));
             AddOverlayButton(ctl, "BeelzTfOvRevert", "Revert", "End the active transform (.beelz revert).", () => { BeelzClient.Revert(); SetStatus("Reverting…"); }, danger: true);
         }
         else
@@ -171,6 +173,12 @@ public class BeelzTransformOverlayPanel : ResizeablePanelBase
             btn.onClick.AddListener((UnityEngine.Events.UnityAction)(() => OnRowClick(capGuid, capIndex, capName)));
             TooltipHover.Attach(rowGo, $"Double-click to transform into {disp} (.beelz transform). Failure reasons reply in chat.");
         }
+    }
+
+    private void OnPhaseClick(int n)
+    {
+        if (BeelzClient.TryPhase(n)) SetStatus($"Switching to phase {n}…");
+        else if (BeelzClient.PhaseSwitchInFlight) SetStatus("A phase switch is still landing — try again in a moment.");
     }
 
     private void OnRowClick(string guid, int index, string name)

@@ -132,8 +132,8 @@ public static partial class MessageService
     public const string BCCOM_CLASS_LIST_STATS    = ".class lst";
     public const string BCCOM_CLASS_TOGGLE_SHIFT  = ".class shift";
     public const string BCCOM_CLASS_SELECT_FORMAT = ".class s {0}";   // {0} = enum name (BloodKnight, DemonHunter, ...)
-    public const string BCCOM_CLASS_CHANGE_FORMAT = ".class c {0}";   // alias of select; some servers gate one or the other
-    public const string BCCOM_CLASS_CHOOSE_SHIFT_FORMAT = ".class csp {0}"; // {0} = 1-based spell index from .class lsp output
+    public const string BCCOM_CLASS_CHANGE_FORMAT = ".class c {0}";   // change an EXISTING class (.class s only works with no class); costs 750× Greater Stygian Shards by default
+    public const string BCCOM_CLASS_CHOOSE_SHIFT_FORMAT = ".class csp {0}"; // {0}: 0 = default spell (Veil of Shadow); 1..N = class spells as numbered by List Spells. Needs Toggle Shift on.
 
     // ---------- Weapon expertise (.wep) ----------
     public const string BCCOM_WEP_GET                = ".wep get";
@@ -199,7 +199,7 @@ public static partial class MessageService
     // ---------- Server info (zero-arg listings) ----------
     public const string BCCOM_KC_TIME            = ".time";
     public const string BCCOM_KC_STAFF           = ".staff";
-    public const string BCCOM_KC_BOSS_LIST       = ".boss list";
+    public const string BCCOM_KC_BOSS_LIST       = Kindred.KindredAdminCommands.BossList;
     public const string BCCOM_KC_REGION_LIST     = ".region list";
     public const string BCCOM_KC_CASTLE_OPEN_PLOTS = ".openplots";  // not in castle group; top-level command (alias .op)
     public const string BCCOM_KC_GEAR_SOULSHARD_STATUS = ".gear soulshardstatus";
@@ -226,7 +226,7 @@ public static partial class MessageService
     // -------------------------------------------------------------------------
 
     // ---- General player commands (no group) ----
-    public const string BCCOM_KCA_REVIVE_TARGET           = ".revivetarget";
+    public const string BCCOM_KCA_REVIVE_TARGET           = Kindred.KindredAdminCommands.ReviveTarget;
     public const string BCCOM_KCA_RENAME_SELF_FORMAT      = ".rename {0}";                    // newName
     public const string BCCOM_KCA_RENAME_PLAYER_FORMAT    = ".rename {0} {1}";                // player, newName
     public const string BCCOM_KCA_UNBIND_PLAYER_FORMAT    = ".unbindplayer {0}";              // player
@@ -256,7 +256,7 @@ public static partial class MessageService
     public const string BCCOM_KCA_RESET_COOLDOWN_FORMAT   = ".resetcooldown {0}";             // player (optional)
 
     // ---- Boost (bst) group ----
-    public const string BCCOM_KCA_BST_PLAYERS                = ".bst players";
+    public const string BCCOM_KCA_BST_PLAYERS                = Kindred.KindredAdminCommands.BstPlayers;
     public const string BCCOM_KCA_BST_STATE_FORMAT           = ".bst state {0}";
     public const string BCCOM_KCA_BST_ATTACK_SPEED_FORMAT    = ".bst attackspeed {0} {1}";    // speed, player
     public const string BCCOM_KCA_BST_REMOVE_ATTACK_SPEED_FORMAT = ".bst removeattackspeed {0}";
@@ -294,23 +294,23 @@ public static partial class MessageService
     // -------------------------------------------------------------------------
 
     // ---- General server commands (no group) ----
-    public const string BCCOM_KCA_REVEALMAP_ALL              = ".revealmapforallplayers";
-    public const string BCCOM_KCA_CLEAN_CONTAINERLESS_SHARDS = ".cleancontainerlessshards";
-    public const string BCCOM_KCA_EVERYONE_DAYWALKER         = ".everyonedaywalker";
-    public const string BCCOM_KCA_GLOBAL_BAT_VISION          = ".globalbatvision";
+    public const string BCCOM_KCA_REVEALMAP_ALL              = Kindred.KindredAdminCommands.RevealMapAll;
+    public const string BCCOM_KCA_CLEAN_CONTAINERLESS_SHARDS = Kindred.KindredAdminCommands.CleanContainerlessShards;
+    public const string BCCOM_KCA_EVERYONE_DAYWALKER         = Kindred.KindredAdminCommands.EveryoneDaywalker;
+    public const string BCCOM_KCA_GLOBAL_BAT_VISION          = Kindred.KindredAdminCommands.GlobalBatVision;
     public const string BCCOM_KCA_SETTIME_FORMAT             = ".settime {0} {1}";            // day, hour
     public const string BCCOM_KCA_FORCE_RESPAWN_FORMAT       = ".forcerespawn {0}";           // range (default 10)
 
     // ---- Announce group ----
-    public const string BCCOM_KCA_ANNOUNCE_LIST              = ".announce list";
+    public const string BCCOM_KCA_ANNOUNCE_LIST              = Kindred.KindredAdminCommands.AnnounceList;
     public const string BCCOM_KCA_ANNOUNCE_ADD_FORMAT        = ".announce add {0} {1} {2} {3}"; // name, message, time, oneTime
     public const string BCCOM_KCA_ANNOUNCE_CHANGE_FORMAT     = ".announce change {0} {1} {2} {3}";
     public const string BCCOM_KCA_ANNOUNCE_REMOVE_FORMAT     = ".announce remove {0}";        // name
 
     // ---- Drop items group ----
-    public const string BCCOM_KCA_DROP_REMOVE_LIFETIME       = ".dropitems removelifetime";
-    public const string BCCOM_KCA_DROP_CLEAR_ALL             = ".dropitems clearall";
-    public const string BCCOM_KCA_DROP_CLEAR_ALL_SHARDS      = ".dropitems clearallshards";
+    public const string BCCOM_KCA_DROP_REMOVE_LIFETIME       = Kindred.KindredAdminCommands.DropRemoveLifetime;
+    public const string BCCOM_KCA_DROP_CLEAR_ALL             = Kindred.KindredAdminCommands.DropClearAll;
+    public const string BCCOM_KCA_DROP_CLEAR_ALL_SHARDS      = Kindred.KindredAdminCommands.DropClearAllShards;
     public const string BCCOM_KCA_DROP_LIFETIME_FORMAT       = ".dropitems lifetime {0}";      // seconds
     public const string BCCOM_KCA_DROP_LIFETIME_DISABLED_FORMAT = ".dropitems lifetimewhendisabled {0}";
     public const string BCCOM_KCA_DROP_SHARD_LIFETIME_FORMAT = ".dropitems shardlifetime {0}";
@@ -318,7 +318,7 @@ public static partial class MessageService
     public const string BCCOM_KCA_DROP_CLEAR_SHARDS_FORMAT   = ".dropitems clearshards {0}";  // radius
 
     // ---- Region group ----
-    public const string BCCOM_KCA_REGION_LIST_PLAYERS        = ".region listplayers";
+    public const string BCCOM_KCA_REGION_LIST_PLAYERS        = Kindred.KindredAdminCommands.RegionListPlayers;
     public const string BCCOM_KCA_REGION_LOCK_FORMAT         = ".region lock {0}";            // region
     public const string BCCOM_KCA_REGION_UNLOCK_FORMAT       = ".region unlock {0}";
     public const string BCCOM_KCA_REGION_GATE_FORMAT         = ".region gate {0} {1}";        // region, level
@@ -336,10 +336,10 @@ public static partial class MessageService
     public const string BCCOM_KCA_BOSS_UNLOCK_PRIMAL_FORMAT  = ".boss unlockprimal {0}";
 
     // ---- Gear group (server subset) ----
-    public const string BCCOM_KCA_GEAR_HEADGEAR              = ".gear headgear";
-    public const string BCCOM_KCA_GEAR_SS_FLIGHT             = ".gear soulshardflight";
-    public const string BCCOM_KCA_GEAR_SS_DROP_MGMT          = ".gear togglesoulsharddropmanagement";
-    public const string BCCOM_KCA_GEAR_DESTROY_ALL_SHARDS    = ".gear destroyallshards";
+    public const string BCCOM_KCA_GEAR_HEADGEAR              = Kindred.KindredAdminCommands.GearHeadgear;
+    public const string BCCOM_KCA_GEAR_SS_FLIGHT             = Kindred.KindredAdminCommands.GearSoulshardFlight;
+    public const string BCCOM_KCA_GEAR_SS_DROP_MGMT          = Kindred.KindredAdminCommands.GearSoulshardDropMgmt;
+    public const string BCCOM_KCA_GEAR_DESTROY_ALL_SHARDS    = Kindred.KindredAdminCommands.GearDestroyAllShards;
     public const string BCCOM_KCA_GEAR_SS_LIMIT_FORMAT       = ".gear soulshardlimit {0} {1}"; // limit, shardType
     public const string BCCOM_KCA_GEAR_SS_DURATION_FORMAT    = ".gear soulsharddurabilitytime {0}"; // seconds
 
@@ -352,20 +352,20 @@ public static partial class MessageService
     public const string BCCOM_KCA_PRISONER_FEED_FORMAT       = ".prisoner feed {0} {1} {2} {3} {4} {5} {6}"; // feed,hMin,hMax,mMin,mMax,qMin,qMax
     public const string BCCOM_KCA_PRISONER_FEED_DEFAULT_FORMAT = ".prisoner feeddefault {0}"; // feed
 
-    // ---- Staff group ----
-    public const string BCCOM_KCA_STAFF_RELOAD_STAFF         = ".staff reloadstaff";
-    public const string BCCOM_KCA_STAFF_RELOAD_ADMIN         = ".staff reloadadmin";
-    public const string BCCOM_KCA_STAFF_AUTO_ADMIN_AUTH      = ".staff autoadminauth";
-    public const string BCCOM_KCA_STAFF_SET_STAFF_FORMAT     = ".staff setstaff {0} {1}";     // player, rank
-    public const string BCCOM_KCA_STAFF_REMOVE_STAFF_FORMAT  = ".staff removestaff {0}";      // player
-    public const string BCCOM_KCA_STAFF_TOGGLE_ADMIN_FORMAT  = ".staff toggleadmin {0}";      // player
+    // ---- Staff (0.73.0: top-level commands in KindredCommands StaffCommands.cs; there is no ".staff" group) ----
+    public const string BCCOM_KCA_STAFF_RELOAD_STAFF         = Kindred.KindredAdminCommands.ReloadStaff;
+    public const string BCCOM_KCA_STAFF_RELOAD_ADMIN         = Kindred.KindredAdminCommands.ReloadAdmin;
+    public const string BCCOM_KCA_STAFF_AUTO_ADMIN_AUTH      = Kindred.KindredAdminCommands.AutoAdminAuth;
+    public const string BCCOM_KCA_STAFF_SET_STAFF_FORMAT     = ".setstaff {0} {1}";           // player, rank
+    public const string BCCOM_KCA_STAFF_REMOVE_STAFF_FORMAT  = ".removestaff {0}";            // player
+    public const string BCCOM_KCA_STAFF_TOGGLE_ADMIN_FORMAT  = ".toggleadmin {0}";            // player
 
     // -------------------------------------------------------------------------
     // ADMIN: WORLD sub-tab
     // -------------------------------------------------------------------------
 
     // ---- General world commands (no group) ----
-    public const string BCCOM_KCA_WHERE_AM_I                 = ".whereami";
+    public const string BCCOM_KCA_WHERE_AM_I                 = Kindred.KindredAdminCommands.WhereAmI;
     public const string BCCOM_KCA_SPAWN_NPC_FORMAT           = ".spawnnpc {0} {1} {2}";       // unit, count, level
     public const string BCCOM_KCA_CUSTOM_SPAWN_FORMAT        = ".customspawn {0} {1} {2} {3} {4} {5}"; // unit,type,qual,consumable,duration,level
     public const string BCCOM_KCA_CUSTOM_SPAWN_AT_FORMAT     = ".customspawnat {0} {1} {2} {3} {4} {5} {6} {7} {8}"; // unit,x,y,z,type,qual,consumable,duration,level
@@ -383,24 +383,24 @@ public static partial class MessageService
     public const string BCCOM_KCA_BOSS_MODIFY_PRIMAL_FORMAT  = ".boss modifyprimal {0} {1}";
     public const string BCCOM_KCA_BOSS_TELEPORT_TO_FORMAT    = ".boss teleportto {0} {1}";    // boss, whichOne
 
-    // ---- Castle group ----
-    public const string BCCOM_KCA_CASTLE_RELOCATE_RESET      = ".relocatereset";
-    public const string BCCOM_KCA_CASTLE_INCOMING_DECAY      = ".castle incomingdecay";
-    public const string BCCOM_KCA_CASTLE_FREEZE_HEART        = ".castle freezeheart";
-    public const string BCCOM_KCA_CASTLE_THAW_HEART          = ".castle thawheart";
+    // ---- Castle (0.73.0: top-level commands in KindredCommands CastleCommands.cs; there is no ".castle" group) ----
+    public const string BCCOM_KCA_CASTLE_RELOCATE_RESET      = Kindred.KindredAdminCommands.RelocateReset;
+    public const string BCCOM_KCA_CASTLE_INCOMING_DECAY      = Kindred.KindredAdminCommands.IncomingDecay;
+    public const string BCCOM_KCA_CASTLE_FREEZE_HEART        = Kindred.KindredAdminCommands.FreezeHeart;
+    public const string BCCOM_KCA_CASTLE_THAW_HEART          = Kindred.KindredAdminCommands.ThawHeart;
     public const string BCCOM_KCA_CASTLE_CLAIM_FORMAT        = ".claim {0}";                  // player (optional)
-    public const string BCCOM_KCA_CASTLE_PLOTS_OWNED_FORMAT  = ".castle plotsowned {0}";      // page
-    public const string BCCOM_KCA_CASTLE_FROZEN_HEARTS_FORMAT = ".castle frozenhearts {0}";   // page
-    public const string BCCOM_KCA_CASTLE_CLAN_PLOTS_OWNED_FORMAT = ".castle clanplotsowned {0}"; // page
-    public const string BCCOM_KCA_CASTLE_TELEPORT_PLOT_FORMAT = ".castle teleporttoplot {0}";  // territoryIndex
-    public const string BCCOM_KCA_CASTLE_PLOT_INFO_FORMAT    = ".castle plotinfo {0}";
+    public const string BCCOM_KCA_CASTLE_PLOTS_OWNED_FORMAT  = ".plotsowned {0}";             // page
+    public const string BCCOM_KCA_CASTLE_FROZEN_HEARTS_FORMAT = ".frozenhearts {0}";          // page
+    public const string BCCOM_KCA_CASTLE_CLAN_PLOTS_OWNED_FORMAT = ".clanplotsowned {0}";     // page
+    public const string BCCOM_KCA_CASTLE_TELEPORT_PLOT_FORMAT = ".teleporttoplot {0}";        // territoryIndex
+    public const string BCCOM_KCA_CASTLE_PLOT_INFO_FORMAT    = ".plotinfo {0}";               // territoryIndex
 
     // ---- Servant group ----
-    public const string BCCOM_KCA_SERVANT_CONVERT            = ".servant convert";
-    public const string BCCOM_KCA_SERVANT_PERFECT            = ".servant perfect";
-    public const string BCCOM_KCA_SERVANT_HEAL               = ".servant heal";
-    public const string BCCOM_KCA_SERVANT_REVIVE             = ".servant revive";
-    public const string BCCOM_KCA_SERVANT_COMPLETE_MISSION   = ".servant completemission";
+    public const string BCCOM_KCA_SERVANT_CONVERT            = Kindred.KindredAdminCommands.ServantConvert;
+    public const string BCCOM_KCA_SERVANT_PERFECT            = Kindred.KindredAdminCommands.ServantPerfect;
+    public const string BCCOM_KCA_SERVANT_HEAL               = Kindred.KindredAdminCommands.ServantHeal;
+    public const string BCCOM_KCA_SERVANT_REVIVE             = Kindred.KindredAdminCommands.ServantRevive;
+    public const string BCCOM_KCA_SERVANT_COMPLETE_MISSION   = Kindred.KindredAdminCommands.ServantCompleteMission;
     public const string BCCOM_KCA_SERVANT_CHANGE_FORMAT      = ".servant change {0}";         // character
     public const string BCCOM_KCA_SERVANT_ADD_FORMAT         = ".servant add {0}";
 
@@ -413,19 +413,15 @@ public static partial class MessageService
     public const string BCCOM_KCA_PLAYERINFO_FORMAT          = ".playerinfo {0}";             // player name
     public const string BCCOM_KCA_IDCHECK_FORMAT             = ".idcheck {0}";                // steamID
     public const string BCCOM_KCA_ASSIGN_STEAMID_FORMAT      = ".assignsteamID {0} {1}";      // player, steamID
-    public const string BCCOM_KCA_LONGEST_OFFLINE_CASTLES    = ".longestofflinecastles";
-    public const string BCCOM_KCA_SHOW_HAIR_FORMAT           = ".showhair {0}";               // player (optional)
-    public const string BCCOM_KCA_UNBIND_ALL                 = ".unbindall";                  // DESTRUCTIVE: rename + unbind every player
-    // Wipe orchestration (3-step: queue, commence, cancel)
-    public const string BCCOM_KCA_WIPE_FORMAT                = ".wipe {0}";                   // comma-separated territory IDs to exclude
-    public const string BCCOM_KCA_COMMENCE_WIPE              = ".commencewipe";               // DESTRUCTIVE: actually wipes
-    public const string BCCOM_KCA_CANCEL_WIPE                = ".cancelwipe";
+    public const string BCCOM_KCA_LONGEST_OFFLINE_CASTLES    = Kindred.KindredAdminCommands.LongestOfflineCastles;
+    // 0.73.0: .showhair, .unbindall, .wipe / .commencewipe / .cancelwipe and .clan fix constants removed: those
+    // commands are commented out in KindredCommands 2.5.8, and their buttons were removed from the admin tabs.
     // Clan
     public const string BCCOM_KCA_CLAN_CASTLES_FORMAT        = ".clan castles {0}";           // clan name
-    public const string BCCOM_KCA_CLAN_FIX                   = ".clan fix";
-    // Prisoner config readouts (paired with the existing .prisoner gruel/feed setters)
-    public const string BCCOM_KCA_GRUEL_SETTINGS             = ".gruelsettings";
-    public const string BCCOM_KCA_FEED_SETTINGS              = ".feedsettings";
+    // Prisoner config readouts (paired with the existing .prisoner gruel/feed setters).
+    // 0.73.0: both are in the .prisoner group, and feedsettings needs a feed (was ".gruelsettings" / ".feedsettings").
+    public const string BCCOM_KCA_GRUEL_SETTINGS             = Kindred.KindredAdminCommands.PrisonerGruelSettings;
+    public const string BCCOM_KCA_FEED_SETTINGS_FORMAT       = ".prisoner feedsettings {0}";  // feed
     // Bloodbound item-attribute management
     public const string BCCOM_KCA_BLOODBOUND_ADD_FORMAT      = ".bloodbound add {0}";         // item descriptor (prefab/name)
     public const string BCCOM_KCA_BLOODBOUND_REMOVE_FORMAT   = ".bloodbound remove {0}";
@@ -1064,6 +1060,11 @@ public static partial class MessageService
     public static bool HandleInboundChat(string text)
     {
         if (string.IsNullOrEmpty(text)) return false;
+
+        // 0.73.0: the Bloodcraft progress-reset tap goes first, ahead of VCF-noise suppression (which would eat its
+        // "[denied]" pause signal) and every intercept, so no other capture can swallow a reset reply. It returns true
+        // only for a line it positively correlated to one of its steps.
+        if (Bloodcraft.BcResetRunner.TryHandleInbound(text)) return true;
 
         // 0.18: VampireCommandFramework (VCF) noise suppression. When Raphael sends a command the
         // server's command framework can't run — a Bloodcraft command on a non-Bloodcraft server,

@@ -1,0 +1,1038 @@
+{
+  "mod": "Faust",
+  "source": "Faust Lord of Investigation/Faust/Faust",
+  "sourceVersion": "0.16.5",
+  "sourceCommit": "d8afca2262",
+  "generatorVersion": 1,
+  "commands": [
+    {
+      "group": null,
+      "groupShort": null,
+      "name": "faust",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Faust overview — what the mod does and how to get help.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Faust",
+      "file": "Commands/RootCommands.cs",
+      "line": 12
+    },
+    {
+      "group": "faust",
+      "groupShort": null,
+      "name": "help",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "Faust help menu. Usage: .faust help [players|castles|server|admin]",
+      "params": [
+        {
+          "name": "topic",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Help",
+      "file": "Commands/HelpCommands.cs",
+      "line": 14
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "block",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Block a feature now. Usage: .faust admin block <feature|all> [minutes] (no minutes = until unblocked)",
+      "params": [
+        {
+          "name": "feature",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "minutes",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Block",
+      "file": "Commands/AdminCommands.cs",
+      "line": 31
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "bossdiag",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Diagnostics for the boss board (Raphael §18): dump VBlood entity positions/components. Usage: .faust admin bossdiag [name|guid]",
+      "params": [
+        {
+          "name": "filter",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BossDiag",
+      "file": "Commands/AdminCommands.cs",
+      "line": 294
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "get",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show a feature's live settings. Usage: .faust admin get <feature> [setting]",
+      "params": [
+        {
+          "name": "feature",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "setting",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Get",
+      "file": "Commands/AdminCommands.cs",
+      "line": 152
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "getglobal",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show Faust's global settings. Usage: .faust admin getglobal [setting]",
+      "params": [
+        {
+          "name": "setting",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GetGlobal",
+      "file": "Commands/AdminCommands.cs",
+      "line": 165
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "grant",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Unlock a feature for a player (overrides its Unlock criterion). Usage: .faust admin grant <player> <feature>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "feature",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Grant",
+      "file": "Commands/AdminCommands.cs",
+      "line": 92
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "prefab",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Look up prefab IDs/names for commands (no external dump needed). Usage: .faust admin prefab <id|nameFragment> [page]",
+      "params": [
+        {
+          "name": "query",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Prefab",
+      "file": "Commands/AdminCommands.cs",
+      "line": 258
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "resetcfg",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Reset settings to defaults. Usage: .faust admin resetcfg <feature|global> [setting]",
+      "params": [
+        {
+          "name": "target",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "setting",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ResetCfg",
+      "file": "Commands/AdminCommands.cs",
+      "line": 169
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "revoke",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Remove a feature grant from a player. Usage: .faust admin revoke <player> <feature>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "feature",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Revoke",
+      "file": "Commands/AdminCommands.cs",
+      "line": 105
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "schedule",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Time-of-day window (server local). Usage: .faust admin schedule <feature|all> <HH:MM-HH:MM|clear>",
+      "params": [
+        {
+          "name": "feature",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "window",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Schedule",
+      "file": "Commands/AdminCommands.cs",
+      "line": 51
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "set",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Change one or MORE feature settings live (immediate + persisted). Usage: .faust admin set <feature> <setting=value[,setting=value,...]> (NO spaces)",
+      "params": [
+        {
+          "name": "feature",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "spec",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Set",
+      "file": "Commands/AdminCommands.cs",
+      "line": 143
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "setglobal",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Change one or MORE global settings live (immediate + persisted). Usage: .faust admin setglobal <setting=value[,setting=value,...]> (NO spaces)",
+      "params": [
+        {
+          "name": "spec",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetGlobal",
+      "file": "Commands/AdminCommands.cs",
+      "line": 161
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "showpositions",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "EXPERIMENTAL: show online players on the native map (admins). Usage: .faust admin showpositions <on|off|status> [minutes]",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": true,
+          "default": "status"
+        },
+        {
+          "name": "minutes",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ShowPositions",
+      "file": "Commands/AdminCommands.cs",
+      "line": 126
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "status",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show each feature's effective runtime control state. Usage: .faust admin status [feature]",
+      "params": [
+        {
+          "name": "feature",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Status",
+      "file": "Commands/AdminCommands.cs",
+      "line": 73
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "unblock",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Clear a block/countdown. Usage: .faust admin unblock <feature|all>",
+      "params": [
+        {
+          "name": "feature",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Unblock",
+      "file": "Commands/AdminCommands.cs",
+      "line": 42
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "unlocks",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show a player's unlock progress (V-blood defeats + granted features). Usage: .faust admin unlocks <player>",
+      "params": [
+        {
+          "name": "player",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Unlocks",
+      "file": "Commands/AdminCommands.cs",
+      "line": 118
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "worldscan",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Manage the world-scan asset whitelist. Usage: .faust admin worldscan <list|add|remove|clear|seed> [guid|page]",
+      "params": [
+        {
+          "name": "mode",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "arg",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "WorldScanAdmin",
+      "file": "Commands/AdminCommands.cs",
+      "line": 301
+    },
+    {
+      "group": "faust admin",
+      "groupShort": null,
+      "name": "worldscandiag",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Audit prefab categorization (units vs nodes + EntityCategory). Usage: .faust admin worldscandiag <nameFragment>",
+      "params": [
+        {
+          "name": "fragment",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "WorldScanDiag",
+      "file": "Commands/AdminCommands.cs",
+      "line": 287
+    },
+    {
+      "group": "faust admin data",
+      "groupShort": null,
+      "name": "clear",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Prune collected ACTIVITY older than N days (sessions + concurrency). Usage: .faust admin data clear <days>",
+      "params": [
+        {
+          "name": "days",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Clear",
+      "file": "Commands/AdminDataCommands.cs",
+      "line": 66
+    },
+    {
+      "group": "faust admin data",
+      "groupShort": null,
+      "name": "status",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Show Faust's collected-data footprint (counts, age, disk, namespace, retention).",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Status",
+      "file": "Commands/AdminDataCommands.cs",
+      "line": 24
+    },
+    {
+      "group": "faust admin data",
+      "groupShort": null,
+      "name": "wipe",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": null,
+      "description": "Erase a collected-data store. Usage: .faust admin data wipe <activity|unlocks|usage|heatmap|kills|all> confirm",
+      "params": [
+        {
+          "name": "store",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "confirm",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Wipe",
+      "file": "Commands/AdminDataCommands.cs",
+      "line": 81
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "access",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: per-feature access snapshot (paged). Usage: .faust api access [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Access",
+      "file": "Commands/ApiCommands.cs",
+      "line": 496
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "boss",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: one V Blood boss by name or GUID. Usage: .faust api boss <name|guid>",
+      "params": [
+        {
+          "name": "nameOrGuid",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Boss",
+      "file": "Commands/ApiCommands.cs",
+      "line": 635
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "bosses",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: V Blood boss status board (paged). Usage: .faust api bosses [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Bosses",
+      "file": "Commands/ApiCommands.cs",
+      "line": 620
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "bosskills",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: V Blood defeat counts (paged). Usage: .faust api bosskills [days=0] [page] (days 0 = all-time)",
+      "params": [
+        {
+          "name": "days",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BossKills",
+      "file": "Commands/ApiCommands.cs",
+      "line": 688
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "castleinfo",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: castle/plot info. Usage: .faust api castleinfo <here|nearest|tindex>",
+      "params": [
+        {
+          "name": "token",
+          "type": "string",
+          "optional": true,
+          "default": "here"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "CastleInfo",
+      "file": "Commands/ApiCommands.cs",
+      "line": 124
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "castles",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: every territory (claimed + open), full map (paged). Usage: .faust api castles [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Castles",
+      "file": "Commands/ApiCommands.cs",
+      "line": 150
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "clanmembers",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: a clan's member roster (paged). Usage: .faust api clanmembers <clanName> [page]",
+      "params": [
+        {
+          "name": "clanName",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ClanMembers",
+      "file": "Commands/ApiCommands.cs",
+      "line": 472
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "clans",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: clan composition — clanned vs independent + per-clan roster (paged). Usage: .faust api clans [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Clans",
+      "file": "Commands/ApiCommands.cs",
+      "line": 449
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "decay",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: claimed castles by soonest decay (paged). Usage: .faust api decay [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Decay",
+      "file": "Commands/ApiCommands.cs",
+      "line": 166
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "heatmap",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: player-position heat map (density grid). Usage: .faust api heatmap [<all|name|steamId>] [days=0] [page] (days 0 = all-time)",
+      "params": [
+        {
+          "name": "target",
+          "type": "string",
+          "optional": true,
+          "default": "all"
+        },
+        {
+          "name": "days",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Heatmap",
+      "file": "Commands/ApiCommands.cs",
+      "line": 784
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "kills",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: top players by kills (paged). Usage: .faust api kills [days=0] [page] (days 0 = all-time)",
+      "params": [
+        {
+          "name": "days",
+          "type": "int",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Kills",
+      "file": "Commands/ApiCommands.cs",
+      "line": 669
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "newplayers",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: roster of players who first joined in the window (paged). Usage: .faust api newplayers roster [days=30] [page]",
+      "params": [
+        {
+          "name": "sub",
+          "type": "string",
+          "optional": true,
+          "default": "roster"
+        },
+        {
+          "name": "days",
+          "type": "int",
+          "optional": true,
+          "default": 30
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "NewPlayers",
+      "file": "Commands/ApiCommands.cs",
+      "line": 548
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "pinfo",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: player info. Usage: .faust api pinfo <name|steamId>",
+      "params": [
+        {
+          "name": "nameOrId",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PlayerInfo",
+      "file": "Commands/ApiCommands.cs",
+      "line": 203
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "ping",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH probe: proves the Faust->BCH round-trip end to end.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Ping",
+      "file": "Commands/ApiCommands.cs",
+      "line": 115
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "plots",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: free plots, largest first (paged). Usage: .faust api plots [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Plots",
+      "file": "Commands/ApiCommands.cs",
+      "line": 181
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "positions",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: positions of online players (paged). Usage: .faust api positions [page]",
+      "params": [
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Positions",
+      "file": "Commands/ApiCommands.cs",
+      "line": 603
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "resources",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: sum a castle's container contents. Usage: .faust api resources <here|nearest|tindex> [page]",
+      "params": [
+        {
+          "name": "token",
+          "type": "string",
+          "optional": true,
+          "default": "here"
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Resources",
+      "file": "Commands/ApiCommands.cs",
+      "line": 232
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "sessions",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: per-session online intervals (paged). Usage: .faust api sessions timeline <all|name|steamId> [days=14] [page]",
+      "params": [
+        {
+          "name": "sub",
+          "type": "string",
+          "optional": true,
+          "default": "timeline"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "optional": true,
+          "default": "all"
+        },
+        {
+          "name": "days",
+          "type": "int",
+          "optional": true,
+          "default": 14
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Sessions",
+      "file": "Commands/ApiCommands.cs",
+      "line": 575
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "stats",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: server stats. Usage: .faust api stats <playtime|concurrency|hours|daily|newplayers|sessions|weekdays|pdaily|population|recency|peak|regions|players|activegrid|regiondaily> [page|player|days] [days|page]",
+      "params": [
+        {
+          "name": "kind",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "arg",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        },
+        {
+          "name": "arg2",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Stats",
+      "file": "Commands/ApiCommands.cs",
+      "line": 274
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "usage",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: per-feature usage over the last N days (paged). Usage: .faust api usage [days=7] [page]",
+      "params": [
+        {
+          "name": "days",
+          "type": "int",
+          "optional": true,
+          "default": 7
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "Usage",
+      "file": "Commands/ApiCommands.cs",
+      "line": 527
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "version",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH handshake: ApiVersion, ready flag, and each feature's resolved access + cost.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "Version",
+      "file": "Commands/ApiCommands.cs",
+      "line": 91
+    },
+    {
+      "group": "faust api",
+      "groupShort": null,
+      "name": "worldscan",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": null,
+      "description": "BCH: map assets (units + resource nodes), filtered. Usage: .faust api worldscan [type=units|nodes|all,id=<g>,bloodtype=<g>,bloodqmin=<0-100>] [page]",
+      "params": [
+        {
+          "name": "spec",
+          "type": "string",
+          "optional": true,
+          "default": "all"
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "verbDispatch": false,
+      "method": "WorldScan",
+      "file": "Commands/ApiCommands.cs",
+      "line": 708
+    }
+  ]
+}

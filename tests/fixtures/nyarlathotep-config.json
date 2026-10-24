@@ -1,0 +1,335 @@
+{
+  "mod": "Nyarlathotep",
+  "source": "Nyarlathotep Lord of Chaos/Nyarlathotep/Nyarlathotep",
+  "sourceVersion": "0.14.0",
+  "sourceCommit": "1b4584e7fe",
+  "generatorVersion": 1,
+  "settings": [
+    {
+      "section": "Announcements",
+      "key": "DailyBanner",
+      "default": false,
+      "description": "Server-wide line once a day at DailyBannerTime naming the scheduled events still to come that day.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 101
+    },
+    {
+      "section": "Announcements",
+      "key": "DailyBannerTime",
+      "default": "20:00",
+      "description": "Server-local time of the daily banner, HH:mm.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 115
+    },
+    {
+      "section": "Announcements",
+      "key": "EventBanners",
+      "default": false,
+      "description": "Server-wide line when an event starts and when it ends (the event's own announce text, or a stock line).",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 99
+    },
+    {
+      "section": "Announcements",
+      "key": "LoginEventNotice",
+      "default": true,
+      "description": "Private line to a player who logs in while an event runs, naming the running events and their time left.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 108
+    },
+    {
+      "section": "Announcements",
+      "key": "LoginStats",
+      "default": false,
+      "description": "Private stats line on login. Reserved: it takes effect when player stats arrive in a later version.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 103
+    },
+    {
+      "section": "Announcements",
+      "key": "PlayerShare",
+      "default": false,
+      "description": "Let players share a leaderboard line server-wide. Reserved: it takes effect with player stats in a later version.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 105
+    },
+    {
+      "section": "Announcements",
+      "key": "ShareCooldownSeconds",
+      "default": 300,
+      "min": 10,
+      "max": 86400,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 38
+    },
+    {
+      "section": "Announcements",
+      "key": "ShareMaxPerMinute",
+      "default": 3,
+      "min": 1,
+      "max": 20,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 39
+    },
+    {
+      "section": "Announcements",
+      "key": "WarningOffsets",
+      "default": "300,60,10",
+      "description": "Seconds before a wave at which its warning fires: 1-5 comma-separated values, each 5-3600.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 110
+    },
+    {
+      "section": "Announcements",
+      "key": "WaveWarnings",
+      "default": false,
+      "description": "Server-wide warning before each wave of an event whose events.json entry has announce.warnings true.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 97
+    },
+    {
+      "section": "Debug",
+      "key": "FaultInjection",
+      "default": "",
+      "description": "Debug builds only. An event id (its tick throws) or hook:<name> (that hook reports unavailable). Empty: off.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 143
+    },
+    {
+      "section": "Debug",
+      "key": "TimingLog",
+      "default": false,
+      "description": "Log the scheduler tick's average and maximum duration once a minute.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 139
+    },
+    {
+      "section": "Debug",
+      "key": "VerboseLogging",
+      "default": false,
+      "description": "Log each unit spawned and despawned, and each announcement sent.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 137
+    },
+    {
+      "section": "General",
+      "key": "Enabled",
+      "default": true,
+      "description": "Master switch. When false, no events run and no units are spawned.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 62
+    },
+    {
+      "section": "Limits",
+      "key": "EmpowerBatchPerTick",
+      "default": 200,
+      "min": 50,
+      "max": 1000,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 34
+    },
+    {
+      "section": "Limits",
+      "key": "GraceSeconds",
+      "default": 30,
+      "min": 0,
+      "max": 600,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 30
+    },
+    {
+      "section": "Limits",
+      "key": "ManualSpawnLifetimeSeconds",
+      "default": 300,
+      "min": 30,
+      "max": 3600,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 32
+    },
+    {
+      "section": "Limits",
+      "key": "MaxConcurrentEvents",
+      "default": 3,
+      "min": 1,
+      "max": 10,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 27
+    },
+    {
+      "section": "Limits",
+      "key": "MaxDespawnsPerTick",
+      "default": 5,
+      "min": 1,
+      "max": 40,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 29
+    },
+    {
+      "section": "Limits",
+      "key": "MaxSpawnsPerTick",
+      "default": 10,
+      "min": 1,
+      "max": 40,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 28
+    },
+    {
+      "section": "Limits",
+      "key": "MaxTrackedUnits",
+      "default": 150,
+      "min": 1,
+      "max": 500,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 25
+    },
+    {
+      "section": "Limits",
+      "key": "MaxUnitsPerWave",
+      "default": 20,
+      "min": 1,
+      "max": 500,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 26
+    },
+    {
+      "section": "Limits",
+      "key": "PurgeCooldownSeconds",
+      "default": 60,
+      "min": 0,
+      "max": 3600,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 31
+    },
+    {
+      "section": "Pillars",
+      "key": "BossReinforcements",
+      "default": false,
+      "description": "Summon adds during V Blood boss fights.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 73
+    },
+    {
+      "section": "Pillars",
+      "key": "DefendedZones",
+      "default": false,
+      "description": "Admin-defined zones that summon reinforcements when vampire activity inside them crosses a threshold.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 71
+    },
+    {
+      "section": "Pillars",
+      "key": "EventSpawns",
+      "default": false,
+      "description": "Admin-scheduled or command-triggered wave spawns into chosen areas.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 75
+    },
+    {
+      "section": "Pillars",
+      "key": "FactionEmpowerment",
+      "default": false,
+      "description": "Timed faction empowerment (NPC 'blood moon'): scheduled or trigger-driven buffs on every NPC of a faction.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 67
+    },
+    {
+      "section": "Pillars",
+      "key": "SiegeWaves",
+      "default": false,
+      "description": "NPC waves that spawn and march on player castles.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 69
+    },
+    {
+      "section": "Scoreboard",
+      "key": "IncludeAdmins",
+      "default": false,
+      "description": "Count admins on an event's scoreboard (events.json action.scoreboard true). Off: an admin's kills and deaths are left out.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 125
+    },
+    {
+      "section": "UnitWatch",
+      "key": "Enabled",
+      "default": true,
+      "description": "Watch event units for being stuck: a unit that stands still beside a player, or under the ground, is moved back unseen; after 2 failed tries it is removed with no kill credit.",
+      "kind": "Bind",
+      "file": "Config/Settings.cs",
+      "line": 128
+    },
+    {
+      "section": "UnitWatch",
+      "key": "SpawnStillSeconds",
+      "default": 10,
+      "min": 5,
+      "max": 60,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 48
+    },
+    {
+      "section": "UnitWatch",
+      "key": "StallMinutes",
+      "default": 10,
+      "min": 0,
+      "max": 60,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 45
+    },
+    {
+      "section": "UnitWatch",
+      "key": "StuckSeconds",
+      "default": 90,
+      "min": 30,
+      "max": 600,
+      "description": null,
+      "kind": "IntLimit",
+      "file": "Logic/Limits.cs",
+      "line": 42
+    }
+  ],
+  "unresolvedBinds": []
+}

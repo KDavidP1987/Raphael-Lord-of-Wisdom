@@ -147,4 +147,7 @@ public enum PanelType
     BoxContent,
     FamStats,
     TestPanel,
+
+    // 0.73.0: appended (not inserted) so stored PanelType values keep their meaning.
+    KindredGuideTab,        // help: Kindred guide (Settings & Help group)
 }

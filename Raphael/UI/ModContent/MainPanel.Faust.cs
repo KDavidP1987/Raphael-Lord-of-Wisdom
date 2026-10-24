@@ -2121,7 +2121,7 @@ public partial class MainPanel
         AddStatRowTip(_faustStatsGraphGo, "New today", p.NewToday.ToString(),
             "Players first seen by Faust today (their first-ever recorded session is today).");
         AddStatRowTip(_faustStatsGraphGo, "Returning today", p.ReturningToday.ToString(),
-            "Today's active players who are NOT new (DAU − New today) — returning regulars.");
+            "Today's active players who are NOT new (DAU - New today) — returning regulars.");
         AddStatRowTip(_faustStatsGraphGo, "Stickiness", $"{p.Stickiness * 100f:0.#}% <color=#888888>(DAU/MAU)</color>",
             "Stickiness = DAU ÷ MAU. Of everyone active this month, what fraction shows up on a given day. Higher = more habitual players.");
         AddStatRowTip(_faustStatsGraphGo, "Retention D1 / D7 / D30", $"{p.D1 * 100f:0}% / {p.D7 * 100f:0}% / {p.D30 * 100f:0}%",
@@ -5735,60 +5735,6 @@ public partial class MainPanel
     }
 
     // ============================ HELP: QUICK START + REFERENCE ============================
-
-    private void BuildFaustQuickStartTab(GameObject page)
-    {
-        var c = AddCard(page, "FaustQuickStart");
-        AddSectionHeading(c, "Faust — quick start");
-        AddBodyText(c,
-            "<b>Faust, Lord of Investigation</b> is a server-side mod that answers questions about the server " +
-            "the game client can't see on its own — castles, open plots, players, and server-wide stats. " +
-            "Raphael shows its answers in the <b>Faust</b> tab group.");
-        AddBodyText(c,
-            "1. The Faust tabs appear automatically when you join a server that runs Faust.\n" +
-            "2. Open <b>Faust → Castle Info</b> and click <b>Here</b> to see who owns the territory you're in.\n" +
-            "3. Try <b>Open Plots</b> to find a free spot, <b>Player Info</b> for play-history, and " +
-            "<b>Server Stats</b> for the playtime leaderboard.");
-        AddBodyText(c,
-            $"<color={Theme.MutedBodyHex}>Some queries cost an item (the “Faustian toll”) or are admin-only — the " +
-            "tab shows each feature's access and price. If a query is refused, the result line explains why " +
-            "(cost, cooldown, admin-only, locked, …).</color>");
-    }
-
-    private void BuildFaustModHelpTab(GameObject page)
-    {
-        var c = AddCard(page, "FaustHelpQueries");
-        AddSectionHeading(c, "Faust — feature & command reference");
-        AddBodyText(c,
-            "Each Faust feature is server-gated (access level), optionally priced (an item cost), and may run " +
-            "a cooldown or time-of-day schedule. Raphael surfaces all of that and the server enforces it.");
-        AddBodyText(c,
-            $"{Mono(".faust api castleinfo <here|nearest|index>")} — castle owner / region / size / decay\n" +
-            $"{Mono(".faust api plots")} — open (heart-less) territories, largest first\n" +
-            $"{Mono(".faust api castles")} — every territory, full detail (admin-default)\n" +
-            $"{Mono(".faust api decay")} — claimed castles by soonest decay (admin-default)\n" +
-            $"{Mono(".faust api pinfo <name|steamId>")} — playtime / frequency / busiest hour\n" +
-            $"{Mono(".faust api positions")} — online player coordinates (admin-default)\n" +
-            $"{Mono(".faust api resources <here|nearest|index>")} — enemy castle container totals (admin-default)\n" +
-            $"{Mono(".faust api stats <playtime|concurrency>")} — leaderboard / population over time\n" +
-            $"{Mono(".faust api stats <hours|daily|newplayers|sessions>")} — activity analytics charts\n" +
-            $"{Mono(".faust api bosses")} / {Mono("boss <name|guid>")} — V Blood status board (live/defeated, admin-default)\n" +
-            $"{Mono(".faust api kills")} / {Mono("bosskills [days]")} — kill + boss-defeat leaderboards (admin-default)");
-        AddSpacer(page, 6);
-        var a = AddCard(page, "FaustHelpAdmin");
-        AddSectionHeading(a, "Admin commands (server-side)");
-        AddBodyText(a,
-            $"{Mono(".faust admin block/unblock <feature|all> [minutes]")}\n" +
-            $"{Mono(".faust admin schedule <feature|all> <HH:MM-HH:MM|clear>")}\n" +
-            $"{Mono(".faust admin status [feature]")}\n" +
-            $"{Mono(".faust admin grant/revoke <player> <feature>")}\n" +
-            $"{Mono(".faust admin unlocks <player>")}\n" +
-            $"{Mono(".faust admin set/get/resetcfg <feature> [setting] [value]")} — live config editor (Faust 0.16+)\n" +
-            $"{Mono(".faust admin setglobal/getglobal <setting> [value]")} — global settings (Faust 0.16+)\n" +
-            $"{Mono(".faust admin data status")}\n" +
-            $"{Mono(".faust admin data clear <days>")}\n" +
-            $"{Mono(".faust admin data wipe <activity|unlocks|usage|heatmap|kills|all> [confirm]")}");
-    }
 
     // ============================ IN-RAIL DIAGNOSTIC ============================
 

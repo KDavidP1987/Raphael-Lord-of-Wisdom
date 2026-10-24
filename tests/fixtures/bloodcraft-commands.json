@@ -1,0 +1,1640 @@
+{
+  "mod": "Bloodcraft",
+  "source": "Raphael Lord of Wisdom/LearningMods/Bloodcraft-main/Bloodcraft-main",
+  "sourceVersion": "1.13.24",
+  "sourceCommit": null,
+  "generatorVersion": 1,
+  "commands": [
+    {
+      "group": "blood",
+      "groupShort": "bl",
+      "name": "choosestat",
+      "shortHand": "cst",
+      "adminOnly": false,
+      "usage": ".bl cst [BloodOrStat] [BloodStat]",
+      "description": "Choose a bonus stat to enhance for your blood legacy.",
+      "params": [
+        {
+          "name": "bloodOrStat",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "statType",
+          "type": "int",
+          "optional": true,
+          "default": "expr:default"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChooseBloodStat",
+      "file": "Commands/BloodCommands.cs",
+      "line": 116
+    },
+    {
+      "group": "blood",
+      "groupShort": "bl",
+      "name": "get",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".bl get [BloodType]",
+      "description": "Display current blood legacy details.",
+      "params": [
+        {
+          "name": "blood",
+          "type": "string",
+          "optional": true,
+          "default": "expr:null"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GetLegacyCommand",
+      "file": "Commands/BloodCommands.cs",
+      "line": 30
+    },
+    {
+      "group": "blood",
+      "groupShort": "bl",
+      "name": "list",
+      "shortHand": "l",
+      "adminOnly": false,
+      "usage": ".bl l",
+      "description": "Lists blood legacies available.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListBloodTypesCommand",
+      "file": "Commands/BloodCommands.cs",
+      "line": 321
+    },
+    {
+      "group": "blood",
+      "groupShort": "bl",
+      "name": "liststats",
+      "shortHand": "lst",
+      "adminOnly": false,
+      "usage": ".bl lst",
+      "description": "Lists blood stats available.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListBloodStatsAvailable",
+      "file": "Commands/BloodCommands.cs",
+      "line": 248
+    },
+    {
+      "group": "blood",
+      "groupShort": "bl",
+      "name": "log",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".bl log",
+      "description": "Toggles Legacy progress logging.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "LogLegacyCommand",
+      "file": "Commands/BloodCommands.cs",
+      "line": 101
+    },
+    {
+      "group": "blood",
+      "groupShort": "bl",
+      "name": "resetstats",
+      "shortHand": "rst",
+      "adminOnly": false,
+      "usage": ".bl rst",
+      "description": "Reset stats for current blood.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ResetBloodStats",
+      "file": "Commands/BloodCommands.cs",
+      "line": 197
+    },
+    {
+      "group": "blood",
+      "groupShort": "bl",
+      "name": "set",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": ".bl set [Player] [Blood] [Level]",
+      "description": "Sets player blood legacy level.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "blood",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetBloodLegacyCommand",
+      "file": "Commands/BloodCommands.cs",
+      "line": 277
+    },
+    {
+      "group": "class",
+      "groupShort": null,
+      "name": "change",
+      "shortHand": "c",
+      "adminOnly": false,
+      "usage": ".class c [Class]",
+      "description": "Change classes.",
+      "params": [
+        {
+          "name": "input",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChangeClassCommand",
+      "file": "Commands/ClassCommands.cs",
+      "line": 188
+    },
+    {
+      "group": "class",
+      "groupShort": null,
+      "name": "choosespell",
+      "shortHand": "csp",
+      "adminOnly": false,
+      "usage": ".class csp [#]",
+      "description": "Sets shift spell for class if prestige level is high enough.",
+      "params": [
+        {
+          "name": "choice",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChooseClassSpell",
+      "file": "Commands/ClassCommands.cs",
+      "line": 58
+    },
+    {
+      "group": "class",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": "l",
+      "adminOnly": false,
+      "usage": ".class l",
+      "description": "List available classes.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListClasses",
+      "file": "Commands/ClassCommands.cs",
+      "line": 232
+    },
+    {
+      "group": "class",
+      "groupShort": null,
+      "name": "listspells",
+      "shortHand": "lsp",
+      "adminOnly": false,
+      "usage": ".class lsp [Class]",
+      "description": "Shows spells that can be gained from class.",
+      "params": [
+        {
+          "name": "classType",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ListClassSpellsCommand",
+      "file": "Commands/ClassCommands.cs",
+      "line": 247
+    },
+    {
+      "group": "class",
+      "groupShort": null,
+      "name": "liststats",
+      "shortHand": "lst",
+      "adminOnly": false,
+      "usage": ".class lst [Class]",
+      "description": "List weapon and blood stat synergies for a class.",
+      "params": [
+        {
+          "name": "classType",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ListClassStatsCommand",
+      "file": "Commands/ClassCommands.cs",
+      "line": 300
+    },
+    {
+      "group": "class",
+      "groupShort": null,
+      "name": "lockshift",
+      "shortHand": "shift",
+      "adminOnly": false,
+      "usage": ".class shift",
+      "description": "Toggle shift spell.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ShiftSlotToggleCommand",
+      "file": "Commands/ClassCommands.cs",
+      "line": 352
+    },
+    {
+      "group": "class",
+      "groupShort": null,
+      "name": "select",
+      "shortHand": "s",
+      "adminOnly": false,
+      "usage": ".class s [Class]",
+      "description": "Select class.",
+      "params": [
+        {
+          "name": "input",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SelectClassCommand",
+      "file": "Commands/ClassCommands.cs",
+      "line": 23
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "add",
+      "shortHand": "a",
+      "adminOnly": true,
+      "usage": ".fam a [PlayerName] [PrefabGuid/CHAR_Unit_Name]",
+      "description": "Unit testing.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "unit",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AddFamiliar",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 348
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "addbattlegroup",
+      "shortHand": "abg",
+      "adminOnly": false,
+      "usage": ".fam abg [BattleGroup]",
+      "description": "Creates new battle group.",
+      "params": [
+        {
+          "name": "groupName",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AddBattleGroupCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1370
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "addbox",
+      "shortHand": "ab",
+      "adminOnly": false,
+      "usage": ".fam ab [BoxName]",
+      "description": "Adds empty box with name.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "AddBoxCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 322
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "bind",
+      "shortHand": "b",
+      "adminOnly": false,
+      "usage": ".fam b [#]",
+      "description": "Activates specified familiar from current list.",
+      "params": [
+        {
+          "name": "boxIndex",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "BindFamiliar",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 73
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "challenge",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".fam challenge [PlayerName]",
+      "description": "Challenges a player to battle or displays queue details.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChallengePlayerCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1460
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "choosebattlegroup",
+      "shortHand": "cbg",
+      "adminOnly": false,
+      "usage": ".fam cbg [BattleGroup]",
+      "description": "Sets active battle group.",
+      "params": [
+        {
+          "name": "groupName",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChooseBattleGroupCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1344
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "choosebox",
+      "shortHand": "cb",
+      "adminOnly": false,
+      "usage": ".fam cb [Name]",
+      "description": "Choose active box of familiars.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SelectBoxCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 188
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "deletebattlegroup",
+      "shortHand": "dbg",
+      "adminOnly": false,
+      "usage": ".fam dbg [BattleGroup]",
+      "description": "Deletes a battle group.",
+      "params": [
+        {
+          "name": "groupName",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DeleteBattleGroupCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1438
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "deletebox",
+      "shortHand": "db",
+      "adminOnly": false,
+      "usage": ".fam db [BoxName]",
+      "description": "Deletes specified box if empty.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DeleteBoxCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 292
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "echoes",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".fam echoes [VBloodName]",
+      "description": "VBlood purchasing for exo reward with quantity scaling to unit tier.",
+      "params": [
+        {
+          "name": "vBlood",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PurchaseVBloodCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 392
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "emoteactions",
+      "shortHand": "actions",
+      "adminOnly": false,
+      "usage": ".fam actions",
+      "description": "Shows available emote actions.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListEmoteActionsCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 606
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "emotes",
+      "shortHand": "e",
+      "adminOnly": false,
+      "usage": ".fam e",
+      "description": "Toggle emote actions.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ToggleEmoteActionsCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 591
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "getlevel",
+      "shortHand": "gl",
+      "adminOnly": false,
+      "usage": ".fam gl",
+      "description": "Display current familiar leveling progress.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "GetFamiliarLevelCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 629
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "list",
+      "shortHand": "l",
+      "adminOnly": false,
+      "usage": ".fam l",
+      "description": "Lists unlocked familiars from current box.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListFamiliars",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 103
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "listbattlegroup",
+      "shortHand": "bg",
+      "adminOnly": false,
+      "usage": ".fam bg [BattleGroup]",
+      "description": "Displays details of the specified battle group, or the active one if none is given.",
+      "params": [
+        {
+          "name": "groupName",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ShowBattleGroupCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1313
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "listbattlegroups",
+      "shortHand": "bgs",
+      "adminOnly": false,
+      "usage": ".fam bgs",
+      "description": "Lists available battle groups.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListBattleGroupsCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1276
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "listboxes",
+      "shortHand": "boxes",
+      "adminOnly": false,
+      "usage": ".fam boxes",
+      "description": "Shows the available familiar boxes.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListFamiliarSets",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 156
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "movebox",
+      "shortHand": "mb",
+      "adminOnly": false,
+      "usage": ".fam mb [BoxName]",
+      "description": "Moves active familiar to specified box.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "MoveFamiliar",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 246
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "prestige",
+      "shortHand": "pr",
+      "adminOnly": false,
+      "usage": ".fam pr",
+      "description": "Prestiges familiar if conditions are met, raising base stats by configured multiplier.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "PrestigeFamiliarCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 840
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "remove",
+      "shortHand": "r",
+      "adminOnly": false,
+      "usage": ".fam r [#]",
+      "description": "Removes familiar from current set permanently.",
+      "params": [
+        {
+          "name": "choice",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DeleteFamiliarCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 501
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "renamebox",
+      "shortHand": "rb",
+      "adminOnly": false,
+      "usage": ".fam rb [CurrentName] [NewName]",
+      "description": "Renames a box.",
+      "params": [
+        {
+          "name": "current",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RenameBoxCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 211
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "reset",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".fam reset",
+      "description": "Resets (destroys) entities found in followerbuffer and clears familiar actives data.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ResetFamiliarsCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 962
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "search",
+      "shortHand": "s",
+      "adminOnly": false,
+      "usage": ".fam s [Name]",
+      "description": "Searches boxes for familiar(s) with matching name.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "FindFamiliarCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1002
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "setbattlearena",
+      "shortHand": "sba",
+      "adminOnly": true,
+      "usage": ".fam sba",
+      "description": "Set current position as the center for the familiar battle arena.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "SetBattleArenaCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1531
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "setlevel",
+      "shortHand": "sl",
+      "adminOnly": true,
+      "usage": ".fam sl [Player] [Level]",
+      "description": "Set current familiar level.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetFamiliarLevelCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 791
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "shinybuff",
+      "shortHand": "shiny",
+      "adminOnly": false,
+      "usage": ".fam shiny [SpellSchool]",
+      "description": "Spend vampiric dust to make your familiar shiny!",
+      "params": [
+        {
+          "name": "spellSchool",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ShinyFamiliarCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1181
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "slotbattlegroup",
+      "shortHand": "sbg",
+      "adminOnly": false,
+      "usage": ".fam sbg [BattleGroupOrSlot] [Slot]",
+      "description": "Assigns active familiar to a battle group slot. If no battle group is specified, assigns to active group.",
+      "params": [
+        {
+          "name": "groupOrSlot",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slotIndex",
+          "type": "int",
+          "optional": true,
+          "default": "expr:default"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetFamiliarInBattleGroupCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1392
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "smartbind",
+      "shortHand": "sb",
+      "adminOnly": false,
+      "usage": ".fam sb [Name]",
+      "description": "Searches and binds a familiar. If multiple matches are found, returns a list for clarification.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SmartBindFamiliarCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1100
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "toggle",
+      "shortHand": "t",
+      "adminOnly": false,
+      "usage": ".fam t",
+      "description": "Calls or dismisses familar.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ToggleFamiliarCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 534
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "togglecombat",
+      "shortHand": "c",
+      "adminOnly": false,
+      "usage": ".fam c",
+      "description": "Enables or disables combat for familiar.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ToggleCombatCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 560
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "toggleoption",
+      "shortHand": "option",
+      "adminOnly": false,
+      "usage": ".fam option [Setting]",
+      "description": "Toggles various familiar settings.",
+      "params": [
+        {
+          "name": "option",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ToggleFamiliarSettingCommand",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 1250
+    },
+    {
+      "group": "familiar",
+      "groupShort": "fam",
+      "name": "unbind",
+      "shortHand": "ub",
+      "adminOnly": false,
+      "usage": ".fam ub",
+      "description": "Destroys active familiar.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "UnbindFamiliar",
+      "file": "Commands/FamiliarCommands.cs",
+      "line": 88
+    },
+    {
+      "group": "level",
+      "groupShort": "lvl",
+      "name": "get",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".lvl get",
+      "description": "Display current leveling progress.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "GetLevelCommand",
+      "file": "Commands/LevelingCommands.cs",
+      "line": 30
+    },
+    {
+      "group": "level",
+      "groupShort": "lvl",
+      "name": "ignoresharedexperience",
+      "shortHand": "ignore",
+      "adminOnly": true,
+      "usage": ".lvl ignore [Player]",
+      "description": "Adds (or removes) player to list of those who are not eligible to receive shared experience.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "IgnoreSharedExperiencePlayerCommand",
+      "file": "Commands/LevelingCommands.cs",
+      "line": 104
+    },
+    {
+      "group": "level",
+      "groupShort": "lvl",
+      "name": "log",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".lvl log",
+      "description": "Toggles leveling progress logging.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "LogExperienceCommand",
+      "file": "Commands/LevelingCommands.cs",
+      "line": 15
+    },
+    {
+      "group": "level",
+      "groupShort": "lvl",
+      "name": "set",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": ".lvl set [Player] [Level]",
+      "description": "Sets player level.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetLevelCommand",
+      "file": "Commands/LevelingCommands.cs",
+      "line": 64
+    },
+    {
+      "group": "miscellaneous",
+      "groupShort": "misc",
+      "name": "health",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": ".misc health",
+      "description": "Shows startup readiness state summary.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "HealthCommand",
+      "file": "Commands/MiscCommands.cs",
+      "line": 232
+    },
+    {
+      "group": "miscellaneous",
+      "groupShort": "misc",
+      "name": "prepareforthehunt",
+      "shortHand": "prepare",
+      "adminOnly": false,
+      "usage": ".misc prepare",
+      "description": "Completes GettingReadyForTheHunt if not already completed.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "QuickStartCommand",
+      "file": "Commands/MiscCommands.cs",
+      "line": 171
+    },
+    {
+      "group": "miscellaneous",
+      "groupShort": "misc",
+      "name": "reminders",
+      "shortHand": "remindme",
+      "adminOnly": false,
+      "usage": ".misc remindme",
+      "description": "Toggles general reminders for various mod features.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "LogExperienceCommand",
+      "file": "Commands/MiscCommands.cs",
+      "line": 31
+    },
+    {
+      "group": "miscellaneous",
+      "groupShort": "misc",
+      "name": "sct",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".misc sct [Type]",
+      "description": "Toggles various scrolling text elements.",
+      "params": [
+        {
+          "name": "input",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ToggleScrollingText",
+      "file": "Commands/MiscCommands.cs",
+      "line": 40
+    },
+    {
+      "group": "miscellaneous",
+      "groupShort": "misc",
+      "name": "silence",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".misc silence",
+      "description": "Resets stuck combat music if needed.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ResetMusicCommand",
+      "file": "Commands/MiscCommands.cs",
+      "line": 213
+    },
+    {
+      "group": "miscellaneous",
+      "groupShort": "misc",
+      "name": "starterkit",
+      "shortHand": "kitme",
+      "adminOnly": false,
+      "usage": ".misc kitme",
+      "description": "Provides starting kit.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "KitMe",
+      "file": "Commands/MiscCommands.cs",
+      "line": 94
+    },
+    {
+      "group": "miscellaneous",
+      "groupShort": "misc",
+      "name": "userstats",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".misc userstats",
+      "description": "Shows neat information about the player.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "GetUserStats",
+      "file": "Commands/MiscCommands.cs",
+      "line": 191
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "exoform",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".prestige exoform",
+      "description": "Toggles taunting to enter exoform.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ToggleExoFormEmote",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 478
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "get",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".prestige get [PrestigeType]",
+      "description": "Shows information about player's prestige status.",
+      "params": [
+        {
+          "name": "prestigeType",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GetPrestigeCommand",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 132
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "iacknowledgethiswillremoveallprestigebuffsfromplayersandwantthattohappen",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": ".prestige iacknowledgethiswillremoveallprestigebuffsfromplayersandwantthattohappen",
+      "description": "Globally removes prestige buffs from players to facilitate changing prestige buffs in config.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "GlobalClassPurgeCommand",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 614
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "ignoreleaderboard",
+      "shortHand": "ignore",
+      "adminOnly": true,
+      "usage": ".prestige ignore [Player]",
+      "description": "Adds (or removes) player to list of those who will not appear on prestige leaderboards. Intended for admin-duties only accounts.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "IgnorePrestigeLeaderboardPlayerCommand",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 547
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "leaderboard",
+      "shortHand": "lb",
+      "adminOnly": false,
+      "usage": ".prestige lb [PrestigeType]",
+      "description": "Lists prestige leaderboard for type.",
+      "params": [
+        {
+          "name": "prestigeType",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ListPrestigeTypeLeaderboard",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 416
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "list",
+      "shortHand": "l",
+      "adminOnly": false,
+      "usage": ".prestige l",
+      "description": "Lists prestiges available.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListPlayerPrestigeTypes",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 397
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "permashroud",
+      "shortHand": "shroud",
+      "adminOnly": false,
+      "usage": ".prestige shroud",
+      "description": "Toggles permashroud if applicable.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "PermaShroudToggle",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 579
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "reset",
+      "shortHand": "r",
+      "adminOnly": true,
+      "usage": ".prestige r [Player] [PrestigeType]",
+      "description": "Handles resetting prestiging.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "prestigeType",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ResetPrestige",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 315
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "selectform",
+      "shortHand": "sf",
+      "adminOnly": false,
+      "usage": ".prestige sf [EvolvedVampire|CorruptedSerpent]",
+      "description": "Select active exoform shapeshift.",
+      "params": [
+        {
+          "name": "shapeshift",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SelectFormCommand",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 506
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "self",
+      "shortHand": "me",
+      "adminOnly": false,
+      "usage": ".prestige me [PrestigeType]",
+      "description": "Handles player prestiging.",
+      "params": [
+        {
+          "name": "prestigeType",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "PrestigeCommand",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 31
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "set",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": ".prestige set [Player] [PrestigeType] [Level]",
+      "description": "Sets the specified player to a certain level of prestige in a certain type of prestige.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "prestigeType",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetPlayerPrestigeCommand",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 218
+    },
+    {
+      "group": "prestige",
+      "groupShort": null,
+      "name": "syncbuffs",
+      "shortHand": "sb",
+      "adminOnly": false,
+      "usage": ".prestige sb",
+      "description": "Applies prestige buffs appropriately if not present.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "SyncPrestigeBuffsCommand",
+      "file": "Commands/PrestigeCommands.cs",
+      "line": 372
+    },
+    {
+      "group": "profession",
+      "groupShort": "prof",
+      "name": "get",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".prof get [Profession]",
+      "description": "Display your current profession progress.",
+      "params": [
+        {
+          "name": "profession",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "GetProfessionCommand",
+      "file": "Commands/ProfessionCommands.cs",
+      "line": 31
+    },
+    {
+      "group": "profession",
+      "groupShort": "prof",
+      "name": "list",
+      "shortHand": "l",
+      "adminOnly": false,
+      "usage": ".prof l",
+      "description": "Lists professions available.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListProfessionsCommand",
+      "file": "Commands/ProfessionCommands.cs",
+      "line": 117
+    },
+    {
+      "group": "profession",
+      "groupShort": "prof",
+      "name": "log",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".prof log",
+      "description": "Toggles profession progress logging.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "LogProgessionCommand",
+      "file": "Commands/ProfessionCommands.cs",
+      "line": 16
+    },
+    {
+      "group": "profession",
+      "groupShort": "prof",
+      "name": "set",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": ".prof set [Name] [Profession] [Level]",
+      "description": "Sets player profession level.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "profession",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetProfessionCommand",
+      "file": "Commands/ProfessionCommands.cs",
+      "line": 74
+    },
+    {
+      "group": "quest",
+      "groupShort": null,
+      "name": "complete",
+      "shortHand": "c",
+      "adminOnly": true,
+      "usage": ".quest c [Name] [QuestType]",
+      "description": "Forcibly completes a specified quest for a player.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "questTypeName",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ForceCompleteQuest",
+      "file": "Commands/QuestCommands.cs",
+      "line": 238
+    },
+    {
+      "group": "quest",
+      "groupShort": null,
+      "name": "log",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".quest log",
+      "description": "Toggles quest progress logging.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "LogQuestCommand",
+      "file": "Commands/QuestCommands.cs",
+      "line": 21
+    },
+    {
+      "group": "quest",
+      "groupShort": null,
+      "name": "progress",
+      "shortHand": "p",
+      "adminOnly": false,
+      "usage": ".quest p [QuestType]",
+      "description": "Display your current quest progress.",
+      "params": [
+        {
+          "name": "questType",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "DailyQuestProgressCommand",
+      "file": "Commands/QuestCommands.cs",
+      "line": 36
+    },
+    {
+      "group": "quest",
+      "groupShort": null,
+      "name": "refresh",
+      "shortHand": "rf",
+      "adminOnly": true,
+      "usage": ".quest rf [Name]",
+      "description": "Refreshes daily and weekly quests for player.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ForceRefreshQuests",
+      "file": "Commands/QuestCommands.cs",
+      "line": 118
+    },
+    {
+      "group": "quest",
+      "groupShort": null,
+      "name": "reroll",
+      "shortHand": "r",
+      "adminOnly": false,
+      "usage": ".quest r [QuestType]",
+      "description": "Reroll quest for cost (daily only currently).",
+      "params": [
+        {
+          "name": "questType",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "RerollQuestCommand",
+      "file": "Commands/QuestCommands.cs",
+      "line": 143
+    },
+    {
+      "group": "quest",
+      "groupShort": null,
+      "name": "track",
+      "shortHand": "t",
+      "adminOnly": false,
+      "usage": ".quest t [QuestType]",
+      "description": "Locate and track quest target.",
+      "params": [
+        {
+          "name": "questType",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "LocateTargetCommand",
+      "file": "Commands/QuestCommands.cs",
+      "line": 74
+    },
+    {
+      "group": "weapon",
+      "groupShort": "wep",
+      "name": "choosestat",
+      "shortHand": "cst",
+      "adminOnly": false,
+      "usage": ".wep cst [WeaponOrStat] [WeaponStat]",
+      "description": "Choose a weapon stat to enhance based on your expertise.",
+      "params": [
+        {
+          "name": "weaponOrStat",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "statType",
+          "type": "int",
+          "optional": true,
+          "default": "expr:default"
+        }
+      ],
+      "verbDispatch": false,
+      "method": "ChooseWeaponStat",
+      "file": "Commands/WeaponCommands.cs",
+      "line": 107
+    },
+    {
+      "group": "weapon",
+      "groupShort": "wep",
+      "name": "get",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".wep get",
+      "description": "Displays current weapon expertise details.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "GetExpertiseCommand",
+      "file": "Commands/WeaponCommands.cs",
+      "line": 35
+    },
+    {
+      "group": "weapon",
+      "groupShort": "wep",
+      "name": "list",
+      "shortHand": "l",
+      "adminOnly": false,
+      "usage": ".wep l",
+      "description": "Lists weapon expertises available.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListWeaponsCommand",
+      "file": "Commands/WeaponCommands.cs",
+      "line": 304
+    },
+    {
+      "group": "weapon",
+      "groupShort": "wep",
+      "name": "liststats",
+      "shortHand": "lst",
+      "adminOnly": false,
+      "usage": ".wep lst",
+      "description": "Lists weapon stats available.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ListWeaponStatsCommand",
+      "file": "Commands/WeaponCommands.cs",
+      "line": 275
+    },
+    {
+      "group": "weapon",
+      "groupShort": "wep",
+      "name": "lockspells",
+      "shortHand": "locksp",
+      "adminOnly": false,
+      "usage": ".wep locksp",
+      "description": "Locks in the next spells equipped to use in your unarmed slots.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "LockPlayerSpells",
+      "file": "Commands/WeaponCommands.cs",
+      "line": 400
+    },
+    {
+      "group": "weapon",
+      "groupShort": "wep",
+      "name": "log",
+      "shortHand": null,
+      "adminOnly": false,
+      "usage": ".wep log",
+      "description": "Toggles expertise logging.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "LogExpertiseCommand",
+      "file": "Commands/WeaponCommands.cs",
+      "line": 92
+    },
+    {
+      "group": "weapon",
+      "groupShort": "wep",
+      "name": "resetstats",
+      "shortHand": "rst",
+      "adminOnly": false,
+      "usage": ".wep rst",
+      "description": "Reset the stats for current weapon.",
+      "params": [],
+      "verbDispatch": false,
+      "method": "ResetWeaponStats",
+      "file": "Commands/WeaponCommands.cs",
+      "line": 179
+    },
+    {
+      "group": "weapon",
+      "groupShort": "wep",
+      "name": "set",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": ".wep set [Name] [Weapon] [Level]",
+      "description": "Sets player weapon expertise level.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "weapon",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "level",
+          "type": "int",
+          "optional": false
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetExpertiseCommand",
+      "file": "Commands/WeaponCommands.cs",
+      "line": 223
+    },
+    {
+      "group": "weapon",
+      "groupShort": "wep",
+      "name": "setspells",
+      "shortHand": "spell",
+      "adminOnly": true,
+      "usage": ".wep spell [Name] [Slot] [PrefabGuid] [Radius]",
+      "description": "Manually sets spells for testing (if you enter a radius it will apply to players around the entered name).",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "slot",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "ability",
+          "type": "int",
+          "optional": false
+        },
+        {
+          "name": "radius",
+          "type": "float",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "verbDispatch": false,
+      "method": "SetSpellCommand",
+      "file": "Commands/WeaponCommands.cs",
+      "line": 317
+    }
+  ]
+}
