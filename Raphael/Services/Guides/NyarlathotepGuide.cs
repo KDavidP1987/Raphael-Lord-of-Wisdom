@@ -132,6 +132,7 @@ internal static partial class Guides
                 .P("An Apocalypse action (spawns pillar) turns one faction into an outbreak that lasts 10 minutes to 7 days (durationSeconds 600-604800).")
                 .Bullets(
                     "<b>Hotspots</b> (1-5) are found at the start, where enough of the faction's own NPCs stand together.",
+                    "<b>How many rise</b>: at the start, roamers.perHotspot (1-10) roamers rise at each hotspot; both numbers are set in events.json only. After that, kills add roamers up to roamers.max, and each horde brings hordes.size, the later ones more by hordes.growth (events.json). The event editor's How many rise card shows the event's own numbers.",
                     "<b>Roamers</b> hunt the nearest player anywhere on the map, with hidden jumps, never into a castle. Each kill a roamer or horde makes adds more roamers where the victim fell, up to a limit.",
                     "<b>Hordes</b> (1-10) rise at the hotspots on a timer and march on the <b>goal</b>. The last horde brings the bosses.",
                     "A horde stops and fights while a player stands within 60 m of its front, except close to the goal.",
@@ -142,7 +143,7 @@ internal static partial class Guides
             .Detail("Infestation", d => d
                 .P("An Infestation action (spawns pillar, 10 minutes to 7 days) raises the dead where a faction's own NPCs gather, and the outbreak grows with every kill.")
                 .Bullets(
-                    "<b>Origins</b> (1-10) are found at the start, each where at least minNatives (1-20) of the faction stand, at least minSpacing (100-2000 m) apart. Each origin raises perOrigin (1-100) units.",
+                    "<b>Origins</b> (1-10) are found at the start, each where at least minNatives (1-20) of the faction stand, at least minSpacing (100-2000 m) apart. Each origin raises perOrigin (1-100) units, so it starts with origins × perOrigin; everything after that comes from the spread.",
                     "<b>Hunters</b> (0-100 %) is the share of units that hunt the nearest player. They move in straight lines, and a castle territory is a refuge unless the event sets allowTerritory. The rest drift within driftRadius (0-2000 m) of their origin.",
                     "<b>Spread</b>: each kill the dead make raises perKillMin to perKillMax (0-3) new units where the victim fell, drawn from a pool or from the event's units, up to max alive (1-500), at most perMinute (1-30) a minute.",
                     "Won when every unit is dead with no spread pending; survived when the time runs out.",
@@ -153,6 +154,7 @@ internal static partial class Guides
                     "<b>Start</b>: a point (where the admin stood), the starting admin, or the natives' hotspot nearest the destination at least minDistance (100-3000 m) away.",
                     "<b>Destination</b>: a point with a name (1-40 characters) and a radius (10-100 m). The horde marches at marchSpeed (0.5-5.0 m/s).",
                     "The horde is the sum of its units, 10-500: with pool ranges, the mins must add up to at least 10 and the maxes to at most 500. <b>Growth</b> on the way works like spread: kills add units up to growth.max. A growth.max at or below the horde size never grows it.",
+                    "<b>The starting size</b> is set only in events.json, by the counts of the event's units (then Reload from disk). No chat command changes it, so Raphael's editor shows it but can't set it.",
                     "A horde players have watched for 30 s stops and fights where it stands.",
                     "<b>On arrival</b> (or where it stands after 120 s stuck, or once watched) it infests there, with its own hunters, drift radius and spread.",
                     "Bosses join the horde, fixed or rolled from a pool. Won when the horde is destroyed."))

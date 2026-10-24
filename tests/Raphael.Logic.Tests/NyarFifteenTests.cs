@@ -15,6 +15,62 @@ internal static partial class Program
         CastleEntry();
         VersionGate();
         ReasonTexts();
+        HowManyRise();
+    }
+
+    // ------------------------------------------------------------------ NyarHordeCounts (friend test: start vs over time)
+    // Reply shapes from Nyarlathotep 0.15.0 EventAdmin.ApocalypseOnlyLines / HordeMarchLines.
+    private static void HowManyRise()
+    {
+        string Get(NyarFormLoad l, string k) => l.Values.TryGetValue(k, out var v) ? v : "";
+
+        var inf = NyarForm.Read(InfestationOn);
+        var il = NyarHordeCounts.Lines(inf, k => Get(inf, k));
+        Check(il.Count == 3 && il[0].Contains("5 places × 10 undead = 50"), "infestation start = places × per place");
+        Check(il[1].Contains("+1-3 per kill the undead make") && il[1].Contains("at most 20 a minute") && il[1].Contains("up to 300 alive"),
+            "infestation over time from its spread");
+        var edited = NyarHordeCounts.Lines(inf, k => k == "action.origins.perOrigin" ? "4" : Get(inf, k));
+        Check(edited[0].Contains("= 20"), "an unsaved edit shows at once");
+
+        var apo = NyarForm.Read(new[]
+        {
+            "zap \"Zombie Apocalypse\" disabled pillar spawns trigger manual duration 3600s",
+            "action: apocalypse of the Undead, march 2 m/s",
+            "hotspots: 5, at least 10 natives each, 300 m apart",
+            "roamers: 10 per hotspot, +1-3 per kill from troops, max 100, 20 spread per minute, hunt range 40",
+            "hordes: 4, first after 3 min, every 20 min, size 30 +15 each",
+            "goal: the village, radius 30, at 100 200",
+            "units: CHAR_Undead_SkeletonSoldier_Base x8",
+            "scoreboard: on",
+            "not running",
+        });
+        Eq(apo.Kind, NyarEventKind.Apocalypse, "apocalypse read");
+        Check(apo.ApoHotspots == 5 && apo.ApoPerHotspot == 10 && apo.ApoFirstAfter == 3 && apo.ApoHordeGrowth == 15, "apocalypse read-only numbers");
+        var al = NyarHordeCounts.Lines(apo, k => Get(apo, k));
+        Check(al[0].Contains("5 hotspots × 10 roamers = 50") && al[0].Contains("events.json"), "apocalypse start, set in events.json");
+        Check(al[1].Contains("up to 100 alive"), "apocalypse roamers cap");
+        Check(al[2].Contains("4 hordes, the first after 3 min, then every 20 min") && al[2].Contains("brings 30, each later one 15 more"), "apocalypse hordes");
+
+        var hm = NyarForm.Read(new[]
+        {
+            "march \"Horde March\" disabled pillar spawns trigger manual duration 3600s",
+            "action: horde march of the Undead, march 2 m/s",
+            "start: the natives' hotspot nearest the destination, at least 300 m away",
+            "destination: the old bridge, radius 30, at 100 200",
+            "growth: +1-3 per kill from troops, max 400, 20 per minute",
+            "infest: hunters 60 %, drift radius 500 m, spread +1-2 per kill from troops, max 300, 10 per minute",
+            "horde of 200: troops x160, elite x32, strong x8",
+            "scoreboard: on",
+            "not running",
+        });
+        var hl = NyarHordeCounts.Lines(hm, k => Get(hm, k));
+        Check(hl.Count == 4 && hl[0].Contains("a horde of 200"), "horde march start = its units' counts");
+        Check(hl[1].Contains("events.json") && hl[1].Contains("Reload from disk"), "horde march says where the start is set");
+        Check(hl[2].Contains("up to 400 alive") && hl[3].Contains("+1-2 per kill"), "horde march growth and infest spread");
+
+        Check(NyarHordeCounts.Lines(new NyarFormLoad { Kind = NyarEventKind.UnitsForm }, _ => "").Count == 0, "no card for spawn waves");
+        var blank = NyarHordeCounts.Lines(new NyarFormLoad { Kind = NyarEventKind.Apocalypse }, _ => "");
+        Check(blank[0].Contains("hotspots × roamers") && !blank[0].Contains("-1"), "unread numbers never show as -1");
     }
 
     private static NyarEntry PoolE(string pool, int count) => new() { Pool = pool, Count = count, Min = count, Max = count };

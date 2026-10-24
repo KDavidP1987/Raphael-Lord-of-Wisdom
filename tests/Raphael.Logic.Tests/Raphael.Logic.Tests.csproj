@@ -20,6 +20,7 @@
     <Compile Include="..\..\Raphael\Services\Nyar\NyarForm.cs" Link="Linked\NyarForm.cs" />
     <Compile Include="..\..\Raphael\Services\Nyar\NyarLimits.cs" Link="Linked\NyarLimits.cs" />
     <Compile Include="..\..\Raphael\Services\Nyar\NyarHelp.cs" Link="Linked\NyarHelp.cs" />
+    <Compile Include="..\..\Raphael\Services\Nyar\NyarHordeCounts.cs" Link="Linked\NyarHordeCounts.cs" />
     <Compile Include="..\..\Raphael\UI\ModContent\RailPolicy.cs" Link="Linked\RailPolicy.cs" />
     <!-- 0.73.0: guide data (pure) and the Bloodcraft reset core. -->
     <Compile Include="..\..\Raphael\Services\Guides\*.cs" Link="Linked\Guides\%(Filename)%(Extension)" />

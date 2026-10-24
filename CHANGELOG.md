@@ -23,6 +23,12 @@ Works with Nyarlathotep 0.15.0 (0.14.0 still works without the 0.15.0 features),
 - A greyed **Destination here** button now says exactly why: one step for each setting that blocks a destination
   (location, pursuit, region lock, arena, fan-out), naming where in the editor to change it, or that a save is still
   being sent.
+- Each horde editor opens with a **How many rise** card that separates the start from what comes later, with the
+  event's own numbers. An infestation starts with places × undead at each place. A horde march starts with its units'
+  counts added up, and the card says that size is set only in events.json: Nyarlathotep has no chat command for it.
+  An apocalypse starts with hotspots × roamers per hotspot (events.json), then grows by kills and hordes.
+- The spread and growth text now says what a "kill" is: one the undead make, of a player or another NPC, with the new
+  undead rising where the victim fell. It used to read as if killing undead raised more.
 - **Any other field** now takes `action.fanOut` as typed text (`none`, or a max and a spacing). It used to offer
   Yes/No, which the server refuses.
 

@@ -39,6 +39,10 @@ internal sealed class NyarFormLoad
     public string StartKind = "";
     /// <summary>A horde march's size, the sum of its units ("horde of N"); 0 when unread.</summary>
     public int HordeSize;
+    /// <summary>0.74.0: an apocalypse's read-only numbers from its reply (events.json only, never a form field), for the
+    /// editor's "How many rise" card: hotspots, roamers per hotspot, the first horde's minute and the growth per horde.
+    /// -1 when unread.</summary>
+    public int ApoHotspots = -1, ApoPerHotspot = -1, ApoFirstAfter = -1, ApoHordeGrowth = -1;
     /// <summary>What the reply shows that a destination can't be combined with ("pursuit", "fan-out" …); empty when none.</summary>
     public readonly List<string> DestinationConflicts = new();
 }
@@ -117,6 +121,11 @@ internal sealed class NyarForm
             Put("action.hordes.everyMinutes", M(hordes, @", every (\d+) min,"));
             Put("action.hordes.size", M(hordes, @", size (\d+) "));
             Put("action.roamers.max", M(Find("roamers: "), @", max (\d+),"));
+            int N(string s) => int.TryParse(s, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : -1;
+            r.ApoHotspots = N(M(Find("hotspots: "), @"^hotspots: (\d+),"));
+            r.ApoPerHotspot = N(M(Find("roamers: "), @"^roamers: (\d+) per hotspot,"));
+            r.ApoFirstAfter = N(M(hordes, @", first after (\d+) min,"));
+            r.ApoHordeGrowth = N(M(hordes, @" \+(\d+) each$"));
             Put("action.bosses", Bosses(NyarInfoParse.FinalBosses(lines)));
             FamilyTail(r, lines);
             return r;

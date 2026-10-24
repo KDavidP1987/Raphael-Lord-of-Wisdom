@@ -495,6 +495,7 @@ public partial class MainPanel
     {
         AddSectionHeading(ed, "▸ Apocalypse");
         NyarHowItWorks(ed, "apocalypse");
+        BuildNyarHowManyRise(ed);
         BuildNyarCastleSwitch(ed);
         AddSectionHeading(ed, "▸ Goal and hordes");
         var gr = MakeUrielRow(ed, "NyarEdGoalRow");

@@ -108,14 +108,15 @@ internal static class NyarHelp
         ["action.goal.name"] = "Apocalypse: what the banners call the goal.",
         ["action.hordes.count"] = "Apocalypse: how many hordes rise during the event. Destroy them all to win.",
         ["action.hordes.everyMinutes"] = "Apocalypse: the time between one horde and the next.",
-        ["action.hordes.size"] = "Apocalypse: how many units the first horde brings.",
-        ["action.roamers.max"] = "Apocalypse: the most roamers alive at once. Roamers hunt players across the map and grow with every kill they make.",
+        ["action.hordes.size"] = "Apocalypse: how many units the first horde brings. Each later horde brings more by the event's growth (events.json).",
+        ["action.roamers.max"] = "Apocalypse: the most roamers alive at once. Roamers rise at each hotspot when it starts (roamers.perHotspot in events.json), " +
+                                 "hunt players across the map, and each kill they make raises more where the victim fell, up to this.",
 
         // ---- infestation
         ["action.origins.count"] = "Infestation: how many places the dead rise at. Each place is a gathering of the faction's own NPCs.",
         ["action.origins.minNatives"] = "Infestation: how many of the faction's NPCs a place needs before it counts.",
         ["action.origins.minSpacing"] = "Infestation: the least distance between two places.",
-        ["action.origins.perOrigin"] = "Infestation: how many undead rise at each place when it starts.",
+        ["action.origins.perOrigin"] = "Infestation: how many undead rise at each place when it starts. The event starts with places × this; the rest come from the spread.",
         ["action.hunters"] = "Infestation: the share of the undead that hunt the nearest player anywhere. The rest drift around their place.",
         ["action.driftRadius"] = "Infestation: how far the drifting undead wander from their place.",
 
@@ -133,8 +134,9 @@ internal static class NyarHelp
     };
     private static readonly (string Key, string Text)[] SpreadText =
     {
-        ("perKillMin", "the fewest new undead one kill raises. A kill raises a random number between the two."),
-        ("perKillMax", "the most new undead one kill raises."),
+        ("perKillMin", "the fewest new undead one kill raises. A kill here is one the undead make, of a player or another NPC; the new " +
+                       "undead rise where the victim fell. A kill raises a random number between the two."),
+        ("perKillMax", "the most new undead one kill by the undead raises."),
         ("max", "the most of these undead alive at once. On the march this caps the horde's size, so set it above the horde's start."),
         ("perMinute", "the most that rise in one minute."),
         ("pool", "the pool the new undead are drawn from. No pool draws them from the event's units."),

@@ -20,8 +20,19 @@ public partial class MainPanel
 
     // ---------------------------------------------------------------- infestation
 
+    /// <summary>0.74.0 (friend test): "▸ How many rise" at the top of a horde editor: the start apart from the growth, and
+    /// where each number is set (NyarHordeCounts).</summary>
+    private void BuildNyarHowManyRise(GameObject ed)
+    {
+        var lines = NyarHordeCounts.Lines(_nyarForm.Load, k => _nyarForm.Get(k));
+        if (lines.Count == 0) return;
+        AddSectionHeading(ed, "▸ How many rise");
+        foreach (var l in lines) NyarNote(ed, l);
+    }
+
     private void BuildNyarInfestationSection(GameObject ed)
     {
+        BuildNyarHowManyRise(ed);
         AddSectionHeading(ed, "▸ Where the dead rise");
         NyarHowItWorks(ed, "infestation");
         NyarFieldStepper(ed, "action.origins.count", hint: "How many graveyards: hotspots of the faction's own NPCs.");
@@ -37,7 +48,7 @@ public partial class MainPanel
                            "entered (above), no hunter targets a player inside a castle territory."));
 
         AddSectionHeading(ed, "▸ Spread per kill");
-        BuildNyarSpreadBlock(ed, "action.spread.", "Each undead killed may raise more.");
+        BuildNyarSpreadBlock(ed, "action.spread.", "Over time: each kill the undead make (a player or another NPC) may raise more where the victim fell.");
         NyarHordeNotes(ed, "The infestation's units, faction and pools live in events.json (edit it, then Reload from disk).");
     }
 
@@ -46,6 +57,7 @@ public partial class MainPanel
     private void BuildNyarHordeMarchSection(GameObject ed, string id)
     {
         var load = _nyarForm.Load;
+        BuildNyarHowManyRise(ed);
         AddSectionHeading(ed, "▸ Start");
         NyarHowItWorks(ed, "hordemarch");
         string now = load.StartKind switch
@@ -72,7 +84,7 @@ public partial class MainPanel
         BuildNyarCastleSwitch(ed);
 
         AddSectionHeading(ed, "▸ Growth on the way");
-        BuildNyarSpreadBlock(ed, "action.growth.", "Each kill on the march may add undead to the horde.",
+        BuildNyarSpreadBlock(ed, "action.growth.", "Over time: each kill the horde makes on the march (a player or another NPC) may add undead that join it.",
             maxAdvice: () =>
             {
                 int size = load.HordeSize;
@@ -86,7 +98,7 @@ public partial class MainPanel
         NyarNote(ed, Muted("On arrival, after 120 s stuck, or once players have watched it for 30 s, the horde infests where it stands."));
         NyarFieldStepper(ed, "action.infest.hunters", hint: "The share that then hunts the nearest player; the rest drift.");
         NyarFieldStepper(ed, "action.infest.driftRadius", hint: "How far the others wander.");
-        BuildNyarSpreadBlock(ed, "action.infest.spread.", "Each undead killed after it infests may raise more.");
+        BuildNyarSpreadBlock(ed, "action.infest.spread.", "After it infests: each kill the undead make may raise more where the victim fell.");
 
         AddSectionHeading(ed, "▸ Bosses with the horde");
         NyarListEditor(ed, "action.bosses", bosses: true, waveList: false, "Bosses",
