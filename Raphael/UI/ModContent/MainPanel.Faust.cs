@@ -3916,7 +3916,7 @@ public partial class MainPanel
     // Per-feature settable keys (the §3b table). The feature cycler excludes "all" — `set` targets one feature.
     private static readonly string[] FaustCfgFeatures =
         { "castleinfo", "plotavailability", "playerinfo", "playerpositions", "castleresources", "stats",
-          "allcastles", "decaywatch", "clans", "heatmap", "bosses", "kills" };
+          "allcastles", "decaywatch", "clans", "heatmap", "bosses", "kills", "worldscan" };
     private static readonly (string key, string hint)[] FaustCfgGlobals =
     {
         ("enabled",              "on | off (Faust master switch)"),
@@ -3938,6 +3938,7 @@ public partial class MainPanel
         ("mapmarkersenabled",    "on | off"),
         ("mapmarkerprefab",      "PrefabGUID"),
         ("bossmaplimit",         "100–20000 world units (boss live/down threshold; default 9000 covers the map — raise only if a live boss reads “Not spawned”)"),
+        ("worldscaninterval",    "seconds ≥ 5 between World Map scans"),
         ("worldscanmaxresults",  "World Map result cap (Faust 0.16.1; default 10000, 0 = unlimited). Raise if a scan is cut short; Raphael caps its own paging for safety."),
     };
     private int _faustCfgFeatureIdx;

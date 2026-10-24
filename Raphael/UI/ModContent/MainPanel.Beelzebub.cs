@@ -91,7 +91,20 @@ public partial class MainPanel
         ("lifetime", "Lifetime (s)", "num"), ("casttime", "Cast time ×", "num"),
         ("summoncap", "Summon stacks", "num"), ("summontimeout", "Summon timeout (s)", "num"), ("summonunits", "Summon units", "num"),
         ("damagescale", "Damage ×", "num"), ("cooldownscale", "Cooldown ×", "num"),
+        ("summonpower", "Summon power ×", "num"), ("allowglobalsharededit", "Edit shared parts", "choice"),
+        ("transformonly", "Transform only", "onoff"), ("allowdenied", "Allow if denied", "onoff"),
+        ("difficulty", "Difficulty", "choice"), ("phase", "Phase", "num"), ("category", "Category", "choice"),
+        ("condition", "Use condition", "choice"), ("reviewstatus", "Review status", "choice"), ("reviewtag", "Review tag", "text"),
         ("weapons", "Weapons", "text"), ("forms", "Forms", "text"), ("notes", "Notes", "text"),
+    };
+    // 0.74.0: the options for the "choice" fields above, in the order Beelzebub lists them. "auto" clears an override.
+    private static readonly Dictionary<string, string[]> BeelzAbilFieldChoices = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["allowglobalsharededit"] = new[] { "off", "on" },
+        ["difficulty"]   = new[] { "Basic", "Brutal" },
+        ["category"]     = new[] { "auto", "Travel", "Aoe", "Projectile", "Melee", "Summon", "Buff", "WeaponSpell", "Spell", "Other" },
+        ["condition"]    = new[] { "auto", "Aimed", "CloseRange", "Summon", "SelfCast", "Movement" },
+        ["reviewstatus"] = new[] { "Unreviewed", "Reviewed", "Approved", "Blocked", "Hidden" },
     };
     // Per-field help, sourced from Beelzebub's ABILITY_CONFIG.md + CHANGELOG (read-only reference).
     // Shown as a tooltip on each sub-form row AND on the collapsed-row cells where they apply.
@@ -127,6 +140,16 @@ public partial class MainPanel
         ["weapons"]        = "Weapon-family restriction (Beelz v0.101+). Comma-separated. A plain family (e.g. 'Sword,Axe') = usable ONLY with those; a '!'-prefixed family (e.g. '!Sword') = usable everywhere EXCEPT that one. Blank = no restriction. ENFORCED: a weapon-grant of a locked ability is refused.",
         ["forms"]          = "Form restriction (Beelz v0.101+). Comma-separated. A plain form (e.g. 'Wolf,Bear') = usable ONLY in those; a '!'-prefixed form (e.g. '!Mounted') = usable everywhere EXCEPT there. Blank = no restriction. ENFORCED on form-grant.",
         ["notes"]          = "Admin annotation only — not used at runtime.",
+        ["summonpower"]    = "Power multiplier for this ability's summons when Summon_PowerMode is OwnerRelative (1.0 = no change). The scan doesn't report it, so it shows blank; type a number to set it.",
+        ["allowglobalsharededit"] = "on = baked edits also apply to parts this ability shares with other abilities or bosses (only when every owner is fully decoded). The scan doesn't report it, so it starts at off; pick a value to set it.",
+        ["transformonly"]  = "on = the ability can be used only inside a real transform (when Grant_EnforceTransformOnly is true).",
+        ["allowdenied"]    = "on = the ability can drop even though a deny rule matches it.",
+        ["difficulty"]     = "Basic or Brutal. On a Basic server, Brutal abilities are blocked unless inclusive mode is on.",
+        ["phase"]          = "The boss phase the ability belongs to (1 or more), used by phased transforms.",
+        ["category"]       = "Overrides the detected category (Travel, Aoe, Projectile, Melee, Summon, Buff, WeaponSpell, Spell, Other). auto = use the detected one.",
+        ["condition"]      = "How the ability is used: Aimed, CloseRange, Summon, SelfCast or Movement. Setting it marks the label confirmed; auto = back to the detected label.",
+        ["reviewstatus"]   = "Curation state. Blocked or Hidden abilities can't drop or be granted when Curation_EnforceReviewStatus is true.",
+        ["reviewtag"]      = "Free-text curation tag (for example emote, feed, variant_hard, basic_attack). Type clear to remove it.",
     };
     // Slim collapsed-row column widths for the Admin: Abilities table — header and rows share these so
     // they line up. (Per-field editing moved to the expanded sub-form; the row is now an overview.)
@@ -2934,6 +2957,27 @@ public partial class MainPanel
         AddBeelzSmallButton(fRow3, "BeelzFiltRules", "Show rules", "Print the current filter rules in chat (admin rules).", () => AdminSend(".beelz admin rules"), 80);
         AddBeelzSmallButton(fRow3, "BeelzFiltReload", "Reload rules", "Re-read ability_rules.json from disk after a hand-edit (admin reload).", () => AdminSend(".beelz admin reload"), 90);
 
+        // 0.74.0: the server-wide scaling defaults (ability_rules.json Defaults) for abilities with no rule of their own.
+        var fRow4 = MakeBeelzRow(filtCard, "BeelzFiltDefaultsRow");
+        var defLbl = UIFactory.CreateLabel(fRow4, "BeelzFiltDefaultsLbl", $"<color={Theme.MutedBodyHex}>Defaults ×</color>",
+            TextAlignmentOptions.MidlineLeft, color: null, fontSize: Theme.ScaledUI(11));
+        UIFactory.SetLayoutElement(defLbl.GameObject, minWidth: 70, preferredWidth: 76, flexibleWidth: 0, minHeight: Theme.ScaledHeight(26), flexibleHeight: 0);
+        var defInput = UIFactory.CreateInputField(fRow4, "BeelzFiltDefaultsIn", "number > 0 (1.0 = no change)");
+        UIFactory.SetLayoutElement(defInput.GameObject, minWidth: 90, preferredWidth: 140, flexibleWidth: 1, minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
+        string defTyped = "";
+        defInput.OnValueChanged += (string v) => defTyped = (v ?? "").Trim();
+        bool ReqScale(out string s)
+        {
+            s = defTyped;
+            bool ok = float.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var f) && f > 0f;
+            if (!ok) SetBeelzAdminStatus("<color=#FFB070>Type a number above 0 (1.0 = no change).</color>");
+            return ok;
+        }
+        AddBeelzSmallButton(fRow4, "BeelzFiltDefDmg", "Set damage", "Server-wide damage multiplier for abilities with no rule of their own (admin default damagescale).",
+            () => { if (ReqScale(out var s)) AdminSend($".beelz admin default damagescale {s}"); }, 90);
+        AddBeelzSmallButton(fRow4, "BeelzFiltDefCd", "Set cooldown", "Server-wide cooldown multiplier for abilities with no rule of their own (admin default cooldownscale).",
+            () => { if (ReqScale(out var s)) AdminSend($".beelz admin default cooldownscale {s}"); }, 96);
+
         AddSpacer(page, 6);
         var rowsCard = AddCard(page, "BeelzAdminConfigRowsCard", padding: 4, innerSpacing: 2);
         _beelzAdminConfigContainer = UIFactory.CreateVerticalGroup(rowsCard, "BeelzAdminConfigRows",
@@ -3669,6 +3713,15 @@ public partial class MainPanel
         if (expanded) BuildBeelzAbilitySubForm(c);
     }
 
+    // The value a field shows when the ability has no override, so the config snapshot lists only real changes.
+    private static string BeelzAbilFieldDefault(string field) => field switch
+    {
+        "transformonly" or "allowdenied" => "off",
+        "difficulty" => "Basic",
+        "reviewstatus" => "Unreviewed",
+        _ => "auto",
+    };
+
     // A6: current value of one config field for an ability, as the string the sub-form shows / sends.
     private static string BeelzAbilFieldValue(BeelzCatalogAbility c, string field)
     {
@@ -3701,6 +3754,14 @@ public partial class MainPanel
             case "weapons":       return c.Weapons == null ? "" : string.Join(",", c.Weapons);
             case "forms":         return c.Forms   == null ? "" : string.Join(",", c.Forms);
             case "notes":         return c.Notes ?? "";
+            case "transformonly": return c.TransformOnly ? "on" : "off";
+            case "allowdenied":   return c.AllowDenied ? "on" : "off";
+            case "difficulty":    return string.IsNullOrEmpty(c.Difficulty) ? "Basic" : c.Difficulty;
+            case "phase":         return c.Phase > 0 ? c.Phase.ToString() : "";
+            case "category":      return string.IsNullOrEmpty(c.CategoryOverride) ? "auto" : c.CategoryOverride;
+            case "condition":     return (c.ConditionSource ?? "").Equals("confirmed", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(c.Condition) ? c.Condition : "auto";
+            case "reviewstatus":  return string.IsNullOrEmpty(c.ReviewStatus) ? "Unreviewed" : c.ReviewStatus;
+            case "reviewtag":     return c.ReviewTag ?? "";
             default:              return "";
         }
     }
@@ -3742,9 +3803,10 @@ public partial class MainPanel
             if (BeelzAbilFieldTooltips.TryGetValue(f.Field, out var tip)) TooltipHover.Attach(fr, $"{f.Label}\n{tip}");
 
             string field = f.Field;
-            if (f.Kind == "bool" || f.Kind == "onoff" || f.Kind == "tri")
+            if (f.Kind == "bool" || f.Kind == "onoff" || f.Kind == "tri" || f.Kind == "choice")
             {
-                string[] opts = f.Kind == "bool" ? new[] { "true", "false" } : f.Kind == "onoff" ? new[] { "on", "off" } : new[] { "on", "off", "auto" };
+                string[] opts = f.Kind == "choice" ? BeelzAbilFieldChoices[f.Field]
+                    : f.Kind == "bool" ? new[] { "true", "false" } : f.Kind == "onoff" ? new[] { "on", "off" } : new[] { "on", "off", "auto" };
                 int sel = Math.Max(0, Array.FindIndex(opts, o => o.Equals(orig, OIC)));
                 var ddObj = UIFactory.CreateDropdown(fr, $"AbilSubDd_{f.Field}", out var dd, opts[sel], Theme.ScaledUI(11),
                     i => { if (i >= 0 && i < opts.Length) Mark(field, orig, opts[i]); }, opts);
@@ -3999,7 +4061,8 @@ public partial class MainPanel
                 {
                     if (f.Field == "enabled" || f.Field == "damagescale" || f.Field == "cooldownscale" || f.Field == "notes") continue;
                     string v = BeelzAbilFieldValue(c, f.Field);
-                    if (!string.IsNullOrEmpty(v) && !v.Equals("auto", StringComparison.OrdinalIgnoreCase)) overrides.Add($"{f.Field}={v}");
+                    if (string.IsNullOrEmpty(v) || v.Equals(BeelzAbilFieldDefault(f.Field), StringComparison.OrdinalIgnoreCase)) continue;
+                    overrides.Add($"{f.Field}={v}");
                 }
                 if (!string.IsNullOrEmpty(c.Notes)) overrides.Add($"notes=\"{c.Notes}\"");
                 sb.AppendLine($"{BeelzNames.Ability(c.Name)}\t{c.Name}\t{(c.Enabled ? "true" : "false")}\t" +
