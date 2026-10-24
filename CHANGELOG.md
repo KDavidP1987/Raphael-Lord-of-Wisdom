@@ -1,5 +1,26 @@
 # Changelog — Raphael, Lord of Wisdom
 
+## 0.73.1 — In progress (not released): a readable Bloodcraft reset report
+
+From a friend test of 0.73.0's **Reset Bloodcraft progress** card (Bloodcraft → Admin).
+
+### Fixed — the reset report no longer overlaps
+
+- The status, step log, review line and notes were each held to a one-line height, so a finished run's 14-line log
+  and summary spilled over the card's intro text and buttons. They now grow with their text, and the card re-flows
+  as soon as a step updates instead of a frame later.
+- The report is laid out top to bottom: the summary ("Finished Desion: 65 reset.") in larger bold, then the buttons,
+  then the step log in its own darker box, then the note on what the tool doesn't reset.
+- Each log line reads `50.  .bl set Desion Draculin 0  →  reset`.
+
+### Changed — reset another player
+
+- **New reset** is now **Start a new reset** and sits right under the summary, so a long log can't push it out of
+  sight. It closes the report and returns to the form with the player name cleared, so the next reset can't go to
+  the previous player by mistake. The chosen options and level are kept.
+- The card's intro names the commands it sends for you (`.lvl set`, `.bl set`, `.prestige r`, `.wep set`,
+  `.prof set`, for every type) and says the player keeps their familiars.
+
 ## 0.73.0 — Complete in-game guides, a Bloodcraft progress reset for admins, and Bloodcraft 1.13.26
 
 Works with Bloodcraft 1.13.26 (chat commands and data are unchanged since 1.13.21), Nyarlathotep 0.14.0 and Uriel

@@ -49,7 +49,9 @@ public partial class MainPanel
             {
                 var card = AddCard(content, "BcResetCard");
                 AddBodyText(card,
-                    "Sends Bloodcraft's admin commands one after another and reads each reply, so it works as one reset. " +
+                    $"Sends the admin commands you would otherwise type one by one ({Mono(".lvl set")}, {Mono(".bl set")}, " +
+                    $"{Mono(".prestige r")}, {Mono(".wep set")}, {Mono(".prof set")}) for every type, and reads each reply, so it " +
+                    "works as one reset. The player keeps their familiars. " +
                     $"<color={Theme.MutedBodyHex}>Works for offline players too. Commands already sent can't be undone.</color>");
 
                 _bcResetFormBlock = UIFactory.CreateVerticalGroup(card, "BcResetForm",
@@ -108,8 +110,7 @@ public partial class MainPanel
         AddUrielBoolToggle(parent, "BcResetFamiliar", "Active familiar to level 1", _bcResetOpts.Familiar,
             v => { _bcResetOpts.Familiar = v; RefreshBcResetReview(); }, "Sends .fam sl <player> 1. Only works while the player is online with a familiar out; otherwise it is recorded as not met.");
 
-        _bcResetReview = AddInfoLabel(parent, "BcResetReview", "", FontStyles.Bold, Theme.ScaledUI(12));
-        _bcResetReview.enableWordWrapping = true;
+        _bcResetReview = AddBcResetText(parent, "BcResetReview", FontStyles.Bold, Theme.ScaledUI(12));
         AddBodyText(parent, $"<color={Theme.MutedBodyHex}>{BC_RESET_CANT}</color>", Theme.ScaledUI(11));
 
         var row = MakeUrielRow(parent, "BcResetStartRow");
@@ -117,13 +118,30 @@ public partial class MainPanel
             "Start sending the reset commands listed above.", StartBcReset, 130, WARNING_TINT);
     }
 
+    // A wrapped label that grows with its text. AddInfoLabel pins a one-line height, so the multi-line status, step
+    // log and notes spilled over the intro text and the buttons (friend test of 0.73.0).
+    private static TextMeshProUGUI AddBcResetText(GameObject parent, string name, FontStyles style, int fontSize)
+    {
+        var t = AddInfoLabel(parent, name, "", style, fontSize);
+        t.alignment = TextAlignmentOptions.TopLeft;
+        t.enableWordWrapping = true;
+        var le = t.GetComponent<UnityEngine.UI.LayoutElement>();
+        if (le != null) { le.minHeight = Theme.ScaledHeight(18); le.preferredHeight = -1; }
+        return t;
+    }
+
     private void BuildBcResetRunView(GameObject parent)
     {
-        _bcResetStatus = AddInfoLabel(parent, "BcResetStatus", "", FontStyles.Bold, Theme.ScaledUI(12));
-        _bcResetStatus.enableWordWrapping = true;
+        _bcResetStatus = AddBcResetText(parent, "BcResetStatus", FontStyles.Bold, Theme.ScaledUI(13));
 
-        _bcResetPauseText = AddInfoLabel(parent, "BcResetPauseText", "", FontStyles.Normal, Theme.ScaledUI(12));
-        _bcResetPauseText.enableWordWrapping = true;
+        // Stop while running, "Start a new reset" once it ends. Kept right under the status so it is never pushed
+        // below a long log.
+        var stopRow = MakeUrielRow(parent, "BcResetStopRow");
+        AddUrielButton(stopRow, "BcResetStop", "Stop", "Stop the reset. A command already sent can't be recalled.", () => BcResetRunner.Stop("Stopped by you."), 80);
+        AddUrielButton(stopRow, "BcResetNew", "Start a new reset",
+            "Close this report and go back to an empty form to reset another player.", StartNewBcReset, 160);
+
+        _bcResetPauseText = AddBcResetText(parent, "BcResetPauseText", FontStyles.Normal, Theme.ScaledUI(12));
 
         _bcResetPauseNoReply = MakeUrielRow(parent, "BcResetPauseNoReply");
         _bcResetRetryStepBtn = AddUrielButton(_bcResetPauseNoReply, "BcResetRetryStep", "Retry this step",
@@ -139,15 +157,13 @@ public partial class MainPanel
         AddUrielButton(_bcResetPauseRefusal, "BcResetContinue", "Continue",
             "Carry on. Choose this only if that line came from something else you sent.", () => BcResetRunner.Continue(), 100);
 
-        var stopRow = MakeUrielRow(parent, "BcResetStopRow");
-        AddUrielButton(stopRow, "BcResetStop", "Stop", "Stop the reset. A command already sent can't be recalled.", () => BcResetRunner.Stop("Stopped by you."), 80);
-        AddUrielButton(stopRow, "BcResetNew", "New reset", "Hide this report and set up another reset.", () => { _bcResetDismissed = BcResetRunner.Current; RefreshBcResetRun(); }, 110);
+        // Step log in its own darker inset so it reads as a report, apart from the controls.
+        var logCard = AddCard(parent, "BcResetLogCard", new Color(0f, 0f, 0f, 0.28f), padding: 8, innerSpacing: 0);
+        _bcResetLog = AddBcResetText(logCard, "BcResetLog", FontStyles.Normal, Theme.ScaledUI(11));
 
-        _bcResetLog = AddInfoLabel(parent, "BcResetLog", "", FontStyles.Normal, Theme.ScaledUI(11));
-        _bcResetLog.enableWordWrapping = true;
+        _bcResetEndNote = AddBcResetText(parent, "BcResetEndNote", FontStyles.Normal, Theme.ScaledUI(11));
 
-        _bcResetRetryNote = AddInfoLabel(parent, "BcResetRetryNote", "", FontStyles.Normal, Theme.ScaledUI(11));
-        _bcResetRetryNote.enableWordWrapping = true;
+        _bcResetRetryNote = AddBcResetText(parent, "BcResetRetryNote", FontStyles.Normal, Theme.ScaledUI(11));
         _bcResetRerollToggleRow = UIFactory.CreateVerticalGroup(parent, "BcResetRerollToggleHost",
             forceWidth: true, forceHeight: false, childControlWidth: true, childControlHeight: true, spacing: 0, padding: Vector4.zero);
         AddUrielBoolToggle(_bcResetRerollToggleRow, "BcResetIncludeReroll", "Also re-roll quests again (the first re-roll may have happened)",
@@ -163,6 +179,21 @@ public partial class MainPanel
 
     /// <summary>The run whose report the admin dismissed with "New reset"; the form shows again until a new run starts.</summary>
     private BcResetRun _bcResetDismissed;
+
+    private TextMeshProUGUI _bcResetEndNote;
+
+    /// <summary>"Start a new reset": hide the finished report and give back the form with the player cleared, so the
+    /// next player can't be reset by mistake under the last one's name. The chosen options stay.</summary>
+    private void StartNewBcReset()
+    {
+        _bcResetDismissed = BcResetRunner.Current;
+        _bcResetIncludeReroll = false;
+        _bcResetPlayer = "";
+        var input = _bcResetFormBlock ? _bcResetFormBlock.transform.Find("BcResetPlayerInput")?.GetComponent<TMP_InputField>() : null;
+        if (input != null) input.text = "";
+        RefreshBcResetReview();
+        RefreshBcResetRun();
+    }
 
     private void StartBcReset()
     {
@@ -271,19 +302,24 @@ public partial class MainPanel
             }
 
             // Step log: everything that has an outcome, newest last; long runs show the latest 14.
+            string muted = Theme.MutedBodyHex;
             var log = new StringBuilder();
             var settled = run.Steps.Where(s => s.State != BcStepState.Pending).ToList();
-            if (settled.Count > 14) log.Append($"<color={Theme.MutedBodyHex}>… {settled.Count - 14} earlier steps</color>\n");
+            if (settled.Count > 14) log.Append($"<color={muted}>… {settled.Count - 14} earlier steps not shown</color>\n");
             foreach (var s in settled.Skip(Math.Max(0, settled.Count - 14)))
-                log.Append($"<color={Theme.MutedBodyHex}>{s.Index + 1,2}</color>  {s.Command}  {BcResetOutcome(s)}\n");
-            foreach (var note in run.LateNotes) log.Append($"<color={Theme.MutedBodyHex}>{Services.Guides.GuideText.Escape(note)}</color>\n");
+                log.Append($"<color={muted}>{s.Index + 1}.</color>  {s.Command}  <color={muted}>→</color>  {BcResetOutcome(s)}\n");
+            foreach (var note in run.LateNotes) log.Append($"<color={muted}>{Services.Guides.GuideText.Escape(note)}</color>\n");
+            if (log.Length == 0) log.Append($"<color={muted}>Waiting for the first reply…</color>");
+            _bcResetLog.text = log.ToString().TrimEnd('\n');
+
+            _bcResetEndNote.gameObject.SetActive(run.Ended);
             if (run.Ended)
             {
-                log.Append($"<color={Theme.MutedBodyHex}>A command already sent can't be recalled. {BC_RESET_CANT}</color>");
-                if (!run.Sealed) log.Append($"\n<color={Theme.MutedBodyHex}>Late replies in the next 30 s still update this report.</color>");
-                if (!run.RetryAllowed) log.Append($"\n<color={Theme.MutedBodyHex}>Retry isn't offered after leaving the server. Start a new reset if needed.</color>");
+                var end = new StringBuilder($"<color={muted}>A command already sent can't be recalled. {BC_RESET_CANT}");
+                if (!run.Sealed) end.Append("\nLate replies in the next 30 s still update this report.");
+                if (!run.RetryAllowed) end.Append("\nRetry isn't offered after leaving the server. Start a new reset if needed.");
+                _bcResetEndNote.text = end.Append("</color>").ToString();
             }
-            _bcResetLog.text = log.ToString().TrimEnd('\n');
 
             var retry = run.Ended ? run.RetryList(_bcResetIncludeReroll) : new List<BcResetStep>();
             bool canRetry = run.Ended && retry.Count > 0;
@@ -297,6 +333,12 @@ public partial class MainPanel
         catch (Exception ex)
         {
             LogUtils.LogWarning($"[Raphael] reset card refresh failed: {ex.Message}");
+        }
+        finally
+        {
+            // Re-flow now, not next frame, so a grown log or a form/report swap never draws over its neighbours.
+            if (_bcResetRunBlock && _bcResetRunBlock.transform.root is RectTransform rootRt)
+                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(rootRt);
         }
     }
 

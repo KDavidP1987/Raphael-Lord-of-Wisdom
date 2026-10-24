@@ -8,6 +8,13 @@ Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
 ---
 
+## 0.73.1 — In progress (not released)
+
+- Admins: the **Reset Bloodcraft progress** report no longer overlaps itself. The summary, buttons, step log and notes
+  each get their own space, and the log sits in its own box.
+- **Start a new reset** (formerly New reset) sits under the summary and returns to the form with the player name
+  cleared, ready for the next player.
+
 ## 0.73.0 — Complete in-game guides and a Bloodcraft progress reset
 
 Works with Bloodcraft 1.13.26, Nyarlathotep 0.14.0 and Uriel 0.22.0.
