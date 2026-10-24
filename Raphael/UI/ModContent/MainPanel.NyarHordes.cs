@@ -28,16 +28,16 @@ public partial class MainPanel
         NyarFieldStepper(ed, "action.origins.minNatives", hint: "A hotspot needs at least this many of the faction's NPCs.");
         NyarFieldStepper(ed, "action.origins.minSpacing", hint: "The least distance between two places.");
         NyarFieldStepper(ed, "action.origins.perOrigin", hint: "Undead that rise at each place when it starts.");
+        BuildNyarCastleSwitch(ed);
 
         AddSectionHeading(ed, "▸ The living dead");
         NyarFieldStepper(ed, "action.hunters", hint: "The share of the undead that hunt the nearest player; the rest drift.");
         NyarFieldStepper(ed, "action.driftRadius", hint: "How far the others wander from their place.");
         NyarNote(ed, Muted("Hunters jump in straight lines, so a river or a cliff band holds many of them back. Unless castles may be " +
-                           "entered (below), no hunter targets a player inside a castle territory."));
+                           "entered (above), no hunter targets a player inside a castle territory."));
 
         AddSectionHeading(ed, "▸ Spread per kill");
         BuildNyarSpreadBlock(ed, "action.spread.", "Each undead killed may raise more.");
-        BuildNyarCastleSwitch(ed);
         NyarHordeNotes(ed, "The infestation's units, faction and pools live in events.json (edit it, then Reload from disk).");
     }
 
@@ -69,6 +69,7 @@ public partial class MainPanel
 
         AddSectionHeading(ed, "▸ Destination");
         BuildNyarDestinationRows(ed, id, allowNone: false);
+        BuildNyarCastleSwitch(ed);
 
         AddSectionHeading(ed, "▸ Growth on the way");
         BuildNyarSpreadBlock(ed, "action.growth.", "Each kill on the march may add undead to the horde.",
@@ -86,7 +87,6 @@ public partial class MainPanel
         NyarFieldStepper(ed, "action.infest.hunters", hint: "The share that then hunts the nearest player; the rest drift.");
         NyarFieldStepper(ed, "action.infest.driftRadius", hint: "How far the others wander.");
         BuildNyarSpreadBlock(ed, "action.infest.spread.", "Each undead killed after it infests may raise more.");
-        BuildNyarCastleSwitch(ed);
 
         AddSectionHeading(ed, "▸ Bosses with the horde");
         NyarListEditor(ed, "action.bosses", bosses: true, waveList: false, "Bosses",
@@ -129,15 +129,19 @@ public partial class MainPanel
             none.SetEnabled(NyarCanSend);
         }
         NyarCell(dr, Muted(has ? "Now: set." : "Now: none."), 90, flex: true);
+        // 0.74.0 (friend test): a greyed button always says why, and what to do about it.
+        string wait = NyarSendBlockedText();
+        if (wait != null) NyarNote(ed, $"<color={NyarChangedHex}>Destination here is greyed out for now: {wait}</color>");
         if (blocker != null) NyarNote(ed, $"<color={NyarChangedHex}>{blocker}</color>");
         else if (allowNone)
-            NyarNote(ed, Muted("A destination needs the location Use where I stand (or the starting admin), and can't be combined with " +
-                               "fan-out, region lock, an arena or pursuit. Stand at the destination, then press. Sent at once."));
+            NyarNote(ed, Muted("A destination needs units that spawn at a set spot (Location: Use where I stand, or where the admin " +
+                               "starts it), and no pursuit, region lock, arena or fan-out. Stand at the destination, then press. Sent at once."));
         else NyarNote(ed, Muted("Stand at the destination, then press. Sent at once."));
 
         if (!has && allowNone)
         {
-            NyarNote(ed, Muted("Arrival radius, name and march speed can be set once there is a destination."));
+            NyarNote(ed, Muted("Arrival radius, name and march speed appear here once the event has a destination: " +
+                               "the server refuses them without one."));
             return;
         }
         NyarFieldStepper(ed, "action.destination.radius", hint: "Units within this distance of the destination have arrived.");
@@ -145,20 +149,35 @@ public partial class MainPanel
         NyarFieldStepper(ed, "action.marchSpeed", hint: "Metres a second. Players walk at about 5.");
     }
 
+    // Why the editor's send-at-once buttons are greyed right now (a batch running, or the server's last answer awaited);
+    // null when they aren't.
+    private string NyarSendBlockedText()
+    {
+        if (NyarBatchRunner.Busy) return "your saved changes are still being sent. It turns back on when they finish.";
+        if (NyarClient.Quarantined) return NyarBatchRunner.WaitText;
+        return null;
+    }
+
     // The reason Destination here would be refused, from what the reply shows for certain; null when nothing does.
-    private static string NyarDestinationBlocker(List<string> conflicts)
+    // 0.74.0 (friend test): one step per conflict, each naming where in the editor it is fixed.
+    internal static string NyarDestinationBlocker(List<string> conflicts)
     {
         if (conflicts == null || conflicts.Count == 0) return null;
-        string fix = conflicts[0] switch
-        {
-            "location" => "set the location to Use where I stand first",
-            "pursuit" => "set Pursuit to No pursuit first",
-            "region lock" => "turn the region lock off first (Any other field: action.regionLock)",
-            "arena" => "remove the arena first (Any other field: action.arena)",
-            _ => "turn fan-out off first (Any other field: action.fanOut)",
-        };
-        string what = conflicts.Count == 1 ? conflicts[0] : string.Join(", ", conflicts.Take(conflicts.Count - 1)) + " and " + conflicts[^1];
-        return $"A destination can't be combined with this event's {what}: {fix}.";
+        var steps = new List<string>();
+        foreach (var c in conflicts.Distinct())
+            steps.Add(c switch
+            {
+                "location" => "• Location: the units spawn across a region or around a player, and a march needs a set starting spot. " +
+                              "Under Where and how, stand where the units should spawn and press Use where I stand.",
+                "pursuit" => "• Pursuit is on. Under Where and how, set Pursuit to no pursuit, then Save.",
+                "region lock" => "• Region lock is on. Under Any other field, pick action.regionLock and set it to No.",
+                "arena" => "• The event has an arena. Under Any other field, pick action.arena and type none.",
+                _ => "• Fan-out is on. Under Any other field, pick action.fanOut and type none.",
+            });
+        string head = steps.Count == 1
+            ? "Destination here is greyed out: the server refuses a destination on this event until this is changed:"
+            : $"Destination here is greyed out: the server refuses a destination on this event until these {steps.Count} are changed:";
+        return head + "\n" + string.Join("\n", steps) + "\nThe button turns on once the event reads back without them.";
     }
 
     // ---------------------------------------------------------------- spread block (spread, growth, infest spread)

@@ -495,6 +495,8 @@ public partial class MainPanel
     {
         AddSectionHeading(ed, "▸ Apocalypse");
         NyarHowItWorks(ed, "apocalypse");
+        BuildNyarCastleSwitch(ed);
+        AddSectionHeading(ed, "▸ Goal and hordes");
         var gr = MakeUrielRow(ed, "NyarEdGoalRow");
         NyarCell(gr, "Goal", 150);
         var goalBtn = AddUrielButton(gr, "NyarEdGoalHere", "Goal here",
@@ -509,22 +511,28 @@ public partial class MainPanel
         NyarFieldStepper(ed, "action.hordes.size");
         NyarFieldStepper(ed, "action.roamers.max");
         NyarFieldStepper(ed, "action.marchSpeed");
-        BuildNyarCastleSwitch(ed);
         AddSectionHeading(ed, "▸ Bosses with the last horde");
         NyarListEditor(ed, "action.bosses", bosses: true, waveList: false, "Bosses", "Up to 3 bosses, 1-3 of each.", allowPools: false);
         NyarHordeNotes(ed, "The apocalypse's units, faction, hotspots and pools aren't settable by command — they live in events.json (edit it, then Reload from disk).");
     }
 
-    /// <summary>0.74.0: "▸ Location" with the castle switch of an apocalypse-type event (action.allowTerritory, which
-    /// Nyarlathotep 0.15.0 takes for the horde families too). Shown greyed with the reason on an older server.</summary>
+    /// <summary>0.74.0: "▸ Castles and loot", the castle switch of an apocalypse-type event (action.allowTerritory, which
+    /// Nyarlathotep 0.15.0 takes for the horde families too; shown greyed with the reason on an older server), with the
+    /// loot answer beside it so neither looks missing (friend test). Placed near the top of each horde editor.</summary>
     private void BuildNyarCastleSwitch(GameObject ed)
     {
-        AddSectionHeading(ed, "▸ Location");
+        AddSectionHeading(ed, "▸ Castles and loot");
         NyarHowItWorks(ed, "location");
         bool ok = NyarVersion.HasHordePools(NyarState.PluginVersion);
         NyarYesNo(ed, "action.allowTerritory", "Castles may be entered", "Whether the event may reach claimed castle land.",
-            hint: "Off: nothing rises, marches or hunts on castle land, and a start there is refused.",
-            disabledReason: ok ? null : NyarWordCap(NyarVersion.NeedsText(NyarState.PluginVersion)) + ".");
+            hint: "Off (the default): nothing rises, marches or hunts on castle land, and a start there is refused. " +
+                  "On: the horde may enter castle territory and hunt players inside it.",
+            disabledReason: ok ? null : NyarWordCap(NyarVersion.NeedsText(NyarState.PluginVersion)) +
+                                        ". Update Nyarlathotep on the server to set it here.");
+        // Nyarlathotep's validator takes no "loot" key on Apocalypse, Infestation or HordeMarch (Validation.cs OnlyKeys),
+        // and their units spawn with the drop table cleared (SpawnTracker, event-spawns D11).
+        NyarNote(ed, Muted("Loot: units of an apocalypse, infestation or horde march never drop loot. Nyarlathotep has no loot " +
+                           "setting for these events; only spawn-waves events have Drops loot."));
     }
 
     // ---------------------------------------------------------------- spawn waves
@@ -955,7 +963,8 @@ public partial class MainPanel
     private static readonly HashSet<string> NyarBoolFields = new(StringComparer.Ordinal)
     {
         "action.loot", "action.allowTerritory", "action.waveList.N.whenCleared", "action.scoreboard", "action.regionLock",
-        "action.growth.whenCleared", "action.fanOut", "trigger.shared",
+        // 0.74.0: not action.fanOut — it takes none or MAX SPACING (CommandArgs.FanOutRule), so it is typed.
+        "action.growth.whenCleared", "trigger.shared",
     };
 
     private void BuildNyarOtherField(GameObject ed, string id)

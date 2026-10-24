@@ -133,6 +133,7 @@ public class BCHubUIManager : UIManagerBase
         ApplyPinnedTo(_chatWindowOverlay, pinned);
         ApplyPinnedTo(_secondaryChatOverlay, pinned);
         ApplyPinnedTo(_combinedOverlay, pinned);
+        Raphael.UI.ModContent.GameCatalogOverlayPanel.ApplyPinned(pinned);   // 0.74.0: created on demand, not held here
     }
 
     private static void ApplyPinnedTo(ResizeablePanelBase panel, bool pinned)

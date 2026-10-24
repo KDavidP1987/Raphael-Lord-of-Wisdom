@@ -60,7 +60,7 @@ internal sealed class GameCatalogBrowser
     /// <summary>Extra text for the status line (the overlay's fill messages).</summary>
     public string Notice = "";
 
-    private GameObject _root, _rows, _pager, _unitFilters, _objFilters;
+    private GameObject _root, _rows, _pager, _unitFilters, _objFilters, _objFilters2;
     private InputFieldRef _search;
     private TextMeshProUGUI _status;
     private ButtonRef _tabUnits, _tabObjects, _tabAll, _vb, _minion, _buildable, _container, _groupBy;
@@ -80,7 +80,8 @@ internal sealed class GameCatalogBrowser
     private int Font(int s) => _overlay ? Theme.ScaledOverlay(s) : Theme.ScaledUI(s);
     private int H(int h) => _overlay ? Theme.ScaledOverlayHeight(h) : Theme.ScaledHeight(h);
     private int W(int w) => Theme.ScaledWidth(w);
-    private int MinW => _overlay ? 220 : 360;
+    // 0.74.0 (friend test): small enough that every row fits the overlay's narrowest size beside its scrollbar.
+    private int MinW => _overlay ? 200 : 360;
 
     public bool Alive
     {
@@ -132,8 +133,10 @@ internal sealed class GameCatalogBrowser
         }, 120);
         _subs.Clear(); _subs.Add("Any sub-group");
         _subDd = Dropdown(_objFilters, "SubGroup", _subs, i => { View.ObjectSubGroup = i <= 0 ? "" : _subs[i]; Render(); }, 140);
-        _buildable = Button(_objFilters, "Buildable", "", "Only objects with a castle blueprint.", () => { View.BuildableOnly = !View.BuildableOnly; Render(); }, 86);
-        _container = Button(_objFilters, "Container", "", "Only objects with an inventory.", () => { View.ContainerOnly = !View.ContainerOnly; Render(); }, 86);
+        // The two switches get their own line so the filters never run past the panel's edge.
+        _objFilters2 = Row(parent, "ObjectFilters2");
+        _buildable = Button(_objFilters2, "Buildable", "", "Only objects with a castle blueprint.", () => { View.BuildableOnly = !View.BuildableOnly; Render(); }, 96);
+        _container = Button(_objFilters2, "Container", "", "Only objects with an inventory.", () => { View.ContainerOnly = !View.ContainerOnly; Render(); }, 96);
 
         _status = Label(parent, "Status", "", 11, wrap: true);
 
@@ -226,7 +229,13 @@ internal sealed class GameCatalogBrowser
         SetOn(_minion, View.MinionOnly, "Minion");
         SetOn(_buildable, View.BuildableOnly, "Buildable");
         SetOn(_container, View.ContainerOnly, "Container");
-        try { _unitFilters.SetActive(tab == CatalogTab.Units); _objFilters.SetActive(tab == CatalogTab.Objects); } catch { }
+        try
+        {
+            _unitFilters.SetActive(tab == CatalogTab.Units);
+            _objFilters.SetActive(tab == CatalogTab.Objects);
+            _objFilters2.SetActive(tab == CatalogTab.Objects);
+        }
+        catch { }
 
         ClearChildren(_rows);
         ClearChildren(_pager);
@@ -275,34 +284,36 @@ internal sealed class GameCatalogBrowser
         }
     }
 
+    // 0.74.0 (friend test): name, detail, then the buttons on their own left-aligned line, so a narrow panel never pushes
+    // a button past its edge or under the scrollbar.
     private void AddRow(GameObject parent, CatalogRow r)
     {
-        var row = UIFactory.CreateHorizontalGroup(parent, "Row_" + r.Guid,
-            forceExpandWidth: false, forceExpandHeight: false, childControlWidth: true, childControlHeight: true,
-            spacing: 4, padding: new Vector4(2, 2, 2, 2));
-        UIFactory.SetLayoutElement(row, minWidth: MinW, preferredWidth: 400, flexibleWidth: 1, minHeight: H(34), flexibleHeight: 0);
-
-        var text = UIFactory.CreateVerticalGroup(row, "Text",
+        var row = UIFactory.CreateVerticalGroup(parent, "Row_" + r.Guid,
             forceWidth: true, forceHeight: false, childControlWidth: true, childControlHeight: true,
-            spacing: 0, padding: new Vector4(0, 0, 0, 0));
-        UIFactory.SetLayoutElement(text, minWidth: 120, preferredWidth: 280, flexibleWidth: 1, minHeight: H(32), flexibleHeight: 0);
+            spacing: 1, padding: new Vector4(2, 2, 2, 2));
+        UIFactory.SetLayoutElement(row, minWidth: MinW, preferredWidth: 400, flexibleWidth: 1, minHeight: H(56), flexibleHeight: 0);
 
         string name = Escape(r.DisplayName);
         if (r.NameSource == NameSource.PrefabName)
             name += $" <color={Theme.MutedBodyHex}><size=80%>(from prefab name)</size></color>";
-        Label(text, "Name", name, 12, wrap: false);
-        Label(text, "Detail", $"<color={Theme.MutedBodyHex}>{Escape(GameCatalogView.Detail(r))}</color>", 10, wrap: false);
+        Label(row, "Name", name, 12, wrap: false);
+        Label(row, "Detail", $"<color={Theme.MutedBodyHex}>{Escape(GameCatalogView.Detail(r))}</color>", 10, wrap: false);
 
+        var buttons = UIFactory.CreateHorizontalGroup(row, "Buttons",
+            forceExpandWidth: false, forceExpandHeight: false, childControlWidth: true, childControlHeight: true,
+            spacing: 4, padding: new Vector4(0, 0, 0, 0), childAlignment: TextAnchor.MiddleLeft);
+        UIFactory.SetLayoutElement(buttons, minWidth: 100, preferredWidth: 400, flexibleWidth: 1,
+            minHeight: H(24), preferredHeight: H(26), flexibleHeight: 0);
         if (OnPick != null && (CanPick == null || CanPick(r)))
         {
             var row0 = r;
-            Button(row, "Use", "Use", "Write this into the form field you browsed from.", () => OnPick(row0), 52);
+            Button(buttons, "Use", "Use", "Write this into the form field you browsed from.", () => OnPick(row0), 64);
         }
         else
         {
             string internalName = r.InternalName, guid = r.Guid.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            Button(row, "CopyName", "Copy name", "Copy the internal name (" + internalName + ").", () => Copy(internalName), 82);
-            Button(row, "CopyGuid", "Copy GUID", "Copy the PrefabGUID (" + guid + ").", () => Copy(guid), 82);
+            Button(buttons, "CopyName", "Copy name", "Copy the internal name (" + internalName + ").", () => Copy(internalName), 88);
+            Button(buttons, "CopyGuid", "Copy GUID", "Copy the PrefabGUID (" + guid + ").", () => Copy(guid), 88);
         }
     }
 
@@ -330,7 +341,8 @@ internal sealed class GameCatalogBrowser
     {
         var btn = UIFactory.CreateButton(parent, _prefix + name, label);
         if (width > 0)
-            UIFactory.SetLayoutElement(btn.GameObject, minWidth: W(width), preferredWidth: W(width), flexibleWidth: 0,
+            // The minimum is two thirds of the width, so a crowded row shrinks its buttons instead of overflowing.
+            UIFactory.SetLayoutElement(btn.GameObject, minWidth: W(Math.Max(40, width * 2 / 3)), preferredWidth: W(width), flexibleWidth: 0,
                 minHeight: H(24), preferredHeight: H(26), flexibleHeight: 0);
         else
             UIFactory.SetLayoutElement(btn.GameObject, minWidth: MinW, preferredWidth: 400, flexibleWidth: 1,
@@ -373,7 +385,7 @@ internal sealed class GameCatalogBrowser
         var go = UIFactory.CreateDropdown(parent, _prefix + name, out var dd, options.Count > 0 ? options[0] : "", Font(12),
             i => { try { onChanged(i); } catch (Exception ex) { LogUtils.LogError($"[GameCatalog] dropdown '{name}' threw: {ex}"); } },
             options.ToArray());
-        UIFactory.SetLayoutElement(go, minWidth: W(width), preferredWidth: W(width), flexibleWidth: 1,
+        UIFactory.SetLayoutElement(go, minWidth: W(Math.Max(60, width * 2 / 3)), preferredWidth: W(width), flexibleWidth: 1,
             minHeight: H(26), preferredHeight: H(28), flexibleHeight: 0);
         try
         {
@@ -439,8 +451,8 @@ public class GameCatalogOverlayPanel : ResizeablePanelBase
 {
     public override string PanelId => "GameCatalogOverlay";
     public override PanelType PanelType => PanelType.GameCatalogOverlay;
-    public override int MinWidth => 300;
-    public override int MinHeight => 300;
+    public override int MinWidth => 360;
+    public override int MinHeight => 340;
     public override Vector2 DefaultAnchorMin => new(0.5f, 0.5f);
     public override Vector2 DefaultAnchorMax => new(0.5f, 0.5f);
     public override Vector2 DefaultPivot => new(0.5f, 0.5f);
@@ -476,7 +488,22 @@ public class GameCatalogOverlayPanel : ResizeablePanelBase
             _instance = new GameCatalogOverlayPanel(owner);
             _instance.SetActive(false);
         }
+        // The global Lock overlays switch decides, never a stale pin from save data (friend test: unlocked but not draggable).
+        try { _instance.IsPinned = Settings.LockOverlays; } catch { }
         _instance.Show(target);
+    }
+
+    /// <summary>Called by BCHubUIManager.ApplyOverlayLockState when the Lock overlays switch flips.</summary>
+    internal static void ApplyPinned(bool pinned)
+    {
+        try { if (_instance != null && _instance.UIRoot != null) _instance.IsPinned = pinned; } catch { }
+    }
+
+    // Save data is applied a frame after construction and may carry a pin from a locked session; the switch wins.
+    protected override void LateConstructUI()
+    {
+        base.LateConstructUI();
+        IsPinned = Settings.LockOverlays;
     }
 
     internal static bool IsOpen

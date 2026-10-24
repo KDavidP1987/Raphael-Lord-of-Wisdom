@@ -17,6 +17,14 @@ Works with Nyarlathotep 0.15.0 (0.14.0 still works without the 0.15.0 features),
 - These features need Nyarlathotep 0.15.0. Against 0.14.0 they are greyed out with "needs Nyarlathotep 0.15.0
   (server reports 0.14.0)".
 - The Nyarlathotep guide is checked against 0.15.0 and has a pools library section.
+- Apocalypse, Infestation and Horde march editors have a **Castles and loot** card near the top. It holds the castle
+  switch and says plainly that these events' units never drop loot: Nyarlathotep has no loot setting for them (only
+  spawn waves have **Drops loot**).
+- A greyed **Destination here** button now says exactly why: one step for each setting that blocks a destination
+  (location, pursuit, region lock, arena, fan-out), naming where in the editor to change it, or that a save is still
+  being sent.
+- **Any other field** now takes `action.fanOut` as typed text (`none`, or a max and a spacing). It used to offer
+  Yes/No, which the server refuses.
 
 ### New — every Nyarlathotep setting explains itself
 
@@ -35,6 +43,9 @@ Works with Nyarlathotep 0.15.0 (0.14.0 still works without the 0.15.0 features),
   resized. From Help it offers Copy name and Copy GUID.
 - **Browse…** buttons sit beside the unit and object fields in the Nyarlathotep, Beelzebub and Uriel forms. Picking a
   row writes the prefab name, or the GUID where the field needs one, into that field.
+- Each result shows its name, details and then its buttons on their own line, so no button runs past the panel's
+  edge or under the scrollbar, and the object filters take two lines. The floating panel follows the **Lock
+  overlays** switch like every other overlay: unlocked, it can be dragged and resized.
 - Unit names come from the game's own text, in your game language. Object names come from the game's blueprint text
   where it has one; the rest show a readable form of the prefab name.
 
