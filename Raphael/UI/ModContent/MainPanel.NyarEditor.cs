@@ -81,6 +81,7 @@ public partial class MainPanel
     private void OnNyarInfoCaptured()
     {
         if (_nyarEditId.Length == 0 || !string.Equals(NyarCapture.InfoId, _nyarEditId, StringComparison.OrdinalIgnoreCase)) return;
+        NyarInfoParse.OnMiss = s => NyarDiag.Log("info parse: " + s);
         _nyarForm.Apply(NyarForm.Read(NyarCapture.InfoLines));
         int waves = _nyarForm.Load.Waves.Count;
         if (_nyarEdWave > waves + 1 || _nyarEdWave < 1) _nyarEdWave = Math.Max(1, waves);
@@ -151,7 +152,7 @@ public partial class MainPanel
             case "action.bosses": return "final-wave bosses";
             case "action.factions": return "factions";
             case "action.loot": return "loot";
-            case "action.allowTerritory": return "claimed territory";
+            case "action.allowTerritory": return "castles may be entered";
             case "action.destination": return "destination";
             case "action.start": return "start";
         }
@@ -340,7 +341,7 @@ public partial class MainPanel
         if (notReady.Length > 0)
         {
             var box = AddCard(ed, "NyarEdNotReady", new Color(0.35f, 0.28f, 0.05f, 0.9f), padding: 6, innerSpacing: 2);
-            AddBodyText(box, $"<color={NyarChangedHex}><b>Not ready yet:</b> {NyarText(notReady)}. It clears once the definition is valid; then press Enable.</color>",
+            AddBodyText(box, $"<color={NyarChangedHex}><b>Not ready yet:</b> {NyarEscape(NyarMessages.ReasonText(notReady).TrimEnd('.'))}. It clears once the definition is valid; then press Enable.</color>",
                 Theme.ScaledUI(12));
         }
 
@@ -374,15 +375,18 @@ public partial class MainPanel
                          "Those fields are empty and say so — pick a value, or leave them alone to keep the server's.</color>");
         NyarNote(ed, Muted("Each field shows the server's range; - / + and the quick picks stay inside it. A changed field is marked " +
                            "<color=#FFD75A>• changed</color>: press its <b>Set</b>, or <b>Save all changes</b>. The server checks every value."));
+        NyarHowItWorks(ed, "editor");
 
         bool apo = NyarForm.IsApocalypseFamily(load.Kind);
         AddSectionHeading(ed, "▸ Basics");
+        NyarHowItWorks(ed, "basics");
         NyarTextField(ed, "name", 240, "the name players see", "The name in banners and the event list.");
         // Opened on an invalid definition: the kind isn't known yet, so only the fields every type takes.
         bool kindKnown = load.Kind != NyarEventKind.Unknown;
         if (kindKnown) NyarFieldStepper(ed, "durationSeconds", apo, "How long the event runs.");
 
         AddSectionHeading(ed, "▸ Conditions");
+        NyarHowItWorks(ed, "conditions");
         NyarFieldStepper(ed, "conditions.minPlayers", hint: "Players that must be online for it to start (0 = any).");
         NyarFieldStepper(ed, "conditions.cooldownMinutes", hint: "Minutes before it can run again (0 = no cooldown).");
         NyarFieldStepper(ed, "conditions.chancePercent", hint: "Chance it starts each time it's triggered.");
@@ -447,6 +451,7 @@ public partial class MainPanel
     private void BuildNyarEmpowerSection(GameObject ed)
     {
         AddSectionHeading(ed, "▸ Empowerment");
+        NyarHowItWorks(ed, "empower");
         const string field = "action.factions";
         var cur = _nyarForm.Get(field).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
         var head = NyarRow(ed, "NyarFacHead");
@@ -489,6 +494,7 @@ public partial class MainPanel
     private void BuildNyarApocalypseSection(GameObject ed, string id)
     {
         AddSectionHeading(ed, "▸ Apocalypse");
+        NyarHowItWorks(ed, "apocalypse");
         var gr = MakeUrielRow(ed, "NyarEdGoalRow");
         NyarCell(gr, "Goal", 150);
         var goalBtn = AddUrielButton(gr, "NyarEdGoalHere", "Goal here",
@@ -503,9 +509,22 @@ public partial class MainPanel
         NyarFieldStepper(ed, "action.hordes.size");
         NyarFieldStepper(ed, "action.roamers.max");
         NyarFieldStepper(ed, "action.marchSpeed");
+        BuildNyarCastleSwitch(ed);
         AddSectionHeading(ed, "▸ Bosses with the last horde");
         NyarListEditor(ed, "action.bosses", bosses: true, waveList: false, "Bosses", "Up to 3 bosses, 1-3 of each.", allowPools: false);
         NyarHordeNotes(ed, "The apocalypse's units, faction, hotspots and pools aren't settable by command — they live in events.json (edit it, then Reload from disk).");
+    }
+
+    /// <summary>0.74.0: "▸ Location" with the castle switch of an apocalypse-type event (action.allowTerritory, which
+    /// Nyarlathotep 0.15.0 takes for the horde families too). Shown greyed with the reason on an older server.</summary>
+    private void BuildNyarCastleSwitch(GameObject ed)
+    {
+        AddSectionHeading(ed, "▸ Location");
+        NyarHowItWorks(ed, "location");
+        bool ok = NyarVersion.HasHordePools(NyarState.PluginVersion);
+        NyarYesNo(ed, "action.allowTerritory", "Castles may be entered", "Whether the event may reach claimed castle land.",
+            hint: "Off: nothing rises, marches or hunts on castle land, and a start there is refused.",
+            disabledReason: ok ? null : NyarWordCap(NyarVersion.NeedsText(NyarState.PluginVersion)) + ".");
     }
 
     // ---------------------------------------------------------------- spawn waves
@@ -514,6 +533,7 @@ public partial class MainPanel
     {
         var load = _nyarForm.Load;
         AddSectionHeading(ed, "▸ Where and how");
+        NyarHowItWorks(ed, "spawnwaves");
         BuildNyarLocation(ed, id);
         NyarFieldStepper(ed, "action.radius", hint: "How far from the spot the units appear.");
         BuildNyarBehaviour(ed);
@@ -528,7 +548,7 @@ public partial class MainPanel
                     ? "pursuit needs Behaviour: Hunt players — the server disables the event otherwise." : null;
             });
         NyarYesNo(ed, "action.loot", "Drops loot", "Whether event units drop loot.");
-        NyarYesNo(ed, "action.allowTerritory", "Claimed territory", "Whether units may spawn on claimed castle territory.");
+        NyarYesNo(ed, "action.allowTerritory", "Castles may be entered", "Whether the event may reach claimed castle land.");
 
         BuildNyarDestinationCard(ed, id);
 
@@ -599,6 +619,7 @@ public partial class MainPanel
     private void BuildNyarUnitsForm(GameObject ed)
     {
         AddSectionHeading(ed, "▸ Waves (the same units every wave)");
+        NyarHowItWorks(ed, "units");
         NyarFieldStepper(ed, "action.waves");
         NyarFieldStepper(ed, "action.intervalSeconds", hint: "Time from one wave to the next.");
         NyarListEditor(ed, "action.units", bosses: false, waveList: false, "Units per wave",
@@ -663,6 +684,7 @@ public partial class MainPanel
         var waves = _nyarForm.Load.Waves;
         int count = waves.Count;
         AddSectionHeading(ed, "▸ Waves (each has its own units)");
+        NyarHowItWorks(ed, "waves");
         var chips = new List<(string, bool, string, Action, int)>();
         foreach (var w in waves)
         {
@@ -762,6 +784,7 @@ public partial class MainPanel
     private void BuildNyarPoolsCard(GameObject ed)
     {
         AddSectionHeading(ed, "▸ Unit pools");
+        NyarHowItWorks(ed, "pools");
         NyarNote(ed, Muted("A pool is a named mix of up to 30 units. A units entry \"from pool\" draws its units from it at random, and a boss roll " +
                            "picks 1-5 bosses from it. Save a pool before a list names it. The server allows 8 pools per event and refuses " +
                            "deleting one a list still uses."));
@@ -803,7 +826,7 @@ public partial class MainPanel
         {
             var nr = NyarRow(ed, "NyarPoolName");
             NyarCell(nr, "Name", 150, tip: "a-z, 0-9 and -, up to 24 characters.");
-            var input = AddNyarInput(nr, "NyarPoolNameIn", "e.g. troops", 160);
+            var input = AddNyarInput(nr, "NyarPoolNameIn", "e.g. troops", 160, NyarHelpInput("pool.name"));
             input.Text = _nyarPoolNewName;
             var echo = NyarCell(nr, "", 160, flex: true);
             void Echo(string t)
@@ -830,7 +853,9 @@ public partial class MainPanel
         }
         if (members.Count < NyarFieldRules.MaxPoolMembers)
         {
-            AddBeelzSearchableField(ed, "NyarPoolPick", "Find a unit to add to the pool…", "", t => UnitCatalog.Search(t, 30), v => _nyarUnitPicks["__pool"] = v ?? "");
+            AddBeelzSearchableField(ed, "NyarPoolPick", "Find a unit to add to the pool…", "", t => UnitCatalog.Search(t, 30), v => _nyarUnitPicks["__pool"] = v ?? "",
+                (row, input) => AddCatalogBrowseButton(row, input, ed, Raphael.Resources.BrowseKinds.Unit,
+                    Raphael.Resources.BrowseFormat.Name, fieldLabel: "Nyarlathotep pool member"));
             var ar = NyarRow(ed, "NyarPoolAdd");
             NyarCell(ar, "", 150);
             AddUrielButton(ar, "NyarPoolAddBtn", "Add to pool", "Add the unit picked above.", () =>
@@ -995,7 +1020,7 @@ public partial class MainPanel
                 string pn = p;
                 NyarChip(r, "NyarOtherNameChip", pn, _nyarOtherName == pn, $"Pool {pn}.", () => { _nyarOtherName = pn; RedrawNyarEditor(); });
             }
-            var input = AddNyarInput(r, "NyarOtherNameIn", "or type a name", 130);
+            var input = AddNyarInput(r, "NyarOtherNameIn", "or type a name", 130, NyarHelpInput("other.poolname"));
             input.Text = _nyarOtherName;
             int gen = _nyarEdGen;
             input.OnValueChanged += t => { if (gen == _nyarEdGen) _nyarOtherName = NyarFieldRules.NormalizePoolName(t); };
@@ -1029,7 +1054,7 @@ public partial class MainPanel
         int g3 = _nyarEdGen;
         var vr = NyarRow(ed, "NyarOtherValue");
         NyarCell(vr, "Value", 150, tip: field);
-        var vin = AddNyarInput(vr, "NyarOtherValueIn", "value", 260);
+        var vin = AddNyarInput(vr, "NyarOtherValueIn", "value", 260, NyarHelpInput("other.value"));
         vin.Text = _nyarForm.Get(field);
         NyarCell(vr, "", 10, flex: true);
         var ui = NyarTail(vr, field, "The server checks this value; its answer shows at the top.", field);
@@ -1055,6 +1080,7 @@ public partial class MainPanel
 
         var scan = AddCard(page, "NyarUnitsCard");
         AddSectionHeading(scan, "Event units near you");
+        NyarHowItWorks(scan, "unitstab");
         AddBodyText(scan,
             "Lists the units Nyarlathotep is tracking around you — event spawns and test spawns — with level, health, time left " +
             $"and map position (x, z). Sends {Mono(".nyar debug here [radius]")}; the radius is 5-100 m. " +
@@ -1062,7 +1088,7 @@ public partial class MainPanel
             "this tab will use it when the server adds it. Until then, go to where an event is running and scan.</color>",
             Theme.ScaledUI(12));
         var r = MakeUrielRow(scan, "NyarUnitsScanRow");
-        _nyarNearRadiusInput = AddNyarInput(r, "NyarNearRadius", "radius (5-100 m)", 130);
+        _nyarNearRadiusInput = AddNyarInput(r, "NyarNearRadius", "radius (5-100 m)", 130, NyarHelpInput("units.radius"));
         AddUrielButton(r, "NyarNearGo", "Scan", "List tracked units around you (.nyar debug here <radius>).", () => NyarScanUnits(Tok(_nyarNearRadiusInput)), 80);
         AddUrielButton(r, "NyarNear100", "Scan 100 m", "The widest scan the server allows (.nyar debug here 100).", () => NyarScanUnits("100"), 110);
         AddNyarErrorLine(scan);
@@ -1082,12 +1108,14 @@ public partial class MainPanel
         AddBodyText(spawn, $"Spawns next to you: {Mono(".nyar spawn <unit> [count] [level] [hp×] [power×]")}. Leave optional fields blank for defaults. " +
             "Test spawns are tracked and show in the scan as <i>manual</i>.", Theme.ScaledUI(12));
         AddBeelzSearchableField(spawn, "NyarSpawnUnit", "Find a unit (name, faction or vblood)…", _nyarSpawnUnit,
-            t => UnitCatalog.Search(t, 30), v => _nyarSpawnUnit = v ?? "");
+            t => UnitCatalog.Search(t, 30), v => _nyarSpawnUnit = v ?? "",
+            (row, input) => AddCatalogBrowseButton(row, input, spawn, Raphael.Resources.BrowseKinds.Unit,
+                Raphael.Resources.BrowseFormat.Name, fieldLabel: "Nyarlathotep test spawn"));
         var sr = MakeUrielRow(spawn, "NyarSpawnRow");
-        _nyarSpawnCountInput = AddNyarInput(sr, "NyarSpawnCount", "count", 60);
-        _nyarSpawnLevelInput = AddNyarInput(sr, "NyarSpawnLevel", "level", 60);
-        _nyarSpawnHpInput    = AddNyarInput(sr, "NyarSpawnHp", "hp×", 55);
-        _nyarSpawnPowerInput = AddNyarInput(sr, "NyarSpawnPower", "power×", 60);
+        _nyarSpawnCountInput = AddNyarInput(sr, "NyarSpawnCount", "count", 60, NyarHelpInput("spawn.count"));
+        _nyarSpawnLevelInput = AddNyarInput(sr, "NyarSpawnLevel", "level", 60, NyarHelpInput("spawn.level"));
+        _nyarSpawnHpInput    = AddNyarInput(sr, "NyarSpawnHp", "hp×", 55, NyarHelpInput("spawn.hp"));
+        _nyarSpawnPowerInput = AddNyarInput(sr, "NyarSpawnPower", "power×", 60, NyarHelpInput("spawn.power"));
         AddUrielButton(sr, "NyarSpawnGo", "Test spawn", "Send the test spawn.", () =>
         {
             string unit = NyarClient.Tok(_nyarSpawnUnit);

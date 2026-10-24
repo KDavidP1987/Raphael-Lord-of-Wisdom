@@ -18,6 +18,7 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
 - **Standalone chat window** — tabbed per-channel chat (Global / Local / Clan / Whispers / System), whisper anyone online, custom colors, and per-channel history controls (keep conversation, drop noisy System floods). Needs no server mods.
 - **Chat & Diagnostics in one place** — choose what Raphael hides from chat and what it logs, for itself and every server mod. Presets: Quiet, Normal, Show everything. Replies to commands you send always show.
 - **Complete in-game guides** — one guide per mod (Bloodcraft, Beelzebub, Uriel, Faust, Nyarlathotep, Kindred) with a quick start, how it works, every player and admin command, every server setting with its default, and troubleshooting, so nobody needs GitHub or Thunderstore to play or run a server. Plus a "V Rising Basics" tab for the base game.
+- **Units & Objects reference** — every unit and world object in the game (about 7,000), searchable by name, prefab or GUID and filterable by faction or category. Open it under Settings and Help, or with **Browse…** beside any unit or object field in the Nyarlathotep, Beelzebub and Uriel forms to fill that field.
 - **Admin tooling** — surfaced wherever the backing mod provides it: Bloodcraft forms and a one-click **Reset Bloodcraft progress**, Kindred admin, Beelzebub ability shaping and lock groups, Faust server analytics, Uriel sharing/spawning, Castle Events units and server controls (feature switches, Restore vanilla), Nyarlathotep event control.
 
 <details>
@@ -31,7 +32,7 @@ A **client-side** V Rising UI that turns the chat commands of popular **server-s
   - **Faust** — Castle Info, Open/All Plots, Decay Watch, Castle Resources, Player Info, Clans, Player Positions, Server Stats, **Boss Status**, **Leaderboards**, **World Map**, admin Control / Oversight.
   - **Uriel** — Storage Sharing, Prisons, Stairs, Object Spawning, Object Catalog, **Castle Events** (alpha: drop mob and boss markers, bind doors, start and time runs with a live readout and on-screen notices), **Event Library** (squads, floor templates, templates), Settings, admin Sharing / Objects / **Controls** (which features are on, and Stop all events / Remove all units / Remove all objects / Restore vanilla) / **Units**. A feature the server switched off is greyed with the reason, never hidden.
   - **Nyarlathotep** — Live Events (regions, wave countdowns, on-screen notices), Settings, admin Events (with an inline form editor per event: per-wave units, bosses, unit pools and pursuit, destination waves, infestations and horde marches, and a searchable unit list) / **Units** (event units near you with positions) / Templates / Pillars / Announce / Kill Switch. Leaderboards, My Stats and Zones are ready for when Nyarlathotep adds them.
-  - **Settings & Help** — Quick Start, one complete **guide per mod**, **V Rising Basics** (in-built base-game guide), Game Guide (external links), Settings, **Chat & Diagnostics**, About.
+  - **Settings & Help** — Quick Start, one complete **guide per mod**, **Reference: Units & Objects**, **V Rising Basics** (in-built base-game guide), Game Guide (external links), Settings, **Chat & Diagnostics**, About.
 - **Secondary overlays** (toggle from the footer) — XP, Familiar, Familiar Browser, Daily Quest, Professions, Shift Spell, a Combined info overlay, Quick Actions, a Familiar Quick Spawn overlay, and a Faust Boss Tracker. Each is independently draggable/resizable with its own transparency; visibility persists across sessions.
 - **Freeze actions while the UI is open** (opt-in) — stop moving/attacking/casting and block menu hotkeys while you click around the panel.
 - **"Last server response" panel** — replies to read-data commands (`.wep get`, `.class l`, …) show in-UI, not just in chat.
@@ -113,7 +114,7 @@ Settings don't transfer — Raphael writes a new config, so overlay positions, c
 | **Beelzebub** (server, optional) | v0.137.x (API 35) | Abilities / transforms → Beelzebub |
 | **Faust** (server, optional) | v0.16.5 (API 19) | Server investigation & analytics → Faust |
 | **Uriel** (server, optional) | v0.22.0 (API 1); v0.21.0 still works without Admin: Controls' switch list | Storage / prisons / stairs / spawning / Castle Events (alpha) → Uriel |
-| **Nyarlathotep** (server, optional) | v0.14.0 (API 8); v0.12.0 (API 7) still works without the newer editor forms | World events / leaderboards → Nyarlathotep |
+| **Nyarlathotep** (server, optional) | v0.15.0 (API 8); v0.14.0 works without horde pool ranges, library pools and castle entry for hordes; v0.12.0 (API 7) works without the newer editor forms | World events / leaderboards → Nyarlathotep |
 | **Emberglass** (client, optional) | — | Only needed if your server sends Bloodcraft data over Emberglass; turn on **Use Emberglass bridge** (experimental) |
 | **Eclipse** (client) | v1.3.13 | ⚠ Compatibility needs re-testing — disable while running Raphael |
 

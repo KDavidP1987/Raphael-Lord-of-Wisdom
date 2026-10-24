@@ -8,8 +8,17 @@ Raphael was formerly **BloodCraftHub** (v0.1–v0.30).*
 
 ---
 
-## 0.73.1 — In progress (not released)
+## 0.74.0 — In progress (not released)
 
+Works with Nyarlathotep 0.15.0 (0.14.0 still works), Bloodcraft 1.13.26 and Uriel 0.22.0.
+
+- Nyarlathotep 0.15.0 horde pools: pool entries with a min-max count, the server's library pools in the pool picker
+  and a **Pools library** card, and **Castles may be entered** on apocalypse, infestation and horde march events.
+- Every Nyarlathotep setting explains itself: hover for what it does, its default and its range, and open the folded
+  **How this works** section on each window.
+- New **Reference: Units & Objects** (Settings and Help): every unit and world object in the game, searchable and
+  filterable, also as a floating panel. **Browse…** beside unit and object fields in the Nyarlathotep, Beelzebub and
+  Uriel forms fills the field for you.
 - Admins: the **Reset Bloodcraft progress** report no longer overlaps itself. The summary, buttons, step log and notes
   each get their own space, and the log sits in its own box.
 - **Start a new reset** (formerly New reset) sits under the summary and returns to the form with the player name

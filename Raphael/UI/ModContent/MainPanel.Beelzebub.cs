@@ -2920,6 +2920,10 @@ public partial class MainPanel
         var guidInput = UIFactory.CreateInputField(fRow2, "BeelzFiltGuid", "PrefabGUID");
         UIFactory.SetLayoutElement(guidInput.GameObject, minWidth: 90, preferredWidth: 120, flexibleWidth: 1, minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
         guidInput.OnValueChanged += (string v) => { _beelzAdminFilterGuid = v ?? ""; };
+        // 0.74.0: unit or object GUID from the reference (abilities and items are not in it).
+        AddCatalogBrowseButton(fRow2, guidInput, filtCard, Raphael.Resources.BrowseKinds.Both, Raphael.Resources.BrowseFormat.Guid,
+            fieldLabel: "Beelzebub filter PrefabGUID", width: 70,
+            tooltip: "Pick a unit or object PrefabGUID from the reference. Abilities and items are not listed there; type those GUIDs.");
         AddBeelzSmallButton(fRow2, "BeelzFiltDenyGAdd", "DenyGUID+", "Add a deny GUID (admin denyguid add).", () => { if (ReqGuid(out var g)) AdminSend($".beelz admin denyguid add {g}"); }, 72);
         AddBeelzSmallButton(fRow2, "BeelzFiltDenyGRem", "-", "Remove a deny GUID (admin denyguid remove).", () => { if (ReqGuid(out var g)) AdminSend($".beelz admin denyguid remove {g}"); }, 24);
         AddBeelzSmallButton(fRow2, "BeelzFiltAllowGAdd", "AllowGUID+", "Add an allow GUID (admin allowguid add).", () => { if (ReqGuid(out var g)) AdminSend($".beelz admin allowguid add {g}"); }, 76);
@@ -4038,7 +4042,10 @@ public partial class MainPanel
             BeelzPlayerMatches, v => { _beelzAdminPlayerName = v ?? ""; RefreshAdminTargetBanner(); });
         AddBodyText(card, $"<b>Unit</b> <color={Theme.MutedBodyHex}>— PrefabGUID for give / devour / force-transform (type a unit name to find it)</color>");
         AddBeelzSearchableField(card, "BeelzAdminUnit", "Unit name or GUID", _beelzAdminUnitGuid,
-            BeelzUnitMatches, v => { _beelzAdminUnitGuid = v ?? ""; RefreshAdminTargetBanner(); });
+            BeelzUnitMatches, v => { _beelzAdminUnitGuid = v ?? ""; RefreshAdminTargetBanner(); },
+            // 0.74.0: give / devour / force-transform take `int unitGuid`, so the reference writes the GUID.
+            (row, input) => AddCatalogBrowseButton(row, input, card, Raphael.Resources.BrowseKinds.Unit,
+                Raphael.Resources.BrowseFormat.Guid, fieldLabel: "Beelzebub admin unit"));
         AddBodyText(card, $"<b>Ability</b> <color={Theme.MutedBodyHex}>— ID for give/revoke; name or ID for shaping (type an ability name)</color>");
         AddBeelzSearchableField(card, "BeelzAdminAbil", "Ability name or ID", _beelzAdminAbilityGuid,
             BeelzAbilityMatches, v => { _beelzAdminAbilityGuid = v ?? ""; RefreshAdminTargetBanner(); });
@@ -4206,6 +4213,8 @@ public partial class MainPanel
         var txUnitInput = UIFactory.CreateInputField(txCfgRow, "BeelzTxUnit", "CHAR_unit name");
         UIFactory.SetLayoutElement(txUnitInput.GameObject, minWidth: 120, preferredWidth: 150, flexibleWidth: 1, minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
         txUnitInput.OnValueChanged += (string v) => { _beelzAdminTxUnit = v ?? ""; };
+        AddCatalogBrowseButton(txCfgRow, txUnitInput, txCfgCard, Raphael.Resources.BrowseKinds.Unit, Raphael.Resources.BrowseFormat.Name,
+            fieldLabel: "Beelzebub transform unit");
         int txSel = Math.Max(0, Array.IndexOf(BeelzTxSetFields, _beelzAdminTxField));
         var txDdObj = UIFactory.CreateDropdown(txCfgRow, "BeelzTxField", out var txDd,
             BeelzTxSetFields[txSel], Theme.ScaledUI(12),
@@ -4318,10 +4327,20 @@ public partial class MainPanel
     // few (Display, Value) pairs; clicking one fills the field with Value (what the command consumes) and
     // onValue fires. The field holds Value; you can also type a value directly. Built into a VERTICAL
     // parent (the results list stacks under the input).
-    private void AddBeelzSearchableField(GameObject parent, string name, string placeholder, string initial,
-        Func<string, List<(string Display, string Value)>> getMatches, Action<string> onValue)
+    // 0.74.0: returns the input; besideInput (optional) puts the input in a row and adds controls after it (the
+    // reference's Browse… button).
+    private InputFieldRef AddBeelzSearchableField(GameObject parent, string name, string placeholder, string initial,
+        Func<string, List<(string Display, string Value)>> getMatches, Action<string> onValue,
+        Action<GameObject, InputFieldRef> besideInput = null)
     {
-        var input = UIFactory.CreateInputField(parent, name + "Input", placeholder);
+        GameObject inputParent = parent;
+        if (besideInput != null)
+        {
+            inputParent = UIFactory.CreateHorizontalGroup(parent, name + "Row",
+                forceExpandWidth: false, forceExpandHeight: false, childControlWidth: true, childControlHeight: true, spacing: 6, padding: new Vector4(0, 0, 0, 0));
+            UIFactory.SetLayoutElement(inputParent, minWidth: 220, preferredWidth: 380, flexibleWidth: 1, minHeight: Theme.ScaledHeight(28), preferredHeight: Theme.ScaledHeight(30), flexibleHeight: 0);
+        }
+        var input = UIFactory.CreateInputField(inputParent, name + "Input", placeholder);
         UIFactory.SetLayoutElement(input.GameObject, minWidth: 220, preferredWidth: 340, flexibleWidth: 1, minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
         if (!string.IsNullOrEmpty(initial)) input.Text = initial;
         var results = UIFactory.CreateVerticalGroup(parent, name + "Results",
@@ -4353,6 +4372,8 @@ public partial class MainPanel
             if (matches.Count > cap) AddSimpleRow(results, $"<color={Theme.MutedBodyHex}>… {matches.Count - cap} more — keep typing</color>");
         }
         input.OnValueChanged += Rebuild;
+        besideInput?.Invoke(inputParent, input);
+        return input;
     }
 
     private static bool BeelzContains(string haystack, string needle)

@@ -437,6 +437,8 @@ public partial class MainPanel : ResizeablePanelBase
                 (PanelType.VRisingBasicsTab, "V Rising Basics"),
                 // 0.12.1: V Rising game guide + community-resource links.
                 (PanelType.GameGuideTab,     "Game Guide"),
+                // 0.74.0: every unit and world object with its PrefabGUID, searchable (MainPanel.GameCatalog.cs).
+                (PanelType.GameCatalogTab,   "Reference: Units & Objects"),
                 (PanelType.SettingsTab,      "Settings"),
                 // 0.67.2: every chat-visibility + diagnostics control in one place (presets + per-mod rows).
                 (PanelType.ChatDiagTab,      "Chat & Diagnostics"),
@@ -2097,6 +2099,9 @@ public partial class MainPanel : ResizeablePanelBase
                 break;
             case PanelType.ChatDiagTab:
                 BuildChatDiagTab(page);
+                break;
+            case PanelType.GameCatalogTab:
+                BuildGameCatalogTab(page);
                 break;
             case PanelType.ConnectionTab:
                 BuildConnectionTab(page);
@@ -9905,6 +9910,7 @@ public partial class MainPanel : ResizeablePanelBase
         RefreshBeelzTabOnShow(tab);
         // 0.67.2: the same settings are also editable on other tabs — re-read them when shown.
         if (tab == PanelType.ChatDiagTab) RefreshChatDiagRows();
+        if (tab == PanelType.GameCatalogTab) OnGameCatalogTabShown();
 
         // First-open auto-pull for tabs whose body depends on a server reply.
         // Boxes tab: send .fam boxes if we don't have any yet, so the user

@@ -25,6 +25,8 @@ internal sealed class NyarFormLoad
     public List<NyarWaveInfo> Waves = new();
     public List<KeyValuePair<string, List<string>>> Pools = new();
     public bool PoolsComplete = true;
+    /// <summary>0.74.0: library pools (pools.json) the event names; read-only, never in <see cref="Pools"/>.</summary>
+    public List<string> LibraryPools = new();
     /// <summary>"aroundplayer", "region", "admin", "point" or "" (unread).</summary>
     public string LocationKind = "";
     /// <summary>A growth event shows its modifiers on each generated wave, not in the spawn line.</summary>
@@ -116,7 +118,7 @@ internal sealed class NyarForm
             Put("action.hordes.size", M(hordes, @", size (\d+) "));
             Put("action.roamers.max", M(Find("roamers: "), @", max (\d+),"));
             Put("action.bosses", Bosses(NyarInfoParse.FinalBosses(lines)));
-            r.Pools = NyarInfoParse.Pools(lines, out r.PoolsComplete);
+            FamilyTail(r, lines);
             return r;
         }
 
@@ -129,7 +131,7 @@ internal sealed class NyarForm
             var hu = NyarInfoParse.Hunters(Find("hunters: "));
             Put("action.hunters", hu?[0]); Put("action.driftRadius", hu?[1]);
             PutSpread("action.spread.", NyarInfoParse.Spread(After(Find("spread: "), "spread: ")));
-            r.Pools = NyarInfoParse.Pools(lines, out r.PoolsComplete);
+            FamilyTail(r, lines);
             return r;
         }
 
@@ -151,7 +153,7 @@ internal sealed class NyarForm
             PutSpread("action.infest.spread.", NyarInfoParse.Spread(inf?[2]));
             Put("action.bosses", Bosses(NyarInfoParse.FinalBosses(lines)));
             r.HordeSize = NyarInfoParse.HordeSize(lines);
-            r.Pools = NyarInfoParse.Pools(lines, out r.PoolsComplete);
+            FamilyTail(r, lines);
             return r;
         }
 
@@ -183,6 +185,7 @@ internal sealed class NyarForm
         v["action.pursuit"] = pursuit > 0 ? Inv(pursuit) : "none";
         Put("action.bosses", Bosses(NyarInfoParse.FinalBosses(lines)));
         r.Pools = NyarInfoParse.Pools(lines, out r.PoolsComplete);
+        r.LibraryPools = NyarInfoParse.LibraryPools(lines);
 
         // A destination wave (0.14.0): "march: from … to <name> (…) at <speed> m/s". Its radius isn't printed.
         var marchLine = Find("march: ");
@@ -229,6 +232,20 @@ internal sealed class NyarForm
         }
         return r;
     }
+
+    // 0.74.0: an Apocalypse / Infestation / HordeMarch reply ends with its pools and, when on, a standalone "claimed
+    // territory allowed" line (Nyarlathotep 0.15.0, EventAdmin.cs:988). An older server never prints it, so the switch
+    // reads "false" there (and is disabled by the version gate).
+    private static void FamilyTail(NyarFormLoad r, IReadOnlyList<string> lines)
+    {
+        r.Pools = NyarInfoParse.Pools(lines, out r.PoolsComplete);
+        r.LibraryPools = NyarInfoParse.LibraryPools(lines);
+        bool on = false;
+        foreach (var l in lines) if (l == TerritoryLine) { on = true; break; }
+        r.Values["action.allowTerritory"] = on ? "true" : "false";
+    }
+
+    private const string TerritoryLine = "claimed territory allowed";
 
     // "" (no bosses) → "none", the value that clears them; null stays unread.
     private static string Bosses(string setForm) => setForm == null ? null : setForm.Length == 0 ? "none" : setForm;

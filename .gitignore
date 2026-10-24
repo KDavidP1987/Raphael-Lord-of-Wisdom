@@ -53,3 +53,7 @@ Desktop.ini
 
 # Python bytecode (tools/guide-commands.py)
 **/__pycache__/
+
+# Claude Code agent worktrees and claudex/codex review loop state (local only)
+.claude/
+.claudex/

@@ -145,7 +145,7 @@ internal static class NyarClient
     /// <summary>The exact `event set` command string that <see cref="EventSet"/> sends (a pool save chunks against its
     /// byte length).</summary>
     public static string EventSetCommand(string id, string field, string value)
-        => NyarState.SupportsTwins ? $".nyar api event set {Tok(id)} {Tok(field)} {Quote(value)}" : $".nyar event set {Tok(id)} {Tok(field)} {Quote(value)}";
+        => NyarFieldRules.EventSetText(NyarState.SupportsTwins, id, field, value);
 
     internal static void DiagLogOut(string cmd, bool silent)
     {
@@ -222,7 +222,23 @@ internal static class NyarClient
         NyarCapture.BeginUnits(radius);
         SendUser(radius > 0 ? $".nyar debug here {Num(radius)}" : ".nyar debug here");
     }
-    public static void EventSetGoalHere(string id)     => Admin($"event set {Tok(id)} action.goal here");
+    // 0.74.0: the pool library (Nyarlathotep 0.15.0, admin-only, human replies with no twin). The replies show verbatim
+    // in the Pools library card (NyarCapture) and in chat; never parsed. A pool name must pass IsPoolName first.
+    public static void PoolList(int page)
+    {
+        string cmd = page > 1 ? $".nyar pool list {Num(page)}" : ".nyar pool list";
+        NyarCapture.BeginPool(cmd); SendUser(cmd);
+    }
+    public static bool PoolInfo(string pool)
+    {
+        if (!NyarFieldRules.IsPoolName(pool)) return false;
+        string cmd = $".nyar pool info {pool}";
+        NyarCapture.BeginPool(cmd); SendUser(cmd);
+        return true;
+    }
+    public static void PoolReload() { NyarCapture.BeginPool(".nyar pool reload"); SendUser(".nyar pool reload"); }
+
+    public static void EventSetGoalHere(string id)    => Admin($"event set {Tok(id)} action.goal here");
     public static void Spawn(string args)              => SendUser($".nyar spawn {args.Trim()}");
     public static void Announce(string text)           => SendUser($".nyar announce \"{(text ?? "").Replace('"', '\'').Trim()}\"");
     public static void ZoneAdd(string name, int radius) => SendUser($".nyar zone add {Tok(name)} {Num(radius)}");

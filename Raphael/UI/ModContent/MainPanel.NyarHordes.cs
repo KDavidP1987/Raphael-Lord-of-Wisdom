@@ -23,6 +23,7 @@ public partial class MainPanel
     private void BuildNyarInfestationSection(GameObject ed)
     {
         AddSectionHeading(ed, "▸ Where the dead rise");
+        NyarHowItWorks(ed, "infestation");
         NyarFieldStepper(ed, "action.origins.count", hint: "How many graveyards: hotspots of the faction's own NPCs.");
         NyarFieldStepper(ed, "action.origins.minNatives", hint: "A hotspot needs at least this many of the faction's NPCs.");
         NyarFieldStepper(ed, "action.origins.minSpacing", hint: "The least distance between two places.");
@@ -31,11 +32,12 @@ public partial class MainPanel
         AddSectionHeading(ed, "▸ The living dead");
         NyarFieldStepper(ed, "action.hunters", hint: "The share of the undead that hunt the nearest player; the rest drift.");
         NyarFieldStepper(ed, "action.driftRadius", hint: "How far the others wander from their place.");
-        NyarNote(ed, Muted("Hunters jump in straight lines, so a river or a cliff band holds many of them back. No hunter targets a player " +
-                           "inside a castle territory."));
+        NyarNote(ed, Muted("Hunters jump in straight lines, so a river or a cliff band holds many of them back. Unless castles may be " +
+                           "entered (below), no hunter targets a player inside a castle territory."));
 
         AddSectionHeading(ed, "▸ Spread per kill");
         BuildNyarSpreadBlock(ed, "action.spread.", "Each undead killed may raise more.");
+        BuildNyarCastleSwitch(ed);
         NyarHordeNotes(ed, "The infestation's units, faction and pools live in events.json (edit it, then Reload from disk).");
     }
 
@@ -45,6 +47,7 @@ public partial class MainPanel
     {
         var load = _nyarForm.Load;
         AddSectionHeading(ed, "▸ Start");
+        NyarHowItWorks(ed, "hordemarch");
         string now = load.StartKind switch
         {
             "point" => "a set spot on the map",
@@ -83,12 +86,14 @@ public partial class MainPanel
         NyarFieldStepper(ed, "action.infest.hunters", hint: "The share that then hunts the nearest player; the rest drift.");
         NyarFieldStepper(ed, "action.infest.driftRadius", hint: "How far the others wander.");
         BuildNyarSpreadBlock(ed, "action.infest.spread.", "Each undead killed after it infests may raise more.");
+        BuildNyarCastleSwitch(ed);
 
         AddSectionHeading(ed, "▸ Bosses with the horde");
         NyarListEditor(ed, "action.bosses", bosses: true, waveList: false, "Bosses",
             "Up to 3 entries: a boss (1-3 of it) or a roll from a pool (1-5). With a roll, 5 bosses at most in all.");
         string size = load.HordeSize > 0 ? $"a horde of {load.HordeSize}" : "the horde";
-        NyarHordeNotes(ed, $"The horde's units ({size}, 10-500 in all), faction and pools live in events.json (edit it, then Reload from disk).");
+        NyarHordeNotes(ed, $"The horde's units ({size}, {NyarLimits.HordeMarchMin}-{NyarLimits.HordeMarchMax} in all; a pool range counts at its min for the " +
+                           "least and at its max for the most), faction and pools live in events.json (edit it, then Reload from disk).");
     }
 
     // ---------------------------------------------------------------- destination (spawn waves and horde march)
@@ -171,11 +176,11 @@ public partial class MainPanel
         NyarChoice(ed, block + "min", "Per kill, at least", $"The fewest undead a kill adds ({minKey}).", NyarKillDraws,
             min >= 0 ? min.ToString(CultureInfo.InvariantCulture) : "",
             v => { _nyarForm.Set(minKey, v); if (Int(maxKey) >= 0 && Int(maxKey) < Int(minKey)) _nyarForm.Set(maxKey, v); },
-            null);
+            null, helpKey: minKey);
         var mostUi = NyarChoice(ed, block + "max", "Per kill, at most", $"The most undead a kill adds ({maxKey}).", NyarKillDraws,
             max >= 0 ? max.ToString(CultureInfo.InvariantCulture) : "",
             v => { _nyarForm.Set(maxKey, v); if (Int(minKey) > Int(maxKey)) _nyarForm.Set(minKey, v); },
-            new[] { minKey, maxKey }, "A kill adds a random number between the two.");
+            new[] { minKey, maxKey }, "A kill adds a random number between the two.", helpKey: maxKey);
         if (mostUi != null)
         {
             mostUi.Advice = () => Int(minKey) > Int(maxKey) && Int(maxKey) >= 0 ? "at most is below at least — raise it (the server disables the event otherwise)." : null;
@@ -192,7 +197,7 @@ public partial class MainPanel
     {
         string cur = _nyarForm.Get(field);
         var head = NyarRow(ed, "NyarSpreadPool_" + field);
-        NyarCell(head, "Drawn from", 150, tip: $"The pool the new undead are drawn from, or no pool ({field}).");
+        NyarCell(head, "Drawn from", 150, tip: NyarTooltip(field, null, fallback: "The pool the new undead are drawn from, or no pool."));
         NyarCell(head, Muted(cur.Length == 0 ? "" : cur == "none" ? "the event's units" : $"pool <b>{NyarEscape(cur)}</b>"), 160, flex: true);
         var ui = NyarTail(head, "drawn from", "No pool: drawn from the event's units, by their weights.", field);
         var chips = new List<(string, bool, string, Action, int)>
@@ -200,6 +205,8 @@ public partial class MainPanel
             ("No pool", cur == "none", "Draw from the event's units.", () => { _nyarForm.Set(field, "none"); RedrawNyarEditor(); }, 80),
         };
         var pools = NyarPoolNames();
+        // 0.74.0: library pools the event already names (pools.json, Nyarlathotep 0.15.0) are offered too.
+        foreach (var lp in _nyarForm.Load.LibraryPools) if (!pools.Contains(lp)) pools.Add(lp);
         if (cur.Length > 0 && cur != "none" && !pools.Contains(cur)) pools.Insert(0, cur);
         foreach (var p in pools)
         {
@@ -217,10 +224,18 @@ public partial class MainPanel
         NyarNote(ed, Muted(where));
         NyarNote(ed, Muted("Kills, spread and growth happen only near players: the game pauses its own NPCs 80 m or more from every player. " +
                            "One apocalypse-type event (apocalypse, infestation, horde march) runs at a time."));
-        NyarNote(ed, Muted(NyarCapHint));
+        NyarNote(ed, Muted(NyarHordeCapHint));
     }
 
-    /// <summary>The server's cfg trims a big start; shown under unit counts and the undead-hordes sections.</summary>
-    private const string NyarCapHint = "The server's cfg caps a start (MaxUnitsPerWave, default 20; MaxTrackedUnits, default 150; both up to 500): " +
-                                       "a start it trims says \"capped\". A cfg change needs a server restart.";
+    /// <summary>0.74.0: the server's cfg trims a big wave; shown under a spawn-waves event's unit lists (NyarLimits).</summary>
+    private static string NyarCapHint =>
+        $"The server's cfg caps each wave at MaxUnitsPerWave (default {NyarLimits.PerWaveDefault}, up to {NyarLimits.PerWaveMax}; spawn waves only) " +
+        $"and all of Nyarlathotep's units at MaxTrackedUnits (default {NyarLimits.TrackedDefault} on Nyarlathotep 0.15.0, 150 before; up to {NyarLimits.TrackedMax}). " +
+        "A wave it trims says \"capped\". A cfg change needs a server restart.";
+
+    /// <summary>0.74.0: the undead-hordes version: a horde is held by MaxTrackedUnits only.</summary>
+    private static string NyarHordeCapHint =>
+        $"A horde is held by MaxTrackedUnits in the server's cfg (default {NyarLimits.TrackedDefault} on Nyarlathotep 0.15.0, 150 before; up to {NyarLimits.TrackedMax}). " +
+        $"MaxUnitsPerWave doesn't apply to it. The event's own units are checked against {NyarLimits.UnitCeiling} in all when it loads. " +
+        "A start it trims says \"capped\". A cfg change needs a server restart.";
 }

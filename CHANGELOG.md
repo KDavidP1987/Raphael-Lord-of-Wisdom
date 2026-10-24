@@ -1,10 +1,46 @@
 # Changelog — Raphael, Lord of Wisdom
 
-## 0.73.1 — In progress (not released): a readable Bloodcraft reset report
+## 0.74.0 — In progress (not released): Nyarlathotep 0.15.0, explained Nyar settings, a Units & Objects reference
+
+Works with Nyarlathotep 0.15.0 (0.14.0 still works without the 0.15.0 features), Bloodcraft 1.13.26 and Uriel 0.22.0.
+
+### New — Nyarlathotep 0.15.0 horde pools
+
+- **Pool ranges.** A unit list can hold `pool:<name>:<min>-<max>`, a random count from a pool. The units form has a
+  Count / Range switch on pool rows, and the event's read-back (`pool X ×5-20`) shows the range.
+- **Library pools.** The pool chips and picker list the server's library pools beside the event's own, marked
+  "library". A **Pools library** card (Admin: Events) lists, inspects and reloads them (`.nyar pool list/info/reload`).
+- **Castles may be entered** (`action.allowTerritory`) is on Apocalypse, Infestation and Horde march events, not only
+  spawn waves. A start refused inside a castle's territory shows the refusal with the switch.
+- The unit limits follow 0.15.0's new 500-unit default (`[Limits] MaxTrackedUnits`), and the load reasons 0.15.0 adds
+  read as plain sentences.
+- These features need Nyarlathotep 0.15.0. Against 0.14.0 they are greyed out with "needs Nyarlathotep 0.15.0
+  (server reports 0.14.0)".
+- The Nyarlathotep guide is checked against 0.15.0 and has a pools library section.
+
+### New — every Nyarlathotep setting explains itself
+
+- Hover any Nyarlathotep setting to see what it does, what it means in play, its default and its range or options,
+  then the raw key.
+- Each Nyar window and editor card has a folded **How this works** section: what it's for, a worked example and the
+  commonest mistake.
+- A test fails the build if any event field Raphael can edit has no explanation.
+
+### New — Reference: Units & Objects
+
+- Every unit (532) and world object (about 6,400: castle pieces, resources, trees and other world props) in one
+  searchable list. Type any words of a name, prefab name or GUID; filter by V Blood, minion, faction, category,
+  buildable or container; group by faction or category.
+- Open it under **Settings and Help → Reference: Units & Objects**, or as a floating panel that can be dragged and
+  resized. From Help it offers Copy name and Copy GUID.
+- **Browse…** buttons sit beside the unit and object fields in the Nyarlathotep, Beelzebub and Uriel forms. Picking a
+  row writes the prefab name, or the GUID where the field needs one, into that field.
+- Unit names come from the game's own text, in your game language. Object names come from the game's blueprint text
+  where it has one; the rest show a readable form of the prefab name.
+
+### Fixed — a readable Bloodcraft reset report
 
 From a friend test of 0.73.0's **Reset Bloodcraft progress** card (Bloodcraft → Admin).
-
-### Fixed — the reset report no longer overlaps
 
 - The status, step log, review line and notes were each held to a one-line height, so a finished run's 14-line log
   and summary spilled over the card's intro text and buttons. They now grow with their text, and the card re-flows
@@ -13,7 +49,7 @@ From a friend test of 0.73.0's **Reset Bloodcraft progress** card (Bloodcraft �
   then the step log in its own darker box, then the note on what the tool doesn't reset.
 - Each log line reads `50.  .bl set Desion Draculin 0  →  reset`.
 
-### Changed — reset another player
+Reset another player:
 
 - **New reset** is now **Start a new reset** and sits right under the summary, so a long log can't push it out of
   sight. It closes the report and returns to the form with the player name cleared, so the next reset can't go to

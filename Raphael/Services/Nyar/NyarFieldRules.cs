@@ -15,6 +15,10 @@ namespace Raphael.Services.Nyar;
 // (Limits.MaxUnitsPerWave.Max), roamers.max 1-500, hordes.size 5-500, the destination fields, the Infestation and
 // HordeMarch fields (origins, hunters, driftRadius, start, the spread / growth / infest blocks) and their 600-604800 s
 // duration (Validation.cs HordeLimits / DestinationLimits, CommandArgs.cs SettableValue).
+// 0.74.0: synced to Nyarlathotep 0.15.0 ("horde pools", 875e08c): a units-list pool entry may hold a min-max range
+// (pool:<name>:<min>-<max>, CommandArgs.PoolEntry, both 1-500, min at most max), a HordeMarch's units total 10-500
+// (least = each range's min, most = each range's max; Validation.cs), and action.allowTerritory fits Apocalypse,
+// Infestation and HordeMarch too (EventAdmin.cs:339). The 500 ceilings are NyarLimits'.
 
 /// <summary>How a field's value is entered in the form.</summary>
 internal enum NyarKind { Int, Dec2, Text }
@@ -44,9 +48,14 @@ internal sealed class NyarEntry
 {
     public string Unit = "";     // CHAR_… (fixed)
     public string Pool = "";     // pool name (pool entry / roll)
-    public int Count = 1;        // fixed count, or a units pool entry's count
-    public int Min = 1, Max = 1; // a boss roll's range
+    public int Count = 1;        // fixed count, or a units pool entry's count (a range's max, as the server stores it)
+    public int Min = 1, Max = 1; // boss roll or pool range: a boss roll's range, or a units pool entry's min-max
+    public bool Ranged;          // a units pool entry written pool:<name>:<min>-<max> (Nyarlathotep 0.15.0)
     public bool IsPool => Pool.Length > 0;
+    /// <summary>The fewest units this entry brings (a range's min, else its count).</summary>
+    public int Least => IsPool && Ranged ? Min : Count;
+    /// <summary>The most units this entry brings (a range's max, else its count).</summary>
+    public int Most => IsPool && Ranged ? Max : Count;
 
     public NyarEntry Clone() => (NyarEntry)MemberwiseClone();
 }
@@ -55,7 +64,7 @@ internal static class NyarFieldRules
 {
     public const int MinPursuit = 15, MaxPursuit = 600;
     public const int MaxPools = 8, MaxPoolMembers = 30, MaxPoolName = 24;
-    public const int MaxUnitEntries = 10, MaxUnitCount = 500, MaxWaveUnits = 500;
+    public const int MaxUnitEntries = 10, MaxUnitCount = NyarLimits.UnitCeiling, MaxWaveUnits = NyarLimits.UnitCeiling;
     public const int MaxBossEntries = 3, MaxBossCount = 3, MaxRollBosses = 5, MaxWaveBosses = 5;
     public const int MaxNameLength = 96, MaxListChars = 4000;
     public const int MaxWave = 10, MaxFactions = 5;
@@ -354,8 +363,15 @@ internal static class NyarFieldRules
             if (p.StartsWith("pool:", StringComparison.Ordinal))
             {
                 var bits = p.Split(':');
-                if (bits.Length != 3) return $"'{p}' should look like pool:name:count.";
+                if (bits.Length != 3) return $"'{p}' should look like pool:name:count or pool:name:min-max.";
                 if (!IsPoolName(bits[1])) return $"'{bits[1]}' isn't a pool name (a-z, 0-9 and -, up to 24).";
+                if (bits[2].IndexOf('-') >= 0)
+                {
+                    var bad = CheckPoolRange(bits[2], out var mn, out var mx);
+                    if (bad != null) return $"'{p}': {bad}.";
+                    entries.Add(new NyarEntry { Pool = bits[1], Ranged = true, Min = mn, Max = mx, Count = mx });
+                    continue;
+                }
                 if (!Count(bits[2], 1, MaxUnitCount, out var pc)) return $"'{p}': the count must be 1-{MaxUnitCount}.";
                 entries.Add(new NyarEntry { Pool = bits[1], Count = pc });
                 continue;
@@ -378,6 +394,36 @@ internal static class NyarFieldRules
         return null;
     }
 
+    /// <summary>The range part of a units pool entry ("5-20"): null when the server takes it, else the server's own
+    /// words ("min must be 1-500", "max must be min-500"; CommandArgs.PoolEntry, Validation.cs). An entry holds a count
+    /// or a range, never both: "5-20" is a range, "5" a count, "5-" / "-20" / "5-10-20" neither. Overflow-safe.</summary>
+    public static string CheckPoolRange(string range, out int min, out int max)
+    {
+        min = max = 0;
+        var r = (range ?? "").Split('-');
+        if (r.Length != 2 || r[0].Length == 0 || r[1].Length == 0)
+            return "takes a count or min-max, not both (like 6 or 5-20)";
+        bool minOk = int.TryParse(r[0], NumberStyles.None, CultureInfo.InvariantCulture, out min);
+        bool maxOk = int.TryParse(r[1], NumberStyles.None, CultureInfo.InvariantCulture, out max);
+        if (!minOk || min < 1 || min > NyarLimits.UnitCeiling) return $"min must be 1-{NyarLimits.UnitCeiling}";
+        if (!maxOk || max < min || max > NyarLimits.UnitCeiling) return $"max must be min-{NyarLimits.UnitCeiling} ({min}-{NyarLimits.UnitCeiling} here)";
+        return null;
+    }
+
+    /// <summary>A HordeMarch's units: the server counts each range at its min for the fewest (at least 10) and at its max
+    /// for the most (at most 500); null when both hold, else a sentence naming the total that's off (Validation.cs:714-716,
+    /// "action.units must total 10-500 units for a HordeMarch").</summary>
+    public static string CheckHordeMarchTotals(IReadOnlyList<NyarEntry> entries)
+    {
+        long least = 0, most = 0;
+        foreach (var e in entries) { least += e.Least; most += e.Most; }
+        if (least < NyarLimits.HordeMarchMin)
+            return $"A horde march's units must total {NyarLimits.HordeMarchMin}-{NyarLimits.HordeMarchMax}: at the fewest this one brings {least} (each range counts at its min).";
+        if (most > NyarLimits.HordeMarchMax)
+            return $"A horde march's units must total {NyarLimits.HordeMarchMin}-{NyarLimits.HordeMarchMax}: at the most this one brings {most} (each range counts at its max).";
+        return null;
+    }
+
     public static bool PastWaveSize(IReadOnlyList<NyarEntry> entries)
     {
         bool pool = false;
@@ -388,7 +434,7 @@ internal static class NyarFieldRules
     public static int TotalUnits(IReadOnlyList<NyarEntry> entries)
     {
         int n = 0;
-        foreach (var e in entries) n += e.Count;
+        foreach (var e in entries) n += e.Most;   // a range counts at its max, as the server's wave total does
         return n;
     }
 
@@ -480,6 +526,13 @@ internal static class NyarFieldRules
                         || !int.TryParse(r[1], NumberStyles.None, CultureInfo.InvariantCulture, out var mx)) return null;
                     list.Add(new NyarEntry { Pool = bits[1], Min = mn, Max = mx });
                 }
+                else if (bits[2].IndexOf('-') >= 0)
+                {
+                    var r = bits[2].Split('-');
+                    if (r.Length != 2 || !int.TryParse(r[0], NumberStyles.None, CultureInfo.InvariantCulture, out var mn)
+                        || !int.TryParse(r[1], NumberStyles.None, CultureInfo.InvariantCulture, out var mx)) return null;
+                    list.Add(new NyarEntry { Pool = bits[1], Ranged = true, Min = mn, Max = mx, Count = mx });
+                }
                 else
                 {
                     if (!int.TryParse(bits[2], NumberStyles.None, CultureInfo.InvariantCulture, out var c)) return null;
@@ -497,14 +550,14 @@ internal static class NyarFieldRules
         return list;
     }
 
-    /// <summary>The value text for rows: "CHAR_a:4,pool:troops:6" / "CHAR_b:1,pool:elite:1-2"; "" for no rows.</summary>
+    /// <summary>The value text for rows: "CHAR_a:4,pool:troops:6,pool:rabble:5-20" / "CHAR_b:1,pool:elite:1-2"; "" for no rows.</summary>
     public static string BuildEntries(IReadOnlyList<NyarEntry> rows, bool bosses)
     {
         var sb = new StringBuilder();
         foreach (var e in rows)
         {
             if (sb.Length > 0) sb.Append(',');
-            if (e.IsPool) sb.Append("pool:").Append(e.Pool).Append(':').Append(bosses ? $"{e.Min}-{e.Max}" : Inv(e.Count));
+            if (e.IsPool) sb.Append("pool:").Append(e.Pool).Append(':').Append(bosses || e.Ranged ? $"{Inv(e.Min)}-{Inv(e.Max)}" : Inv(e.Count));
             else sb.Append(e.Unit).Append(':').Append(Inv(e.Count));
         }
         return sb.ToString();
@@ -525,7 +578,7 @@ internal static class NyarFieldRules
     {
         if (!bosses && mergeRepeats)
             foreach (var e in rows)
-                if (e.IsPool && e.Pool == pool) { e.Count = Math.Min(MaxUnitCount, e.Count + count); return; }
+                if (e.IsPool && !e.Ranged && e.Pool == pool) { e.Count = Math.Min(MaxUnitCount, e.Count + count); return; }
         rows.Add(bosses ? new NyarEntry { Pool = pool, Min = min, Max = max } : new NyarEntry { Pool = pool, Count = count });
     }
 
@@ -659,9 +712,68 @@ internal static class NyarFieldRules
         => value == "here" || (allowNone && value == "none") ? null
             : allowNone ? "Press Destination here (or No destination)." : "Press Destination here.";
 
+    /// <summary>Switches a units pool entry between a count and a min-max range (0.15.0). Count to range keeps the
+    /// count as the max with the min at 1; range to count keeps the max.</summary>
+    public static void SetRanged(NyarEntry e, bool ranged)
+    {
+        if (e == null || !e.IsPool || e.Ranged == ranged) return;
+        if (ranged) { e.Max = Math.Max(1, Math.Min(MaxUnitCount, e.Count)); e.Min = 1; e.Count = e.Max; }
+        else e.Count = Math.Max(1, Math.Min(MaxUnitCount, e.Max));
+        e.Ranged = ranged;
+    }
+
+    /// <summary>`action.allowTerritory` fits these event kinds: SpawnWaves since 0.12, and Apocalypse, Infestation and
+    /// HordeMarch from Nyarlathotep 0.15.0 (EventAdmin.cs:339).</summary>
+    public static bool AllowTerritoryFits(bool spawnWaves, bool apocalypse, bool infestation, bool hordeMarch)
+        => spawnWaves || apocalypse || infestation || hordeMarch;
+
+    /// <summary>The exact `event set` command Raphael sends: the api 4+ twin, or the visible human command on an older
+    /// server. One builder for every event kind (NyarClient.EventSetCommand calls it).</summary>
+    public static string EventSetText(bool twins, string id, string field, string value)
+        => (twins ? ".nyar api event set " : ".nyar event set ") + $"{SetTok(id)} {SetTok(field)} {SetQuote(value)}";
+
+    private static string SetTok(string s) => (s ?? "").Trim().Replace('"', ' ').Trim().Replace(' ', '_');
+    private static string SetQuote(string s)
+    {
+        var t = (s ?? "").Replace('"', '\'').Trim();
+        return t.IndexOf(' ') >= 0 ? "\"" + t + "\"" : t;
+    }
+
     /// <summary>A spread block's pool: a pool name or none.</summary>
     public static string CheckSpreadPool(string value)
         => value == "none" || IsPoolName(value) ? null : $"'{value}' isn't a pool name (a-z, 0-9 and -, up to 24), or pick no pool.";
+
+    /// <summary>Design §6's settable fields (api 8), in picker order. N / M (a wave / unit-entry number) and NAME (a pool)
+    /// are picked from chips. 0.74.0: moved here from MainPanel.Nyar.cs so the help coverage test can walk it.</summary>
+    public static readonly string[] SettableFields =
+    {
+        "name", "durationSeconds", "location", "conditions.minPlayers", "conditions.cooldownMinutes", "conditions.chancePercent",
+        "trigger.type", "trigger.days", "trigger.times", "trigger.phase", "trigger.bosses", "trigger.minMinutes", "trigger.maxMinutes",
+        "trigger.playerCooldownMinutes", "trigger.factions", "trigger.kills", "trigger.windowSeconds", "trigger.shared",
+        "trigger.heat", "trigger.warnAt", "trigger.vbloodHeat", "trigger.scope",
+        "action.scope", "action.stats.physicalPower", "action.stats.spellPower", "action.stats.maxHealth", "action.stats.attackSpeed",
+        "action.stats.moveSpeed", "action.factions",
+        "action.waves", "action.intervalSeconds", "action.radius", "action.units", "action.modifiers.level", "action.modifiers.levelDelta",
+        "action.modifiers.maxHealth", "action.modifiers.power", "action.modifiers.moveSpeed", "action.modifiers.attackSpeed",
+        "action.loot", "action.allowTerritory", "action.behaviour", "action.units.N.chance", "action.fanOut", "action.scoreboard",
+        "action.waveList.N", "action.waveList.N.units", "action.waveList.N.afterSeconds", "action.waveList.N.whenCleared",
+        "action.waveList.N.units.M.level", "action.waveList.N.units.M.levelDelta", "action.waveList.N.units.M.maxHealth",
+        "action.waveList.N.units.M.power", "action.waveList.N.units.M.moveSpeed", "action.waveList.N.units.M.attackSpeed",
+        "action.arena", "action.winner", "action.growth", "action.growth.addUnits", "action.growth.addLevels", "action.growth.whenCleared",
+        "action.regionLock", "action.bosses", "action.waveList.N.bosses", "action.pursuit", "action.pools.NAME",
+        "action.goal", "action.goal.radius", "action.goal.name", "action.hordes.count", "action.hordes.everyMinutes", "action.hordes.size",
+        "action.roamers.max", "action.marchSpeed",
+        // 0.73.0: undead hordes (Nyarlathotep 0.14.0). "Any other field" offers each only for the types that take it.
+        "action.destination", "action.destination.radius", "action.destination.name",
+        "action.origins.count", "action.origins.minNatives", "action.origins.minSpacing", "action.origins.perOrigin",
+        "action.hunters", "action.driftRadius",
+        "action.spread.perKillMin", "action.spread.perKillMax", "action.spread.max", "action.spread.perMinute", "action.spread.pool",
+        "action.start", "action.start.minDistance",
+        "action.growth.perKillMin", "action.growth.perKillMax", "action.growth.max", "action.growth.perMinute", "action.growth.pool",
+        "action.infest.hunters", "action.infest.driftRadius",
+        "action.infest.spread.perKillMin", "action.infest.spread.perKillMax", "action.infest.spread.max",
+        "action.infest.spread.perMinute", "action.infest.spread.pool",
+    };
 
     /// <summary>The fields "Any other field" offers for an event of this kind (what the server's type gate accepts),
     /// in picker order. Unknown / Other kinds get every field (the server decides).</summary>
@@ -682,6 +794,7 @@ internal static class NyarFieldRules
             else if (f == "action.marchSpeed") ok = spawnWaves || apocalypse || hordeMarch;
             else if (f == "action.bosses") ok = spawnWaves || apocalypse || hordeMarch;
             else if (f == "action.scope") ok = true;                                          // fits every type
+            else if (f == "action.allowTerritory") ok = AllowTerritoryFits(spawnWaves, apocalypse, infestation, hordeMarch);   // 0.74.0
             else if (f.StartsWith("action.", StringComparison.Ordinal) || f == "location") ok = spawnWaves;   // units, waves, pools, pursuit, swarm growth …
             else ok = true;                                                                    // name, duration, conditions, trigger
             if (ok || !(spawnWaves || apocalypse || infestation || hordeMarch || empower)) l.Add(f);

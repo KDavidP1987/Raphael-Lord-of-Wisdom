@@ -1256,7 +1256,9 @@ public partial class MainPanel
         AddBodyText(blockCard,
             "Forbid or re-allow a prefab from being spawned / discovered / granted. Load the <b>Object Catalog</b> " +
             "first for name autocomplete, or type a GUID/name directly.");
-        AddBeelzSearchableField(blockCard, "UrielBlockPrefab", "Prefab name or GUID…", "", UrielPrefabMatches, v => _urielObjPrefab = v);
+        AddBeelzSearchableField(blockCard, "UrielBlockPrefab", "Prefab name or GUID…", "", UrielPrefabMatches, v => _urielObjPrefab = v,
+            (row, input) => AddCatalogBrowseButton(row, input, blockCard, Raphael.Resources.BrowseKinds.Object,
+                Raphael.Resources.BrowseFormat.Name, fieldLabel: "Uriel block prefab"));
         var bRow = MakeUrielRow(blockCard, "UrielBlockRow");
         AddUrielButton(bRow, "UrielBlock", "Block",
             "Block this prefab (.uriel block <guid|name>).",
@@ -1305,7 +1307,9 @@ public partial class MainPanel
         // ════ Per-object ════ — pick an object, then each row sets ONE field on it.
         AddSectionHeading(cfgCard, "▸ Per-object override");
         AddBodyText(cfgCard, "Choose an object, then set a field below. Each field's input sits directly above its button.");
-        AddBeelzSearchableField(cfgCard, "UrielCfgPrefab", "Object name or GUID…", "", UrielPrefabMatches, v => _urielCfgPrefab = v);
+        AddBeelzSearchableField(cfgCard, "UrielCfgPrefab", "Object name or GUID…", "", UrielPrefabMatches, v => _urielCfgPrefab = v,
+            (row, input) => AddCatalogBrowseButton(row, input, cfgCard, Raphael.Resources.BrowseKinds.Object,
+                Raphael.Resources.BrowseFormat.Name, fieldLabel: "Uriel object conditions"));
 
         // Max per plot — input then button.
         _urielCfgMaxInput = AddUrielLabeledInput(cfgCard, "UrielCfgMax", "Max per plot (0 = unlimited)", "e.g. 3");

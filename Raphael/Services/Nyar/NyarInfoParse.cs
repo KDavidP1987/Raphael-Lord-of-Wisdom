@@ -14,6 +14,11 @@ namespace Raphael.Services.Nyar;
 // SpreadText / AtText at f340f75): origins, hunters and drift, the spread / growth / infest blocks, a horde march's start
 // and destination, and a destination wave's march line. Every pattern is anchored at both ends; coordinates use the
 // server's invariant "0.#" shape, so a malformed or shortened line reads as unread.
+// 0.74.0: Nyarlathotep 0.15.0 (horde pools, EventAdmin.cs EntryText / PoolLines at 875e08c): a pool range entry prints
+// "pool <name> ×<min>-<max>" on wave and family lines (read back as pool:<name>:<min>-<max>), and a library pool the
+// event names prints "pools: <name> (library, <k> units): …" (not the event's own pool: skipped, never offered for
+// editing). The units-form action line still prints a range as "<max> from <pool>", so a range there reads back as a
+// count (the server's text has no min). A line that can't be read is reported through OnMiss (debug log only).
 
 /// <summary>One wave of a wave-list event as `event info` shows it.</summary>
 internal sealed class NyarWaveInfo
@@ -31,9 +36,42 @@ internal static class NyarInfoParse
 {
     private static readonly Regex WaveOne = new(@"^wave (\d+): (\d+) units \((.*)\), (.+)$", RegexOptions.Compiled);
     private static readonly Regex WaveBelow = new(@"^wave (\d+): (\d+) units, (.+), units below$", RegexOptions.Compiled);
-    private static readonly Regex PoolHead = new(@"^pools: ([a-z0-9-]{1,24}) \((\d+) units?\): (.*)$", RegexOptions.Compiled);
+    private static readonly Regex PoolHead = new(@"^pools: ([a-z0-9-]{1,24}) \((library, )?(\d+) units?\): (.*)$", RegexOptions.Compiled);
     private static readonly Regex FixedEntry = new(@"^(CHAR_[A-Za-z0-9_]+) ×(\d+)(.*)$", RegexOptions.Compiled);
     private static readonly Regex PoolEntry = new(@"^(\d+) from ([a-z0-9-]{1,24})(.*)$", RegexOptions.Compiled);
+    private static readonly Regex PoolRangeEntry = new(@"^pool ([a-z0-9-]{1,24}) ×(\d+)-(\d+)(.*)$", RegexOptions.Compiled);
+
+    /// <summary>Called with each line (or entry) that couldn't be read, so the editor can log it at debug level. Null in
+    /// tests; never shown in chat.</summary>
+    internal static Action<string> OnMiss;
+    private static void Miss(string what) { try { OnMiss?.Invoke(what); } catch { } }
+
+    /// <summary>A units entry as the server prints it on a wave / family line → its set form ("CHAR_a:4",
+    /// "pool:troops:6", "pool:rabble:5-20"), or null. <paramref name="extras"/>: the entry carries a level, multiplier or
+    /// chance after it.</summary>
+    public static string EntrySetForm(string item, out bool extras)
+    {
+        extras = false;
+        var f = FixedEntry.Match(item ?? "");
+        if (f.Success) { extras = f.Groups[3].Value.Length > 0; return $"{f.Groups[1].Value}:{f.Groups[2].Value}"; }
+        var r = PoolRangeEntry.Match(item ?? "");
+        if (r.Success) { extras = r.Groups[4].Value.Length > 0; return $"pool:{r.Groups[1].Value}:{r.Groups[2].Value}-{r.Groups[3].Value}"; }
+        var p = PoolEntry.Match(item ?? "");
+        if (p.Success) { extras = p.Groups[3].Value.Length > 0; return $"pool:{p.Groups[2].Value}:{p.Groups[1].Value}"; }
+        return null;
+    }
+
+    /// <summary>The library pools an event names ("pools: rabble (library, 12 units): …"), in server order.</summary>
+    public static List<string> LibraryPools(IReadOnlyList<string> lines)
+    {
+        var l = new List<string>();
+        foreach (var line in lines ?? Array.Empty<string>())
+        {
+            var m = PoolHead.Match(line);
+            if (m.Success && m.Groups[2].Success && !l.Contains(m.Groups[1].Value)) l.Add(m.Groups[1].Value);
+        }
+        return l;
+    }
     private static readonly Regex UnitsFormEntry = new(@"^(\d+) (CHAR_[A-Za-z0-9_]+)$", RegexOptions.Compiled);
     private static readonly Regex FixedBoss = new(@"^(CHAR_[A-Za-z0-9_]+) x(\d+)$", RegexOptions.Compiled);
     private static readonly Regex RollBoss = new(@"^(\d+)-(\d+) bosses from ([a-z0-9-]{1,24})$", RegexOptions.Compiled);
@@ -148,6 +186,9 @@ internal static class NyarInfoParse
                 if (m.Success) { outl.Add($"{m.Groups[2].Value}:{m.Groups[1].Value}"); continue; }
                 var p = PoolEntry.Match(it);
                 if (p.Success && p.Groups[3].Value.Length == 0) { outl.Add($"pool:{p.Groups[2].Value}:{p.Groups[1].Value}"); continue; }
+                var r = PoolRangeEntry.Match(it);
+                if (r.Success && r.Groups[4].Value.Length == 0) { outl.Add($"pool:{r.Groups[1].Value}:{r.Groups[2].Value}-{r.Groups[3].Value}"); continue; }
+                Miss($"units entry '{it}' in: {l}");
                 return null;
             }
             return outl.Count == 0 ? null : string.Join(",", outl);
@@ -176,10 +217,9 @@ internal static class NyarInfoParse
             bool ok = entries.Length > 0;
             foreach (var it in Split(entries))
             {
-                var f = FixedEntry.Match(it);
-                if (f.Success) { outl.Add($"{f.Groups[1].Value}:{f.Groups[2].Value}"); if (f.Groups[3].Value.Length > 0) w.HasExtras = true; continue; }
-                var p = PoolEntry.Match(it);
-                if (p.Success) { outl.Add($"pool:{p.Groups[2].Value}:{p.Groups[1].Value}"); if (p.Groups[3].Value.Length > 0) w.HasExtras = true; continue; }
+                var set = EntrySetForm(it, out var extras);
+                if (set != null) { outl.Add(set); if (extras) w.HasExtras = true; continue; }
+                Miss($"wave {w.N} entry '{it}' in: {l}");
                 ok = false;
             }
             w.Units = ok ? string.Join(",", outl) : null;
@@ -242,11 +282,12 @@ internal static class NyarInfoParse
         {
             var m = PoolHead.Match(l);
             if (!m.Success) continue;
+            if (m.Groups[2].Success) continue;   // 0.74.0: a library pool (pools.json), not the event's own
             string name = m.Groups[1].Value;
             var members = order.Find(kv => kv.Key == name).Value;
             if (members == null) { members = new List<string>(); order.Add(new KeyValuePair<string, List<string>>(name, members)); }
-            want[name] = Int(m.Groups[2].Value);
-            foreach (var it in Split(m.Groups[3].Value))
+            want[name] = Int(m.Groups[3].Value);
+            foreach (var it in Split(m.Groups[4].Value))
                 if (NyarFieldRules.IsUnitName(it)) members.Add(it); else complete = false;
         }
         foreach (var kv in order) if (kv.Value.Count != want[kv.Key]) complete = false;

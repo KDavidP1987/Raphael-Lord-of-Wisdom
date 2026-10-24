@@ -123,6 +123,9 @@ public enum PanelType
     // 0.67.2: one place for every chat-visibility + diagnostics control (Raphael, Bloodcraft and each server mod).
     ChatDiagTab,
 
+    // 0.74.0: the unit and object reference (Settings & Help tab; the floating copy is GameCatalogOverlay below).
+    GameCatalogTab,
+
     // Secondary overlays (independent draggable panels):
     ExperienceOverlay,
     FamiliarOverlay,
@@ -140,6 +143,7 @@ public enum PanelType
     BeelzTransformOverlay,  // 0.20: browser-style transform overlay (double-click to transform + phase/revert)
     UrielSharedOverlay,     // 0.26: nearby public-storage badges (client-side detection of Uriel-shared containers)
     UrielObjectSpawnerOverlay, // 0.29: draggable quick-build palette of your unlocked Uriel objects (category cycler + per-row Spawn)
+    GameCatalogOverlay,     // 0.74.0: draggable unit and object reference; fills a form field from a Browse… button
 
     // Legacy panel identities from BloodCraftUI — kept so the existing
     // ResizeablePanelBase config keys (Panels/<PanelType>) survive a port.

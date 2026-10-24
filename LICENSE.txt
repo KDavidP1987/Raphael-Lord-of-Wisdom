@@ -31,6 +31,9 @@ combines and adapts code from two upstream V Rising client mods:
   UniverseLib + CustomLib + ModernLib UI framework under UI/Framework/ is
   ported from that project. Contact the upstream author for redistribution
   permission beyond what this MIT license grants in the Raphael repository.
+  Since 0.74.0 the unit localization keys in Resources/GameCatalog.Data.cs
+  (PrefabGUID to game-text key) also come from BloodCraftUI's PrefabNames
+  table, which its repository now ships under the MIT license.
 
 - Eclipse (zfolmt), shipped with its own LICENSE.md. The signed Eclipse
   protocol implementation in Services/EclipseProtocolService.cs is adapted

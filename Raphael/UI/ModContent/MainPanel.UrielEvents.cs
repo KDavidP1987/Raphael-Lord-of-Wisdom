@@ -320,7 +320,10 @@ public partial class MainPanel
 
         AddSectionHeading(lay, "▸ Marker options (optional)");
         AddBodyText(lay, "Blank unit = the unit comes from the group's squad. Count and level 0 = the default.");
-        AddBeelzSearchableField(lay, "UrielEvMarkerUnit", "Unit name or GUID (blank = from squad)…", "", UrielEvUnitMatches, v => _urielEvMarkerUnit = v);
+        AddBeelzSearchableField(lay, "UrielEvMarkerUnit", "Unit name or GUID (blank = from squad)…", "", UrielEvUnitMatches, v => _urielEvMarkerUnit = v,
+            // 0.74.0: Castle Events take the unit without CHAR_ (as ShortUnit above).
+            (row, input) => AddCatalogBrowseButton(row, input, lay, Raphael.Resources.BrowseKinds.Unit,
+                Raphael.Resources.BrowseFormat.ShortName, fieldLabel: "marker unit"));
         _urielEvMarkerCount = AddUrielLabeledInput(lay, "UrielEvMarkerCount", "Count", "blank = 1");
         _urielEvMarkerLevel = AddUrielLabeledInput(lay, "UrielEvMarkerLevel", "Level", "blank = unit's own");
         var cRow = MakeUrielRow(lay, "UrielEvContainRow");
@@ -518,7 +521,9 @@ public partial class MainPanel
         AddUrielCycleButton(roleRow, "UrielEvSqPick", new[] { "any", "distinct" }, new[] { "Pick: any", "Pick: distinct" },
             () => _urielEvSqPickMode, i => _urielEvSqPickMode = i,
             "any = random from the list, repeats allowed · distinct = that many different units.", 120);
-        AddBeelzSearchableField(sq, "UrielEvSqPicker", "Find a unit…", "", UrielEvUnitMatches, v => _urielEvSqPick = v);
+        AddBeelzSearchableField(sq, "UrielEvSqPicker", "Find a unit…", "", UrielEvUnitMatches, v => _urielEvSqPick = v,
+            (row, input) => AddCatalogBrowseButton(row, input, sq, Raphael.Resources.BrowseKinds.Unit,
+                Raphael.Resources.BrowseFormat.ShortName, fieldLabel: "squad unit"));
         var addURow = MakeUrielRow(sq, "UrielEvSqAddUnitRow");
         AddUrielButton(addURow, "UrielEvSqAddUnit", "Add to unit list", "Append the picked unit to the list below.",
             () =>
@@ -669,7 +674,9 @@ public partial class MainPanel
 
         var sp = AddCard(content, "UrielUnitSpawn");
         AddSectionHeading(sp, "Spawn units");
-        AddBeelzSearchableField(sp, "UrielUnitName", "Unit name or GUID…", "", UrielEvUnitMatches, v => _urielUnitName = v);
+        AddBeelzSearchableField(sp, "UrielUnitName", "Unit name or GUID…", "", UrielEvUnitMatches, v => _urielUnitName = v,
+            (row, input) => AddCatalogBrowseButton(row, input, sp, Raphael.Resources.BrowseKinds.Unit,
+                Raphael.Resources.BrowseFormat.ShortName, fieldLabel: "unit to spawn"));
         _urielUnitCount = AddUrielLabeledInput(sp, "UrielUnitCount", "Count", "blank = 1");
         _urielUnitLevel = AddUrielLabeledInput(sp, "UrielUnitLevel", "Level", "blank = unit's own");
         var pRow = MakeUrielRow(sp, "UrielUnitPlaceRow");

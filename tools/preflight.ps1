@@ -247,6 +247,21 @@ if ($Mode -eq 'Release') {
         }
     }
 
+    # 10c. Unit and object reference (0.74.0): Raphael/Resources/GameCatalog.Data.cs and tools/catalog-exclusions.md
+    #      must match the Beelzebub Reference Data dumps. Exit 1 = stale, 2 = the dumps are missing. A release build
+    #      fails on either: the shipped table cannot be checked without its sources.
+    $catGen = Join-Path $repoRoot 'tools\gen-game-catalog.py'
+    if (-not (Test-Path $catGen)) {
+        Fail "Missing tools\gen-game-catalog.py (the unit and object reference generator)."
+    } else {
+        $catOut = & python -I $catGen --check 2>&1
+        switch ($LASTEXITCODE) {
+            0 { Pass "Unit and object reference matches the game-data dumps." }
+            1 { Fail "Unit and object reference is stale or the generator failed (run: python -I tools/gen-game-catalog.py):`n$(($catOut | Select-String -Pattern 'STALE|ERROR' | ForEach-Object { $_.Line }) -join "`n")" }
+            default { Fail "Unit and object reference check couldn't find its sources:`n$(($catOut | Select-String -Pattern 'MISSING' | ForEach-Object { $_.Line }) -join "`n")" }
+        }
+    }
+
     # 11. Logic tests (0.72.0): the pure rule mirror, batch / quarantine, rail accordion, info parsing and form state.
     #     Not part of Raphael.sln, so the mod build and the package never include them.
     $testsDir = Join-Path $repoRoot 'tests\Raphael.Logic.Tests'

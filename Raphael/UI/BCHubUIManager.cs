@@ -146,6 +146,7 @@ public class BCHubUIManager : UIManagerBase
     public override void Reset()
     {
         NyarToastHost.Clear();
+        Raphael.UI.ModContent.GameCatalogOverlayPanel.Teardown();
         base.Reset();
         foreach (var p in _panels)
         {
@@ -195,6 +196,7 @@ public class BCHubUIManager : UIManagerBase
         _professionOverlay?.SetActive(active && (_professionOverlay?.Enabled ?? false));
         _shiftSpellOverlay?.SetActive(active && (_shiftSpellOverlay?.Enabled ?? false));
         _quickActionsOverlay?.SetActive(active && (_quickActionsOverlay?.Enabled ?? false));
+        Raphael.UI.ModContent.GameCatalogOverlayPanel.SetUIActive(active);   // 0.74.0: Units & Objects reference
         // 0.18.1: these three were added after SetActive was first written and were never
         // included here — so hiding the UI (escape menu, and the new logout teardown) left them
         // visible. The Combined overlay / Chat window / Beelz action bar are the overlays that

@@ -58,6 +58,44 @@ internal static class NyarCapture
         Fire(UnitsChanged);
     }
 
+    // ---- pool library (0.74.0, Nyarlathotep 0.15.0 `.nyar pool list|info|reload`) ----
+    // The reply lines are shown verbatim in the Pools library card and never parsed for meaning (handoff §3b: they are
+    // not a contract). Only the first line is recognised, by the shapes PoolLines prints, so an unrelated System message
+    // in the window isn't taken for the reply; once started, every line within 1.5 s of the last is kept (up to 30).
+    public static event Action PoolChanged;
+    private static float _poolUntil;
+    private static bool _poolStarted;
+    private static readonly List<string> _pool = new();
+    public static IReadOnlyList<string> PoolLines => _pool;
+    public static string PoolAsked { get; private set; } = "";
+    public static bool PoolPending => Time.realtimeSinceStartup <= _poolUntil && !_poolStarted;
+
+    public static void BeginPool(string asked)
+    {
+        PoolAsked = asked ?? "";
+        _poolStarted = false;
+        _poolUntil = Time.realtimeSinceStartup + 4f;
+        Fire(PoolChanged);
+    }
+
+    private static readonly Regex PoolFirst = new(
+        @"^(?:[a-z0-9-]{1,24}: \d+ units?, (?:seeded|library)|pool [a-z0-9-]{1,24}: \d+ units?|pools(?: unknown)?:|pools\.json |" +
+        @"no pools$|unknown pool|no page |page must be|argument must be list|named by: )", RegexOptions.Compiled);
+
+    private static void ObservePool(string text, float now)
+    {
+        if (!_poolStarted)
+        {
+            if (!PoolFirst.IsMatch(text)) return;
+            _poolStarted = true;
+            _pool.Clear();
+        }
+        foreach (var l in text.Split('\n'))
+            if (l.TrimEnd().Length > 0 && _pool.Count < 30) _pool.Add(l.TrimEnd());
+        _poolUntil = now + 1.5f;
+        Fire(PoolChanged);
+    }
+
     private static readonly Regex UnitRx = new(
         @"^(?<prefab>CHAR_\S+) (?<ev>\S+) left (?<left>\S+) lvl (?<lvl>-?\d+) hp (?<hp>-?\d+)/(?<max>-?\d+) pp (?<pp>-?\d+)" +
         @"(?:.*? at (?<x>-?\d+),(?<z>-?\d+))?(?<rest>.*)$", RegexOptions.Compiled);
@@ -66,12 +104,13 @@ internal static class NyarCapture
     {
         if (string.IsNullOrEmpty(raw)) return;
         float now = Time.realtimeSinceStartup;
-        if (now > _infoUntil && now > _unitsUntil) return;
+        if (now > _infoUntil && now > _unitsUntil && now > _poolUntil) return;
         string text = (raw.IndexOf('<') >= 0 ? Tags.Replace(raw, "") : raw).Trim();
         if (text.Length == 0 || text[0] == '[') return;
 
         if (now <= _infoUntil) ObserveInfo(text, now);
         if (now <= _unitsUntil) ObserveUnits(text, now);
+        if (now <= _poolUntil) ObservePool(text, now);
     }
 
     private static void ObserveInfo(string text, float now)
@@ -130,6 +169,7 @@ internal static class NyarCapture
     {
         _infoId = InfoId = ""; _info.Clear(); _infoUntil = 0f; _infoStarted = false;
         _units.Clear(); _unitsOther.Clear(); _unitsUntil = 0f; _unitsStarted = false; UnitsRadius = 0;
+        _pool.Clear(); _poolUntil = 0f; _poolStarted = false; PoolAsked = "";
     }
 
     // ---- parsing the info reply into editor pre-fills (best effort; never required) ----

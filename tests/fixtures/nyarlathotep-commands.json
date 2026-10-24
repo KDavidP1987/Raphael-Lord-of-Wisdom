@@ -1,8 +1,8 @@
 {
   "mod": "Nyarlathotep",
   "source": "Nyarlathotep Lord of Chaos/Nyarlathotep/Nyarlathotep",
-  "sourceVersion": "0.14.0",
-  "sourceCommit": "1b4584e7fe",
+  "sourceVersion": "0.15.0",
+  "sourceCommit": "9faabf18d1",
   "generatorVersion": 1,
   "commands": [
     {
@@ -227,6 +227,39 @@
       "verbDispatch": true,
       "method": "Pillars",
       "file": "Commands/PillarCommands.cs",
+      "line": 13
+    },
+    {
+      "group": "nyar",
+      "groupShort": null,
+      "name": "pool",
+      "shortHand": null,
+      "adminOnly": true,
+      "usage": "list [page] | info POOL [page] | reload",
+      "description": "List or inspect the pool library of pools.json, or reload it.",
+      "params": [
+        {
+          "name": "verb",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "a",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        },
+        {
+          "name": "b",
+          "type": "string",
+          "optional": true,
+          "default": ""
+        }
+      ],
+      "verbDispatch": true,
+      "method": "Pool",
+      "file": "Commands/PoolCommands.cs",
       "line": 13
     },
     {

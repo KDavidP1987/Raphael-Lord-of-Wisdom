@@ -27,6 +27,11 @@ internal static class NyarMessages
                     "out_of_region"       => "Outside the event's trigger regions.",
                     // §5a: unstick answers a bare `code=state arg=id` when the event has no live unit.
                     "" when argTxt == "id" => "That event has no live units.",
+                    // 0.74.0: an apocalypse-type start refused for its place (ApocalypseHost.cs, Nyarlathotep 0.15.0):
+                    // the start or every hotspot is on castle land, or no hotspot has enough natives. The wire carries
+                    // only `reason=condition arg=id`, so the sentence names both causes.
+                    "condition" when argTxt == "id" => CastleStartText,
+                    "condition" => "The event's conditions block it right now (players online, cooldown or chance).",
                     _ => $"Wrong state{(reason.Length > 0 ? $" ({reason.Replace('_', ' ')})" : "")}.",
                 };
             case "cooldown":  return $"Kill-switch cooldown: {FormatSecs(secs)} left.";
@@ -73,7 +78,55 @@ internal static class NyarMessages
         }
     }
 
-    private static readonly string[] PillarOrder = { "empowerment", "spawns", "boss", "zones", "sieges" };
+    /// <summary>A start refused for where it would rise (castle land, or too few natives at every hotspot).</summary>
+    public const string CastleStartText =
+        "It couldn't start there: the start (or every hotspot) is inside a castle's territory, or no hotspot has enough natives. " +
+        "To let it rise on castle land, open the event, go to Location and turn on \"Castles may be entered\".";
+
+    /// <summary>0.74.0: a load reason (`api events` row reason, the editor's "Not ready yet") or a human start refusal in
+    /// plain words, matched by pattern (Nyarlathotep 0.15.0 Validation.cs, RAPHAEL_HANDOFF_HORDE_POOLS.md §3a). An
+    /// unknown reason comes back as it is. The field path the server names ("action.waveList.2.units.1") is kept.</summary>
+    public static string ReasonText(string reason)
+    {
+        var r = (reason ?? "").Trim();
+        if (r.Length == 0) return r;
+        string at = r.IndexOf(' ') > 0 ? r.Substring(0, r.IndexOf(' ')).TrimEnd(':') : "";
+        string where = at.StartsWith("action.", StringComparison.Ordinal) ? $" ({PathBase(at)})" : "";
+        if (r.Contains("takes count or min and max, not both"))
+            return $"A pool entry has both a count and a min-max range{where}. Keep one: a count like 6, or a range like 5-20.";
+        if (r.Contains("min/max need a pool entry"))
+            return $"Only a pool entry can have a min-max range{where}; a fixed unit takes a single count.";
+        if (r.Contains("min/max apply to counted entries"))
+            return $"Apocalypse and Infestation use a pool entry's count as a weight (how often it's picked), so a min-max range isn't allowed there{where}. Use a single count.";
+        if (r.Contains(".min must be 1-"))
+            return $"A pool range's min must be 1-{NyarLimits.UnitCeiling}{where}.";
+        if (r.Contains(".max must be min-"))
+            return $"A pool range's max must be at least its min and at most {NyarLimits.UnitCeiling}{where}.";
+        if (r.Contains("must total") && r.Contains("for a HordeMarch"))
+            return $"A horde march needs {NyarLimits.HordeMarchMin}-{NyarLimits.HordeMarchMax} units in all: its mins must add up to at least {NyarLimits.HordeMarchMin} " +
+                   $"and its maxes to at most {NyarLimits.HordeMarchMax}.";
+        if (r.Contains("allowTerritory must be true or false"))
+            return "\"Castles may be entered\" must be Yes or No in the events file.";
+        int np = r.IndexOf(".pool: no pool ", StringComparison.Ordinal);
+        if (np >= 0)
+        {
+            string name = r.Substring(np + 15).Trim();
+            return $"No pool named {name}{where}: it is neither one of this event's pools nor in the pool library (pools.json). " +
+                   "Check the spelling, or see Pools library.";
+        }
+        if (r.Contains("inside a castle's territory")) return CastleStartText;
+        return r;
+    }
+
+    // "action.waveList.2.units.1.min" → "action.waveList.2.units.1".
+    private static string PathBase(string at)
+    {
+        foreach (var tail in new[] { ".min", ".max", ".pool", ".count" })
+            if (at.EndsWith(tail, StringComparison.Ordinal)) return at.Substring(0, at.Length - tail.Length);
+        return at;
+    }
+
+    private static readonly string[] PillarOrder ={ "empowerment", "spawns", "boss", "zones", "sieges" };
     private static readonly string[] PillarNames = { "Empowerment", "Spawns", "Boss", "Zones", "Sieges" };
 
     /// <summary>The Templates panel's group of a template (PLAN.md §C1): pillars in their usual order, and inside Spawns

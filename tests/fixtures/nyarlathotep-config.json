@@ -1,8 +1,8 @@
 {
   "mod": "Nyarlathotep",
   "source": "Nyarlathotep Lord of Chaos/Nyarlathotep/Nyarlathotep",
-  "sourceVersion": "0.14.0",
-  "sourceCommit": "1b4584e7fe",
+  "sourceVersion": "0.15.0",
+  "sourceCommit": "9faabf18d1",
   "generatorVersion": 1,
   "settings": [
     {
@@ -68,7 +68,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 38
+      "line": 39
     },
     {
       "section": "Announcements",
@@ -79,7 +79,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 39
+      "line": 40
     },
     {
       "section": "Announcements",
@@ -144,7 +144,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 34
+      "line": 35
     },
     {
       "section": "Limits",
@@ -155,7 +155,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 30
+      "line": 31
     },
     {
       "section": "Limits",
@@ -166,7 +166,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 32
+      "line": 33
     },
     {
       "section": "Limits",
@@ -177,7 +177,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 27
+      "line": 28
     },
     {
       "section": "Limits",
@@ -188,7 +188,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 29
+      "line": 30
     },
     {
       "section": "Limits",
@@ -199,18 +199,18 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 28
+      "line": 29
     },
     {
       "section": "Limits",
       "key": "MaxTrackedUnits",
-      "default": 150,
+      "default": 500,
       "min": 1,
       "max": 500,
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 25
+      "line": 26
     },
     {
       "section": "Limits",
@@ -221,7 +221,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 26
+      "line": 27
     },
     {
       "section": "Limits",
@@ -232,7 +232,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 31
+      "line": 32
     },
     {
       "section": "Pillars",
@@ -306,7 +306,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 48
+      "line": 49
     },
     {
       "section": "UnitWatch",
@@ -317,7 +317,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 45
+      "line": 46
     },
     {
       "section": "UnitWatch",
@@ -328,7 +328,7 @@
       "description": null,
       "kind": "IntLimit",
       "file": "Logic/Limits.cs",
-      "line": 42
+      "line": 43
     }
   ],
   "unresolvedBinds": []

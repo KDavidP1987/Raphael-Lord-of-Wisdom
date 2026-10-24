@@ -4,6 +4,8 @@ namespace Raphael.Services.Guides;
 
 // 0.73.0: the Nyarlathotep guide, checked against the released Nyarlathotep 0.14.0 source (Commands/*.cs,
 // Config/Settings.cs, Logic/Limits.cs, Logic/CommandArgs.cs, Logic validation and the 0.14.0 README: undead hordes).
+// 0.74.0: checked against 0.15.0 (horde pools: pool ranges, the pool library, castle entry for the horde families, the
+// new MaxTrackedUnits default), with the guide-commands fixtures regenerated from the 0.15.0 source.
 internal static partial class Guides
 {
     static partial void AddNyarlathotep(List<Guide> list)
@@ -16,7 +18,7 @@ internal static partial class Guides
 
         var b = new GuideBuilder("nyarlathotep", "Nyarlathotep guide",
             "Server events for V Rising: empowered factions, spawn waves, revenge squads and undead hordes, for players and admins.",
-            "Nyarlathotep 0.14.0", GuideKind.FullMod, "nyarlathotep");
+            "Nyarlathotep 0.15.0", GuideKind.FullMod, "nyarlathotep");
 
         // ------------------------------------------------------------------------------------------ 1. what
         b.Section(GuideSchema.What, true, s => s
@@ -81,7 +83,7 @@ internal static partial class Guides
                 .Bullets(
                     "<b>Location</b>: a Point on the map, around the admin (Admin, manual starts only), around a random player (AroundPlayer, 10-60 m minimum, 15-80 m maximum), or spread over the event's regions (Region).",
                     "Units land on walkable ground. A spawn point in water or against a wall moves to the nearest walkable spot.",
-                    "<b>No wave spawns in claimed castle territory</b> unless the event sets allowTerritory.",
+                    "<b>No wave spawns in claimed castle territory</b> unless the event sets allowTerritory. Since 0.15.0 an apocalypse, infestation or horde march takes allowTerritory too: off, nothing rises, marches or hunts on castle land and a start there is refused; on, castles are ground like any other.",
                     "A player in castle territory or in PvP combat is never picked by AroundPlayer and never hunted.",
                     "<b>Modifiers</b>: a fixed level (1-120) or a level shift (-5 to +5), and multipliers for max health, power, move speed and attack speed (0.5-3.0).",
                     "<b>Hunt</b>: every 5 seconds, each unit is set on the nearest players (up to 5) within 10-60 m.",
@@ -123,6 +125,8 @@ internal static partial class Guides
                     "Any wave can also bring its own bosses, fixed or rolled from a pool: at most 5 per wave.",
                     "A V Blood spawned by an event or by " + C(".nyar spawn") + " never starts a V Blood event.",
                     "<b>Pools</b>: 1-8 named lists of 1-30 units. A unit entry like pool:troops:9 draws 9 at random. Each wave is rolled when it comes.",
+                    "Since 0.15.0 a spawn-waves pool entry can take a range, like pool:troops:5-20 (both 1-500): each wave draws a random count between the two. A wave's total counts each range at its max. In an apocalypse or infestation a pool entry's count is a weight, so a range is refused there.",
+                    "A pool name that isn't one of the event's own pools is looked up in the server's pool library (see Pool library).",
                     "<b>Pursuit</b> (15-600 s, needs Hunt): once no player has stood in the arena or hunt range that long, the units chase the nearest player anywhere until the event ends. A castle and PvP combat stay a refuge."))
             .Detail("The apocalypse", d => d
                 .P("An Apocalypse action (spawns pillar) turns one faction into an outbreak that lasts 10 minutes to 7 days (durationSeconds 600-604800).")
@@ -134,12 +138,12 @@ internal static partial class Guides
                     "A horde reaching the goal loses the event (\"the goal has fallen\"). Destroying every horde wins it. Running out the clock survives it. Then the scoreboard.",
                     "Chat announces each horde rising (with its region), each quarter of its march, and each horde destroyed. " + C(".nyar status") + " shows the horde, the march and the roamers.",
                     "It is the only event that carries on after a restart. Progress is saved in state.json every minute (30 s while a horde marches).",
-                    "A horde never passes [Limits] MaxUnitsPerWave (20). Raise it (up to 500) and MaxTrackedUnits with it for bigger hordes. A start the cfg trims says \"capped\"."))
+                    "Since 0.15.0 a horde is held only by [Limits] MaxTrackedUnits (default 500); MaxUnitsPerWave applies to spawn waves only. Before 0.15.0 a horde never passed MaxUnitsPerWave (20). A start the cfg trims says \"capped\"."))
             .Detail("Infestation", d => d
                 .P("An Infestation action (spawns pillar, 10 minutes to 7 days) raises the dead where a faction's own NPCs gather, and the outbreak grows with every kill.")
                 .Bullets(
                     "<b>Origins</b> (1-10) are found at the start, each where at least minNatives (1-20) of the faction stand, at least minSpacing (100-2000 m) apart. Each origin raises perOrigin (1-100) units.",
-                    "<b>Hunters</b> (0-100 %) is the share of units that hunt the nearest player. They move in straight lines, and a castle territory is a refuge. The rest drift within driftRadius (0-2000 m) of their origin.",
+                    "<b>Hunters</b> (0-100 %) is the share of units that hunt the nearest player. They move in straight lines, and a castle territory is a refuge unless the event sets allowTerritory. The rest drift within driftRadius (0-2000 m) of their origin.",
                     "<b>Spread</b>: each kill the dead make raises perKillMin to perKillMax (0-3) new units where the victim fell, drawn from a pool or from the event's units, up to max alive (1-500), at most perMinute (1-30) a minute.",
                     "Won when every unit is dead with no spread pending; survived when the time runs out.",
                     "Kills, spread and growth happen only within 80 m of a player: the game stops its own NPCs farther from everyone."))
@@ -148,7 +152,7 @@ internal static partial class Guides
                 .Bullets(
                     "<b>Start</b>: a point (where the admin stood), the starting admin, or the natives' hotspot nearest the destination at least minDistance (100-3000 m) away.",
                     "<b>Destination</b>: a point with a name (1-40 characters) and a radius (10-100 m). The horde marches at marchSpeed (0.5-5.0 m/s).",
-                    "The horde is the sum of its units, 10-500. <b>Growth</b> on the way works like spread: kills add units up to growth.max. A growth.max at or below the horde size never grows it.",
+                    "The horde is the sum of its units, 10-500: with pool ranges, the mins must add up to at least 10 and the maxes to at most 500. <b>Growth</b> on the way works like spread: kills add units up to growth.max. A growth.max at or below the horde size never grows it.",
                     "A horde players have watched for 30 s stops and fights where it stands.",
                     "<b>On arrival</b> (or where it stands after 120 s stuck, or once watched) it infests there, with its own hunters, drift radius and spread.",
                     "Bosses join the horde, fixed or rolled from a pool. Won when the horde is destroyed."))
@@ -158,6 +162,19 @@ internal static partial class Guides
                     "Each wave marches as one front and takes its behaviour on arrival. A wave players have watched for 30 s fights where it stands.",
                     "It needs a Point or Admin location, and can't be combined with fan-out, region lock, an arena or pursuit.",
                     "Only one apocalypse-type event (apocalypse, infestation, horde march) runs at a time."))
+            .Detail("Pool library", d => d
+                .P("Since 0.15.0 the server keeps a pool library in pools.json: named pools any event can draw from without defining them. Some come seeded with the mod.")
+                .Bullets(
+                    "An event's pool entries may name a library pool, like pool:undead-units:6. An event's own pool of the same name wins.",
+                    "The server checks every name when it loads the events. An event that names a pool that exists nowhere is held disabled with the reason.",
+                    "pools.json is edited on the server only. Raphael's Admin: Events tab has a Pools library card with the same three commands.")
+                .Commands("Pool library commands", c => c
+                    .Admin("nyar pool", ".nyar pool list [page]",
+                        "The library's pools, ten a page: each pool's name, how many units it holds, and whether it came seeded with the mod.").Override("verbs from PoolCommands.cs switch (verb, a, b are optional strings)")
+                    .Admin("nyar pool", ".nyar pool info <pool> [page]",
+                        "The units in one library pool, with their counts.").Override("verbs from PoolCommands.cs switch (verb, a, b are optional strings)")
+                    .Admin("nyar pool", ".nyar pool reload",
+                        "Re-reads pools.json. The reply names any event that has become invalid.").Override("verbs from PoolCommands.cs switch (verb, a, b are optional strings)")))
             .Detail("Unit watch: stuck units", d => d
                 .P("On by default for every event unit (never a " + C(".nyar spawn") + " unit). A wave never hangs on one unit nobody can reach.")
                 .Bullets(
@@ -268,10 +285,10 @@ internal static partial class Guides
                 .P("<b>Waves</b>")
                 .Bullets(
                     "action.waves 1-10; action.intervalSeconds 10-600; action.radius 2-30.",
-                    "action.units: 1-10 entries, comma separated, each CHAR_name or CHAR_name:count (count 1-500), or pool:name:count. A list with pools holds at most 500 units.",
+                    "action.units: 1-10 entries, comma separated, each CHAR_name or CHAR_name:count (count 1-500), or pool:name:count, or (0.15.0) pool:name:min-max. A list with pools holds at most 500 units, each range counted at its max.",
                     "action.units." + A("n") + ".chance: 0.05-1.0.",
                     "action.modifiers.level 1-120; levelDelta -5 to 5; maxHealth, power, moveSpeed, attackSpeed 0.5-3.0.",
-                    "action.loot, action.allowTerritory, action.scoreboard: true or false.",
+                    "action.loot, action.allowTerritory, action.scoreboard: true or false. Since 0.15.0 action.allowTerritory is also settable on an apocalypse, infestation or horde march.",
                     "action.behaviour: none, \"hunt " + A("10-60") + "\", or regionhunt.",
                     "action.fanOut: none, or \"" + A("2-10") + " " + A("50-500") + "\" (groups and spacing in metres).",
                     "action.arena: 15-60 or none. action.winner: killdeath or none. action.regionLock: true, false or none. action.pursuit: 15-600 or none.",
@@ -347,7 +364,7 @@ internal static partial class Guides
                 .P("Raphael sends these behind the scenes. Each answers in [NYAR:...] lines of at most 480 bytes: one [NYAR:ok] or [NYAR:err] line for an action. The admin action twins are limited to 5 per second.")
                 .Commands("Machine API", c => c
                     .Player("nyar api version", ".nyar api version",
-                        "The handshake: api level (8 in 0.14.0), plugin version, ready, admin, enabled, kill switch, each pillar and each announcement switch.")
+                        "The handshake: api level (8 in 0.14.0 and 0.15.0), plugin version, ready, admin, enabled, kill switch, each pillar and each announcement switch.")
                     .Player("nyar api status", ".nyar api status",
                         "Running events as lines, then an end line. Unit counts go to admins only.")
                     .Player("nyar api regions", ".nyar api regions [page]",
@@ -400,8 +417,8 @@ internal static partial class Guides
                 .Row("Pillars", "SiegeWaves", "false", "Planned pillar. No event type uses it yet.", "live"))
             .Detail("[Limits]", d => d
                 .Settings("Limits", Cfg, t => t
-                    .Row("Limits", "MaxTrackedUnits", "150", "Most mod units alive at once across all events, 1-500. New spawns past it are skipped. Above 150 is best effort for server load.", "restart")
-                    .Row("Limits", "MaxUnitsPerWave", "20", "Most units in one wave or horde, 1-500. Also caps the count of " + C(".nyar spawn") + ".", "restart")
+                    .Row("Limits", "MaxTrackedUnits", "500", "Most mod units alive at once across all events, 1-500. New spawns past it are skipped. It is also the only limit on a horde's size (0.15.0; it was 150 before, and a cfg that already holds a value keeps it).", "restart")
+                    .Row("Limits", "MaxUnitsPerWave", "20", "Most units in one spawn wave, 1-500. Before 0.15.0 it also capped a horde. Also caps the count of " + C(".nyar spawn") + ".", "restart")
                     .Row("Limits", "MaxConcurrentEvents", "3", "Events running at once, 1-10.", "restart")
                     .Row("Limits", "MaxSpawnsPerTick", "10", "Units spawned per server tick, 1-40. A bigger wave spreads over the next ticks.", "restart")
                     .Row("Limits", "MaxDespawnsPerTick", "5", "Units removed per server tick, 1-40.", "restart")
@@ -462,7 +479,8 @@ internal static partial class Guides
                 .Bullets(
                     "Run " + C(".nyar event list") + ". The readiness column says why: off (event) means disabled, off (pillar) means its pillar is off, off (mod) means General.Enabled is false, off (purge) means the purge cooldown is running, full (cap) means MaxConcurrentEvents is reached, invalid gives the reason.",
                     "Conditions (players online, cooldown, chance, time window) can hold back automatic starts. A regional trigger needs a player in its regions.",
-                    "Waves never spawn in castle territory unless allowTerritory is set."))
+                    "Waves never spawn in castle territory unless allowTerritory is set.",
+                    "An apocalypse, infestation or horde march refused with \"inside a castle's territory\" (0.15.0) needs another start spot, or allowTerritory set to true."))
             .Detail("\"command not found\" or no reply", d => d
                 .Bullets(
                     "Replies to sent commands show in chat. \"command not found\" means the server lacks that command: an older Nyarlathotep, a planned feature (stats, top, zone), or a typo. Type " + C(".nyar") + " to list the real commands.",

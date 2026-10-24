@@ -44,6 +44,9 @@ internal static partial class Program
         KindredAdminTests();
         UndeadHordesTests();
         UrielFeaturesTests();
+        NyarFifteenTests();
+        NyarHelpTests();
+        GameCatalogTests();
         Console.WriteLine($"Raphael.Logic.Tests: {_pass} passed, {_fail} failed");
         return _fail == 0 ? 0 : 1;
     }

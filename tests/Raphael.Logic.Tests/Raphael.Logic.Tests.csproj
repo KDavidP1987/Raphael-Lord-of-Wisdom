@@ -18,6 +18,8 @@
     <Compile Include="..\..\Raphael\Services\Nyar\NyarInfoParse.cs" Link="Linked\NyarInfoParse.cs" />
     <Compile Include="..\..\Raphael\Services\Nyar\NyarMessages.cs" Link="Linked\NyarMessages.cs" />
     <Compile Include="..\..\Raphael\Services\Nyar\NyarForm.cs" Link="Linked\NyarForm.cs" />
+    <Compile Include="..\..\Raphael\Services\Nyar\NyarLimits.cs" Link="Linked\NyarLimits.cs" />
+    <Compile Include="..\..\Raphael\Services\Nyar\NyarHelp.cs" Link="Linked\NyarHelp.cs" />
     <Compile Include="..\..\Raphael\UI\ModContent\RailPolicy.cs" Link="Linked\RailPolicy.cs" />
     <!-- 0.73.0: guide data (pure) and the Bloodcraft reset core. -->
     <Compile Include="..\..\Raphael\Services\Guides\*.cs" Link="Linked\Guides\%(Filename)%(Extension)" />
@@ -28,5 +30,10 @@
     <Compile Include="..\..\Raphael\Services\VcfArg.cs" Link="Linked\VcfArg.cs" />
     <Compile Include="..\..\Raphael\Services\Uriel\UrielFeatures.cs" Link="Linked\UrielFeatures.cs" />
     <Compile Include="..\..\Raphael\Services\Kindred\KindredAdminCommands.cs" Link="Linked\KindredAdminCommands.cs" />
+    <!-- 0.74.0: the unit and object reference (pure parts) and the UnitCatalog view over it. -->
+    <Compile Include="..\..\Raphael\Resources\GameCatalog.cs" Link="Linked\GameCatalog.cs" />
+    <Compile Include="..\..\Raphael\Resources\GameCatalog.Data.cs" Link="Linked\GameCatalog.Data.cs" />
+    <Compile Include="..\..\Raphael\Resources\GameCatalogView.cs" Link="Linked\GameCatalogView.cs" />
+    <Compile Include="..\..\Raphael\Resources\UnitCatalog.cs" Link="Linked\UnitCatalog.cs" />
   </ItemGroup>
 </Project>

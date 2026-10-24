@@ -80,6 +80,7 @@ public partial class MainPanel
         NyarState.StatusChanged    += RebuildNyarUnitCounts;
         NyarCapture.InfoChanged    += OnNyarInfoCaptured;
         NyarCapture.UnitsChanged   += RebuildNyarUnits;
+        NyarCapture.PoolChanged    += RebuildNyarPoolLibrary;
         _nyarSubscribed = true;
     }
 
@@ -102,6 +103,7 @@ public partial class MainPanel
         NyarState.StatusChanged    -= RebuildNyarUnitCounts;
         NyarCapture.InfoChanged    -= OnNyarInfoCaptured;
         NyarCapture.UnitsChanged   -= RebuildNyarUnits;
+        NyarCapture.PoolChanged    -= RebuildNyarPoolLibrary;
         if (_nyarEdBatchSubscribed)
         {
             NyarBatchRunner.Changed -= OnNyarBatchChanged;
@@ -183,12 +185,30 @@ public partial class MainPanel
     // Before an admin action: clear the old outcome so the next one is clearly its answer.
     private static void NyarBeginAction() { NyarState.ClearError(); NyarState.SetResult(true, ""); }
 
-    private InputFieldRef AddNyarInput(GameObject row, string name, string placeholder, int width)
+    /// <summary>An input box; <paramref name="helpKey"/> (a NyarHelp.Inputs key, written as NyarHelpInput("…") so the
+    /// help test can find it) puts its plain-words help on hover.</summary>
+    private InputFieldRef AddNyarInput(GameObject row, string name, string placeholder, int width, string helpKey = null)
     {
         var input = UIFactory.CreateInputField(row, name, placeholder);
         UIFactory.SetLayoutElement(input.GameObject, minWidth: Theme.ScaledWidth(width), preferredWidth: Theme.ScaledWidth(width),
             flexibleWidth: 0, minHeight: Theme.ScaledHeight(26), preferredHeight: Theme.ScaledHeight(28), flexibleHeight: 0);
+        string help = helpKey == null ? null : NyarHelp.Input(helpKey);
+        if (!string.IsNullOrEmpty(help)) TooltipHover.Attach(input.GameObject, help);
         return input;
+    }
+
+    // 0.74.0 (PLAN §B): the key of a box's help. Only a marker for the source test (NyarHelpTests) that every key used
+    // here exists in NyarHelp.Inputs and every key there is used.
+    private static string NyarHelpInput(string key) => key;
+
+    /// <summary>A folded "How this works" guide (NyarHelp.Sections[<paramref name="id"/>]), closed by default.</summary>
+    private static void NyarHowItWorks(GameObject parent, string id)
+    {
+        if (!NyarHelp.Sections.TryGetValue(id, out var s)) return;
+        Raphael.UI.Forms.CollapsibleSection.Build(parent, "How this works: " + s.Title, false, c =>
+        {
+            foreach (var line in s.Lines) AddBodyText(c, Muted("• " + NyarEscape(line)), Theme.ScaledUI(11));
+        });
     }
 
     private static TextMeshProUGUI AddNyarRowText(GameObject row, string text)
@@ -560,36 +580,9 @@ public partial class MainPanel
 
     // ---------------------------------------------------------------- ADMIN: EVENTS
 
-    // Design §6's settable fields (api 8). N / M (a wave / unit-entry number) and NAME (a pool) are picked from chips.
-    private static readonly string[] NyarSettableFields =
-    {
-        "name", "durationSeconds", "location", "conditions.minPlayers", "conditions.cooldownMinutes", "conditions.chancePercent",
-        "trigger.type", "trigger.days", "trigger.times", "trigger.phase", "trigger.bosses", "trigger.minMinutes", "trigger.maxMinutes",
-        "trigger.playerCooldownMinutes", "trigger.factions", "trigger.kills", "trigger.windowSeconds", "trigger.shared",
-        "trigger.heat", "trigger.warnAt", "trigger.vbloodHeat", "trigger.scope",
-        "action.scope", "action.stats.physicalPower", "action.stats.spellPower", "action.stats.maxHealth", "action.stats.attackSpeed",
-        "action.stats.moveSpeed", "action.factions",
-        "action.waves", "action.intervalSeconds", "action.radius", "action.units", "action.modifiers.level", "action.modifiers.levelDelta",
-        "action.modifiers.maxHealth", "action.modifiers.power", "action.modifiers.moveSpeed", "action.modifiers.attackSpeed",
-        "action.loot", "action.allowTerritory", "action.behaviour", "action.units.N.chance", "action.fanOut", "action.scoreboard",
-        "action.waveList.N", "action.waveList.N.units", "action.waveList.N.afterSeconds", "action.waveList.N.whenCleared",
-        "action.waveList.N.units.M.level", "action.waveList.N.units.M.levelDelta", "action.waveList.N.units.M.maxHealth",
-        "action.waveList.N.units.M.power", "action.waveList.N.units.M.moveSpeed", "action.waveList.N.units.M.attackSpeed",
-        "action.arena", "action.winner", "action.growth", "action.growth.addUnits", "action.growth.addLevels", "action.growth.whenCleared",
-        "action.regionLock", "action.bosses", "action.waveList.N.bosses", "action.pursuit", "action.pools.NAME",
-        "action.goal", "action.goal.radius", "action.goal.name", "action.hordes.count", "action.hordes.everyMinutes", "action.hordes.size",
-        "action.roamers.max", "action.marchSpeed",
-        // 0.73.0: undead hordes (Nyarlathotep 0.14.0). "Any other field" offers each only for the types that take it.
-        "action.destination", "action.destination.radius", "action.destination.name",
-        "action.origins.count", "action.origins.minNatives", "action.origins.minSpacing", "action.origins.perOrigin",
-        "action.hunters", "action.driftRadius",
-        "action.spread.perKillMin", "action.spread.perKillMax", "action.spread.max", "action.spread.perMinute", "action.spread.pool",
-        "action.start", "action.start.minDistance",
-        "action.growth.perKillMin", "action.growth.perKillMax", "action.growth.max", "action.growth.perMinute", "action.growth.pool",
-        "action.infest.hunters", "action.infest.driftRadius",
-        "action.infest.spread.perKillMin", "action.infest.spread.perKillMax", "action.infest.spread.max",
-        "action.infest.spread.perMinute", "action.infest.spread.pool",
-    };
+    // Design §6's settable fields (api 8). 0.74.0: the list moved to NyarFieldRules.SettableFields (pure, so the help
+    // coverage test can walk it).
+    private static string[] NyarSettableFields => NyarFieldRules.SettableFields;
 
     private void BuildNyarAdminEventsTab(GameObject page)
     {
@@ -614,8 +607,8 @@ public partial class MainPanel
         AddSectionHeading(nc, "New or copy");
         AddBodyText(nc, "New events and copies are created <b>disabled</b>; set their fields, then enable them.", Theme.ScaledUI(12));
         var nr = MakeUrielRow(nc, "NyarNewRow");
-        _nyarNewIdInput     = AddNyarInput(nr, "NyarNewId", "new event id", 140);
-        _nyarNewPillarInput = AddNyarInput(nr, "NyarNewPillar", "pillar (spawns…)", 130);
+        _nyarNewIdInput     = AddNyarInput(nr, "NyarNewId", "new event id", 140, NyarHelpInput("new.id"));
+        _nyarNewPillarInput = AddNyarInput(nr, "NyarNewPillar", "pillar (spawns…)", 130, NyarHelpInput("new.pillar"));
         AddUrielButton(nr, "NyarNewGo", "New", "Create a skeleton definition of that pillar: empowerment, spawns, boss, zones or sieges (event new <id> <pillar>).", () =>
         {
             string id = Tok(_nyarNewIdInput), pillar = Tok(_nyarNewPillarInput).ToLowerInvariant();
@@ -624,14 +617,15 @@ public partial class MainPanel
             NyarBeginAction(); NyarClient.EventNew(id, pillar);
         }, 70);
         var cr = MakeUrielRow(nc, "NyarCopyRow");
-        _nyarCopyFromInput = AddNyarInput(cr, "NyarCopyFrom", "copy from id", 140);
-        _nyarCopyToInput   = AddNyarInput(cr, "NyarCopyTo", "new id", 130);
+        _nyarCopyFromInput = AddNyarInput(cr, "NyarCopyFrom", "copy from id", 140, NyarHelpInput("copy.from"));
+        _nyarCopyToInput   = AddNyarInput(cr, "NyarCopyTo", "new id", 130, NyarHelpInput("copy.to"));
         AddUrielButton(cr, "NyarCopyGo", "Copy", "Copy a definition under a new id (event copy <id> <newId>).", () =>
         {
             string from = Tok(_nyarCopyFromInput), to = Tok(_nyarCopyToInput);
             if (from.Length == 0 || to.Length == 0) { NyarState.SetError("event copy", "Enter the id to copy and the new id."); return; }
             NyarBeginAction(); NyarClient.EventCopy(from, to);
         }, 70);
+        NyarHowItWorks(nc, "newcopy");
 
         // 0.71.0: field editing moved into each event's inline editor (Edit…), and units to the Admin: Units tab.
         AddSpacer(page, 6);
@@ -640,8 +634,61 @@ public partial class MainPanel
             "Unit fields have a searchable unit list. <b>Admin: Units</b> lists the event units around you and has the test spawn.",
             Theme.ScaledUI(12));
 
+        AddSpacer(page, 6);
+        BuildNyarPoolLibraryCard(page);
+
         if (!NyarState.DefsLoaded) NyarProtocolService.RefreshDefs();
         RebuildNyarDefs();
+    }
+
+    // ---------------------------------------------------------------- pool library (0.74.0, Nyarlathotep 0.15.0)
+
+    private GameObject _nyarPoolLibGo;
+    private InputFieldRef _nyarPoolInfoInput;
+    private int _nyarPoolPage = 1;
+
+    // `.nyar pool list|info|reload` (admin). The replies have no wire twin, so they show verbatim here (NyarCapture) and
+    // in chat; Raphael never edits pools.json.
+    private void BuildNyarPoolLibraryCard(GameObject page)
+    {
+        var card = AddCard(page, "NyarPoolLibCard");
+        AddSectionHeading(card, "Pools library");
+        _nyarPoolLibGo = null;
+        if (!NyarVersion.HasHordePools(NyarState.PluginVersion))
+        {
+            AddBodyText(card, Muted("The pool library " + NyarVersion.NeedsText(NyarState.PluginVersion) + "."), Theme.ScaledUI(12));
+            return;
+        }
+        AddBodyText(card, "Pools any event can name without defining them (the server's pools.json). Read-only here.", Theme.ScaledUI(12));
+        var r1 = MakeUrielRow(card, "NyarPoolLibRow");
+        AddUrielButton(r1, "NyarPoolList", "List", "List the library's pools, ten a page (.nyar pool list).",
+            () => { _nyarPoolPage = 1; NyarClient.PoolList(1); }, 70);
+        AddUrielButton(r1, "NyarPoolNext", "Next page", "The next page of the list (.nyar pool list <page>).",
+            () => { _nyarPoolPage++; NyarClient.PoolList(_nyarPoolPage); }, 100);
+        AddUrielButton(r1, "NyarPoolReload", "Reload", "Re-read pools.json on the server (.nyar pool reload). The reply names any event that became invalid.",
+            () => NyarClient.PoolReload(), 80);
+        var r2 = MakeUrielRow(card, "NyarPoolInfoRow");
+        _nyarPoolInfoInput = AddNyarInput(r2, "NyarPoolInfoIn", "pool name", 160, NyarHelpInput("library.info"));
+        AddUrielButton(r2, "NyarPoolInfo", "Info", "One pool's units and the events that name it (.nyar pool info <pool>).", () =>
+        {
+            string p = Tok(_nyarPoolInfoInput).ToLowerInvariant();
+            if (!NyarClient.PoolInfo(p)) { NyarState.SetError("pool info", "Type a pool name: a-z, 0-9 and -, up to 24 characters."); return; }
+            NyarState.ClearError();
+        }, 70);
+        AddNyarErrorLine(card);
+        _nyarPoolLibGo = AddNyarList(card, "NyarPoolLibList");
+        NyarHowItWorks(card, "poolslibrary");
+        RebuildNyarPoolLibrary();
+    }
+
+    private void RebuildNyarPoolLibrary()
+    {
+        if (_nyarPoolLibGo == null) return;
+        ClearChildren(_nyarPoolLibGo);
+        if (NyarCapture.PoolPending) { AddBodyText(_nyarPoolLibGo, Muted("Waiting for the server…"), Theme.ScaledUI(11)); return; }
+        if (NyarCapture.PoolLines.Count == 0) { AddBodyText(_nyarPoolLibGo, Muted("Press List to see the library."), Theme.ScaledUI(11)); return; }
+        if (NyarCapture.PoolAsked.Length > 0) AddBodyText(_nyarPoolLibGo, Muted(NyarEscape(NyarCapture.PoolAsked)), Theme.ScaledUI(11));
+        foreach (var l in NyarCapture.PoolLines) AddBodyText(_nyarPoolLibGo, NyarEscape(l), Theme.ScaledUI(11));
     }
 
     private void RebuildNyarDefs()
@@ -662,7 +709,7 @@ public partial class MainPanel
             if (NyarState.SupportsRegions)
                 AddInfoLabel(box, "NyarDefRegions", NyarRegionChips(d.Regions), FontStyles.Normal, Theme.ScaledUI(11));
             if (d.State == "disabled" && !string.IsNullOrEmpty(d.Reason))
-                AddBodyText(box, $"<color=#FF8080>Disabled: {NyarText(d.Reason)}</color>", Theme.ScaledUI(11));
+                AddBodyText(box, $"<color=#FF8080>Disabled: {NyarEscape(NyarMessages.ReasonText(d.Reason))}</color>", Theme.ScaledUI(11));
             var row = MakeUrielRow(box, "NyarDefBtns");
             string id = d.Id;
             bool running = d.State == "active";
@@ -727,8 +774,9 @@ public partial class MainPanel
             _nyarTplPillarBtns.Add((b, v, lbl));
         }
         var ar = MakeUrielRow(intro, "NyarTplAsRow");
-        _nyarTplAsIdInput = AddNyarInput(ar, "NyarTplAsId", "create as id (optional)", 180);
+        _nyarTplAsIdInput = AddNyarInput(ar, "NyarTplAsId", "create as id (optional)", 180, NyarHelpInput("template.as"));
         _nyarTplStatus = AddNyarRowText(ar, "");
+        NyarHowItWorks(intro, "templates");
 
         var card = AddCard(page, "NyarTplCard");
         AddNyarResultLine(card);
@@ -812,6 +860,7 @@ public partial class MainPanel
         AddNyarResultLine(card);
         AddNyarErrorLine(card);
         _nyarPillarsListGo = AddNyarList(card, "NyarPillarsList");
+        NyarHowItWorks(card, "pillars");
 
         if (!NyarState.PillarsLoaded) NyarProtocolService.RefreshPillars();
         RebuildNyarPillars();
@@ -862,8 +911,8 @@ public partial class MainPanel
         AddSectionHeading(add, "Add a zone where you stand");
         AddBodyText(add, $"Stand at the centre of the area to defend, then add it: {Mono(".nyar zone add <name> <radius>")}.");
         var ar = MakeUrielRow(add, "NyarZoneAddRow");
-        _nyarZoneNameInput   = AddNyarInput(ar, "NyarZoneName", "zone name", 160);
-        _nyarZoneRadiusInput = AddNyarInput(ar, "NyarZoneRadius", "radius (m)", 90);
+        _nyarZoneNameInput   = AddNyarInput(ar, "NyarZoneName", "zone name", 160, NyarHelpInput("zone.name"));
+        _nyarZoneRadiusInput = AddNyarInput(ar, "NyarZoneRadius", "radius (m)", 90, NyarHelpInput("zone.radius"));
         AddUrielButton(ar, "NyarZoneAdd", "Add here", "Create the zone at your position.", () =>
         {
             string name = Tok(_nyarZoneNameInput);
@@ -872,6 +921,7 @@ public partial class MainPanel
             NyarClient.ZoneAdd(name, r);
             NyarProtocolService.RefreshZones();
         }, 100);
+        NyarHowItWorks(add, "zones");
 
         AddSpacer(page, 6);
         var list = AddCard(page, "NyarZonesCard");
@@ -919,7 +969,7 @@ public partial class MainPanel
             "Scheduled and repeating messages aren't on the server yet — Raphael doesn't schedule them itself, " +
             "because they'd stop whenever you log out.");
         var row = MakeUrielRow(card, "NyarAnnounceRow");
-        _nyarAnnounceInput = AddNyarInput(row, "NyarAnnounceText", "message…", 320);
+        _nyarAnnounceInput = AddNyarInput(row, "NyarAnnounceText", "message…", 320, NyarHelpInput("announce.text"));
         UIFactory.SetLayoutElement(_nyarAnnounceInput.GameObject, flexibleWidth: 1);
         var row2 = MakeUrielRow(card, "NyarAnnounceRow2");
         AddUrielButton(row2, "NyarAnnounceSend", "Announce", "Broadcast this message (.nyar announce \"…\").", () =>
@@ -979,7 +1029,7 @@ public partial class MainPanel
         AddSectionHeading(rs, "Reset stats");
         AddBodyText(rs, $"Wipe one player's stats, or type {Mono("all")} for everyone. Step 1 asks, step 2 confirms.");
         var rr = MakeUrielRow(rs, "NyarResetRow");
-        _nyarResetTargetInput = AddNyarInput(rr, "NyarResetTarget", "player or all", 150);
+        _nyarResetTargetInput = AddNyarInput(rr, "NyarResetTarget", "player or all", 150, NyarHelpInput("reset.target"));
         AddUrielButton(rr, "NyarReset", "1. Reset…", "Ask the server to reset (.nyar stats reset <target>).", () =>
         {
             string t = Tok(_nyarResetTargetInput);

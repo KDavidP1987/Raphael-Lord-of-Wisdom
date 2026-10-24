@@ -164,7 +164,7 @@ public partial class MainPanel
         int gen = _nyarEdGen;
         label ??= spec.Label;
         var row = NyarRow(parent, "NyarStep_" + spec.Field);
-        NyarCell(row, label, 150, tip: $"{label}: {spec.RangeText}{(spec.NoneAllowed ? $", or {spec.NoneLabel}" : "")}. ({spec.Field})");
+        NyarCell(row, label, 150, tip: NyarTooltip(spec.Field, spec, fallback: $"{label}."));
         InputFieldRef input = null;
         TextMeshProUGUI echo = null;
         NyarFieldUi ui = null;
@@ -236,7 +236,7 @@ public partial class MainPanel
         var spec = NyarFieldRules.Spec(field);
         string label = spec?.Label ?? field;
         var row = NyarRow(parent, "NyarText_" + field);
-        NyarCell(row, label, 150, tip: $"{label}: {spec?.RangeText}, no < or >. ({field})");
+        NyarCell(row, label, 150, tip: NyarTooltip(field, spec, fallback: $"{label}. No < or > characters."));
         var input = AddNyarInput(row, "NyarTextIn", placeholder, width);
         input.Text = _nyarForm.Get(field);
         NyarCell(row, "", 10, flex: true);
@@ -250,11 +250,15 @@ public partial class MainPanel
 
     /// <summary>"Label [A] [B] [C] · mark Set": the picked option is gold. Picking redraws the editor (the controls under a
     /// choice depend on it).</summary>
+    /// <remarks>0.74.0: the label's tooltip is the field's plain-words help (NyarHelp) with one line per option, keyed by
+    /// <paramref name="helpKey"/> (default: the first tail key, else <paramref name="name"/>); <paramref name="tip"/> is
+    /// the fallback for a field without help.</remarks>
     private NyarFieldUi NyarChoice(GameObject parent, string name, string label, string tip, (string Label, string Value, string Tip)[] options,
-        string picked, Action<string> onPick, string[] tailKeys, string hint = null)
+        string picked, Action<string> onPick, string[] tailKeys, string hint = null, string helpKey = null)
     {
         var row = NyarRow(parent, "NyarChoice_" + name);
-        NyarCell(row, label, 150, tip: tip);
+        string key = helpKey ?? (tailKeys != null && tailKeys.Length > 0 ? tailKeys[0] : name);
+        NyarCell(row, label, 150, tip: NyarHelp.Prose(key) != null ? NyarTooltip(key, null, options) : tip);
         foreach (var o in options)
         {
             string v = o.Value;
@@ -272,14 +276,27 @@ public partial class MainPanel
         return ui;
     }
 
-    /// <summary>A true / false field as [Yes] [No].</summary>
-    private void NyarYesNo(GameObject parent, string field, string label, string tip, string hint = null)
+    /// <summary>A true / false field as [Yes] [No]. <paramref name="disabledReason"/> set: the server can't take the field
+    /// yet, so the row shows the label and that reason (muted) instead of the chips.</summary>
+    private void NyarYesNo(GameObject parent, string field, string label, string tip, string hint = null, string disabledReason = null)
     {
+        if (!string.IsNullOrEmpty(disabledReason))
+        {
+            var row = NyarRow(parent, "NyarChoiceOff_" + field);
+            NyarCell(row, label, 150, tip: NyarTooltip(field, null, fallback: tip));
+            NyarCell(row, Muted(disabledReason), 200, flex: true);
+            return;
+        }
         string cur = _nyarForm.Get(field);
         NyarChoice(parent, field, label, $"{tip} ({field})",
             new[] { ("Yes", "true", $"{label}: yes"), ("No", "false", $"{label}: no") },
             cur, v => _nyarForm.Set(field, v), new[] { field }, hint);
     }
+
+    /// <summary>0.74.0 (PLAN §B2): a field label's tooltip: its plain-words help (NyarHelp), one line per option, the
+    /// default and the range, then the raw key muted. A field without help gets <paramref name="fallback"/>.</summary>
+    private string NyarTooltip(string field, NyarSpec spec, IEnumerable<(string Label, string Value, string Tip)> options = null, string fallback = null)
+        => NyarHelp.Tooltip(field, spec, options, NyarHelp.DefaultOf(field, NyarForm.IsApocalypseFamily(_nyarForm.Load.Kind)), fallback, Theme.MutedBodyHex);
 
     // ---------------------------------------------------------------- list rows (units, bosses)
 
@@ -296,9 +313,12 @@ public partial class MainPanel
         var rows = NyarFieldRules.ParseEntries(value, bosses);
         bool text = _nyarEdTextMode.Contains(field) || rows == null;
         int maxEntries = bosses ? NyarFieldRules.MaxBossEntries : NyarFieldRules.MaxUnitEntries;
+        // 0.74.0: pool ranges and library pools need Nyarlathotep 0.15.0 (api 8 covers 0.14 too, so the plugin version gates).
+        bool allowRanges = !bosses && allowPools;
+        bool rangesOk = NyarVersion.HasHordePools(NyarState.PluginVersion);
 
         var head = NyarRow(parent, "NyarListHead_" + field);
-        NyarCell(head, $"<b>{title}</b>", 150, tip: $"{title} ({field})");
+        NyarCell(head, $"<b>{title}</b>", 150, tip: NyarTooltip(field, null, fallback: $"{title}."));
         var counter = NyarCell(head, "", 170, flex: true);
         NyarChip(head, "NyarAsText", text ? "Show as rows" : "Edit as text", false,
             text ? "Back to rows (needs a value Raphael can read)." : "Edit the raw value: CHAR_name:count and pool:name:count, comma-separated.",
@@ -338,13 +358,31 @@ public partial class MainPanel
                     NyarMiniCount(r, "fewest", e.Min, 1, NyarFieldRules.MaxRollBosses, n => { var l = Clone(rows); l[idx].Min = n; if (l[idx].Max < n) l[idx].Max = n; Commit(l); });
                     NyarMiniCount(r, "most", e.Max, 1, NyarFieldRules.MaxRollBosses, n => { var l = Clone(rows); l[idx].Max = n; if (l[idx].Min > n) l[idx].Min = n; Commit(l); });
                 }
+                else if (!bosses && e.IsPool && e.Ranged)
+                {
+                    // 0.74.0: a pool range (Nyarlathotep 0.15.0): a random count between fewest and most, rolled per wave.
+                    int cap = NyarFieldRules.MaxUnitCount;
+                    NyarMiniCount(r, "fewest", e.Min, 1, cap, n => { var l = Clone(rows); l[idx].Min = n; if (l[idx].Max < n) l[idx].Max = n; l[idx].Count = l[idx].Max; Commit(l); });
+                    NyarMiniCount(r, "most", e.Max, 1, cap, n => { var l = Clone(rows); l[idx].Max = n; if (l[idx].Min > n) l[idx].Min = n; l[idx].Count = n; Commit(l); });
+                }
                 else
                 {
                     int max = bosses ? NyarFieldRules.MaxBossCount : NyarFieldRules.MaxUnitCount;
                     NyarMiniCount(r, "×", e.Count, 1, max, n => { var l = Clone(rows); l[idx].Count = n; Commit(l); });
                 }
+                if (!bosses && e.IsPool && allowRanges)
+                {
+                    bool on = e.Ranged;
+                    if (rangesOk)
+                        NyarChip(r, "NyarRangeSwitch", on ? "Count" : "Range", false,
+                            on ? "Back to a fixed count (the range's most)." : "Draw a random count between a fewest and a most, rolled again each wave.",
+                            () => { var l = Clone(rows); NyarFieldRules.SetRanged(l[idx], !on); Commit(l); }, 60);
+                }
                 AddUrielButton(r, "NyarListRemove", "Remove", "Take this entry out of the list.", () => { var l = Clone(rows); l.RemoveAt(idx); Commit(l); }, 70);
             }
+
+            if (allowRanges && !rangesOk && rows.Any(x => x.IsPool))
+                NyarNote(parent, Muted("A pool entry's min-max range " + NyarVersion.NeedsText(NyarState.PluginVersion) + "."));
 
             // Add: unit picker + Add, then pool chips.
             bool full = rows.Count >= maxEntries;
@@ -352,7 +390,11 @@ public partial class MainPanel
             if (!full)
             {
                 AddBeelzSearchableField(parent, "NyarPick_" + field, bosses ? "Find a boss to add (type vblood to list them)…" : "Find a unit to add (name or faction)…",
-                    "", t => UnitCatalog.Search(t, 30), v => _nyarUnitPicks[pickKey] = v ?? "");
+                    "", t => UnitCatalog.Search(t, 30), v => _nyarUnitPicks[pickKey] = v ?? "",
+                    // 0.74.0: browse the unit reference; the pick lands in this search box, then Add as usual.
+                    (row, input) => AddCatalogBrowseButton(row, input, parent, Raphael.Resources.BrowseKinds.Unit,
+                        Raphael.Resources.BrowseFormat.Name, startFilter: bosses ? "vblood" : null,
+                        fieldLabel: bosses ? "Nyarlathotep boss list" : "Nyarlathotep unit list"));
                 var ar = NyarRow(parent, "NyarListAdd_" + field);
                 NyarCell(ar, "", 150);
                 AddUrielButton(ar, "NyarListAddUnit", bosses ? "Add boss" : "Add unit", "Add the unit picked above (count 1; change it in its row).", () =>
@@ -369,8 +411,26 @@ public partial class MainPanel
                 if (allowPools)
                 {
                     var pools = NyarPoolNames();
-                    if (pools.Count == 0) NyarNote(parent, Muted("No pools yet — make one under Unit pools to add a random mix."));
-                    else
+                    if (pools.Count == 0)
+                        NyarNote(parent, Muted(rangesOk
+                            ? "This event has no pools of its own. Make one below, or type the name of a library pool (see Pools library)."
+                            : "No pools yet — make one under Unit pools to add a random mix."));
+                    if (rangesOk && !bosses)
+                    {
+                        // A library pool (pools.json) by name: read on press, checked for shape only (the server checks it exists).
+                        var lr = NyarRow(parent, "NyarListAddLib_" + field);
+                        NyarCell(lr, Muted("or a library pool name"), 150);
+                        var lin = AddNyarInput(lr, "NyarListLibIn", "e.g. undead-units", 160, NyarHelpInput("library.poolname"));
+                        AddUrielButton(lr, "NyarListAddLib", bosses ? "Add roll" : "Add pool", "Add an entry drawn from that library pool (count 1; change it in its row).", () =>
+                        {
+                            string pn = NyarFieldRules.NormalizePoolName(lin?.Text ?? "");
+                            if (!NyarFieldRules.IsPoolName(pn)) { NyarState.SetError("pool", "Type a pool name: a-z, 0-9 and -, up to 24 characters."); return; }
+                            NyarState.ClearError();
+                            var l = Clone(rows); NyarFieldRules.AddPool(l, pn, 1, 1, 1, bosses, mergeRepeats: !waveList); Commit(l);
+                        }, 90);
+                        NyarCell(lr, "", 10, flex: true);
+                    }
+                    if (pools.Count > 0)
                     {
                         var chips = new List<(string, bool, string, Action, int)>();
                         foreach (var p in pools)
