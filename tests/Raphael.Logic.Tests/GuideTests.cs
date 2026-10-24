@@ -269,6 +269,24 @@ internal static partial class Program
         if (g.Kind == GuideKind.FullMod)
             Check(g.Sections.FirstOrDefault(s => s.Key == GuideSchema.QuickStart)?.Open == true, $"{g.Id}: Quick start is open");
         Check(g.ManifestMods.Length > 0, $"{g.Id}: names its manifest(s)");
+        if (g.Kind == GuideKind.FullMod) GuideServerSideCheck(g);
+    }
+
+    // 0.74.0 (owner's request): every full mod guide says which settings only the server's files change. Its Server
+    // settings section opens with the ServerSide callout, and every settings row says where it is changed (In game, or
+    // Server file only); a row without that is retired or reserved and must say so.
+    private static void GuideServerSideCheck(Guide g)
+    {
+        var config = g.Sections.FirstOrDefault(s => s.Key == GuideSchema.Config);
+        Check(config != null && config.Blocks.Count > 1 && config.Blocks[0] is GCallout { Kind: CalloutKind.ServerSide }
+              && config.Blocks[1] is GBullets,
+            $"{g.Id}: Server settings opens with the server-side callout (Blocks.ServerSide)");
+        foreach (var row in Guides.AllBlocks(g).OfType<GSettings>().SelectMany(s => s.Rows))
+        {
+            if (row.Applies is "live" or "restart" or "reload") continue;
+            Check(row.Applies == null && System.Text.RegularExpressions.Regex.IsMatch(row.Meaning ?? "", @"\b(Retired|Reserved|Renamed|Replaced|Debug builds)\b"),
+                $"{g.Id}: [{row.Section}] {row.Key} says where it is changed (live / restart / reload) or that it is retired or reserved");
+        }
     }
 
     private static void GuideLint(Guide g)

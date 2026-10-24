@@ -407,6 +407,16 @@ internal static partial class Guides
 
         // ---------------------------------------------------------------------------------------- 7. config
         b.Section(GuideSchema.Config, false, s => s
+            .ServerSide(
+                Cfg + " (every setting below) and BepInEx/config/Nyarlathotep/: events.json (the event definitions), pools.json " +
+                "(the shared pool library) and state.json (timers and a running apocalypse: never edit it).",
+                "for the cfg, stop the server, edit the file, then start it. Only the pillars change without a restart. For events.json " +
+                "or pools.json no restart is needed: edit the file, then " + C(".nyar event reload") + " (Reload from disk on Admin: Events) " +
+                "or " + C(".nyar pool reload") + " (the Pools library card).",
+                "the five pillars (" + C(".nyar pillar") + ", Admin: Pillars), and the event fields listed under \"Fields you can set in " +
+                "chat\" (" + C(".nyar event set") + ", the Admin: Events editor). Everything else is file only, including a horde march's " +
+                "starting units, an apocalypse's hotspots and roamers per hotspot, the first horde's time, the growth per horde, and the " +
+                "pools of an apocalypse, infestation or horde march. The editor shows those but can't change them.")
             .P("Settings live in " + Cfg + " on the server. Event definitions live in BepInEx/config/Nyarlathotep/events.json, with an events.json.bak copy and a state.json for timers and the apocalypse.")
             .P("<b>Live vs restart.</b> Pillars change live with " + C(".nyar pillar") + " or the Admin: Pillars tab. Limits, WarningOffsets and DailyBannerTime are read once at startup. The server does not watch the cfg file, so other hand edits take effect at the next restart. A " + C(".nyar pillar") + " command also re-reads the whole file.")
             .P("Out-of-range limits are clamped at load, with a log line.")

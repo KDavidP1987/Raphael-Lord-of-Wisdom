@@ -433,6 +433,13 @@ internal static partial class Guides
         // ------------------------------------------------------------------------------------------- 7. config
         b.Section(GuideSchema.Config, false, s =>
         {
+            s.ServerSide(
+                "<b>" + Cfg + "</b> (every setting below). Player progress is saved as JSON under BepInEx/config/Bloodcraft/; " +
+                "don't edit those files while the server runs.",
+                "stop the server, edit the file, then start it. Bloodcraft reads it once at startup and has no reload command.",
+                "no setting. Bloodcraft has no command that changes its config. Admin commands change a player's progress instead " +
+                "(" + C(".lvl set") + ", " + C(".bl set") + ", " + C(".prestige r") + ", " + C(".wep set") + ", " + C(".prof set") +
+                ", Raphael's Bloodcraft: Admin tab and Reset Bloodcraft progress).");
             s.P("Settings live in <b>" + Cfg + "</b> on the server. Player data is saved under BepInEx/config/Bloodcraft/. Bloodcraft reads the file at startup, so every change needs a server restart.");
             s.P("Values ending in 0.x are fractions: 0.25 means 25%. Item and unit settings take PrefabGUID numbers; lists are comma-separated.");
 

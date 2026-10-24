@@ -9,6 +9,7 @@ internal static partial class Guides
     static partial void AddBeelzebub(List<Guide> list)
     {
         static string A(string name) => GuideText.Arg(name);
+        static string C(string s) => GuideText.Cmd(s);
 
         const string Cfg = "BepInEx/config/kdpen.Beelzebub.cfg";
 
@@ -410,9 +411,12 @@ internal static partial class Guides
                     "<b>BepInEx/config/kdpen.Beelzebub.cfg</b>: global settings (see Server configuration).",
                     "<b>BepInEx/config/kdpen.Beelzebub/ability_rules.json</b>: deny/allow lists, transform-only lists, global scaling defaults, " +
                     "per-ability rules (AbilityMap), per-unit transform rules (TransformMap) and drop-rate overrides. Created on first start. " +
-                    "The admin commands edit it live; after a hand edit run .beelz admin reload.",
-                    "<b>BepInEx/config/kdpen.Beelzebub/ability_metadata_overrides.json</b>: optional display name, description, school, type and category fixes. Hand-edit, then reload.",
-                    "<b>BepInEx/config/kdpen.Beelzebub/state.json</b>: every player's captures, unlocks, binds, hotkeys and presets, keyed by Steam ID. Back it up.",
+                    "The admin commands edit most of it live; after a hand edit run .beelz admin reload. DropRateOverrides, a form's SlotTemplate and " +
+                    "a lock group's Notes have no command: edit the file, then reload.",
+                    "<b>BepInEx/config/kdpen.Beelzebub/ability_metadata_overrides.json</b>: optional display name, description, school, type and category fixes. " +
+                    "Hand-edit with the server stopped, then start it: reload does not read this file. Only an ability's condition can be set in game.",
+                    "<b>BepInEx/config/kdpen.Beelzebub/state.json</b>: every player's captures, unlocks, binds, hotkeys and presets, keyed by Steam ID. Back it up, " +
+                    "and edit it only with the server stopped, because Beelzebub rewrites it from memory.",
                     "Diagnostic dumps (discovered_abilities.json, inspect_export.csv) are written to the same folder.");
             });
 
@@ -663,11 +667,16 @@ internal static partial class Guides
         // ------------------------------------------------------------------------------------------- 7. config
         g.Section(GuideSchema.Config, false, b =>
         {
-            b.P("All settings live in <b>" + Cfg + "</b> on the server. The file is created on first start.");
-            b.Bullets(
-                "<b>live</b>: change it with .beelz admin set " + A("key") + " " + A("value") + " or the Admin: Config tab and it applies at once and saves to the file.",
-                "Hand edits to the file need a server restart (or a set command) to take effect.",
-                "Rules for single abilities and forms are in ability_rules.json, not here (see Admin guide).");
+            b.ServerSide(
+                "<b>" + Cfg + "</b> (every setting below), and in BepInEx/config/kdpen.Beelzebub/: ability_rules.json (the ability and form rules), " +
+                "ability_metadata_overrides.json and state.json (player data).",
+                "for the cfg, stop the server, edit the file, then start it. Beelzebub never re-reads the cfg while it runs, and any set command " +
+                "writes its in-memory values back over a hand edit. For ability_rules.json, edit the file, then " + C(".beelz admin reload") +
+                " (DropRateOverrides, SlotTemplate and lock Notes can only be changed this way). ability_metadata_overrides.json needs a restart.",
+                "every setting below. " + C(".beelz admin set") + " " + A("key") + " " + A("value") + " (or the Admin: Config tab) changes any key at " +
+                "once and saves it. It checks only the value's type, not its range, so type values carefully. Any server admin can run it; " +
+                "Beelzebub has no owner tier. Shard-boss transform settings have no shortcut command: use set.");
+            b.Bullets("Rules for single abilities and forms are in ability_rules.json, not here (see Admin guide).");
 
             b.Detail("Capture", d =>
             {
@@ -684,8 +693,8 @@ internal static partial class Guides
                         "Who rolls when a unit dies: KillerOnly, or Proximity (every online player within Capture_ShareCreditRadius rolls separately).", "live")
                     .Row("Capture", "Capture_ShareCreditRadius", "30", "Radius in world units (about metres) for Proximity mode.", "live")
                     .Row("Capture", "Capture_GrantSignatureSummons", "true",
-                        "Unlocking a form also adds its signature summons to the player's captures, usable without transforming. Applied to existing unlocks at load. " +
-                        "Cast outside the form, the animation may look off and a few scripted summons may do nothing.", null));
+                        "Unlocking a form also adds its signature summons to the player's captures, usable without transforming. A change applies to new unlocks at once; " +
+                        "existing unlocks are filled in at the next start. Cast outside the form, the animation may look off and a few scripted summons may do nothing.", "live"));
             });
 
             b.Detail("Drop chances", d =>
@@ -732,7 +741,7 @@ internal static partial class Guides
                 d.Settings("Abilities", Cfg, s => s
                     .Row("Abilities", "Abilities_ApplyConfig", "true",
                         "Master switch for baked ability edits (range, charges, interrupt, cast speed and so on). The edits are server-wide and change the boss's copy too. " +
-                        "Set false only to turn every baked edit off. Applied at server start and on .beelz admin reload.", null)
+                        "Set false only to turn every baked edit off. Set it in game, then run .beelz admin reload: the edits are added or removed only on reload or at server start.", "live")
                     .Row("Abilities", "Grant_EnforceWeaponMatch", "false",
                         "true = refuse a Universal grant of a weapon-tied ability and point the player to .beelz weapon-grant. The weapon hint shows either way.", "live")
                     .Row("Abilities", "Grant_MinimumCooldownSeconds", "0",

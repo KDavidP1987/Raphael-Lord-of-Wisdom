@@ -491,9 +491,15 @@ internal static partial class Guides
         // ------------------------------------------------------------------ 7. Server configuration
         b.Section(GuideSchema.Config, false, s =>
         {
-            s.P("Faust's settings live in <b>" + Cfg + "</b> on the server. Its data files live in " + C("BepInEx/config/Faust/") + ".");
-            s.P("<b>live</b> = changes made in game with " + C(".faust admin setglobal") + " or " + C(".faust admin set") + " apply at once and are " +
-                "saved to the file. A hand edit of the cfg file always needs a server restart.");
+            s.ServerSide(
+                "<b>" + Cfg + "</b> (every setting below) and the data files in " + C("BepInEx/config/Faust/") + " (sessions, heat map, " +
+                "kills, feature control and unlocks, the world-scan whitelist).",
+                "stop the server, edit the file, then start it: Faust reads the cfg once at startup and has no reload command. Edit the " +
+                "JSON data files only while the server is stopped, because Faust writes them from memory and overwrites a hand edit.",
+                "almost everything. Faust is the exception among the mods: " + C(".faust admin setglobal") + " and " + C(".faust admin set") +
+                " (Admin: Control) change every setting below except KillTracking and DataNamespace, at once, and save them to the file. " +
+                "Any server admin can run them; Faust has no owner tier. ResetSteamIds limits only data clear and data wipe, and any " +
+                "admin can clear it with setglobal, so treat it as a guard against mistakes, not against a hostile admin.");
 
             s.Settings("Master switch and anti-spam", Cfg, t => t
                 .Row("Faust", "Enabled", "true",
@@ -528,8 +534,9 @@ internal static partial class Guides
                     "bounds the kill tally. For a one-off trim use data clear. (sessionretentiondays)", "live")
                 .Row("Faust.Collection", "DataNamespace", "(empty)",
                     "Stores data in " + C("BepInEx/config/Faust/<name>/") + " instead of the shared folder. Empty = one dataset that " +
-                    "survives world wipes. A new name starts a fresh dataset; the old one stays on disk. Set it before first start, or " +
-                    "restart after changing it. (datanamespace)", "restart")));
+                    "survives world wipes. Change it only with the server stopped: setglobal datanamespace takes it, but the stores don't " +
+                    "reload, so the next save copies the current data into the new folder instead of starting fresh. The old dataset " +
+                    "stays on disk. (datanamespace)", "restart")));
 
             s.Detail("[Faust.Heatmap]: position heat map", d => d.Settings("Heat map", Cfg, t => t
                 .Row("Faust.Heatmap", "Enabled", "false",

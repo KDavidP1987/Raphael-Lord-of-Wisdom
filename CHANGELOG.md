@@ -55,6 +55,21 @@ Works with Nyarlathotep 0.15.0 (0.14.0 still works without the 0.15.0 features),
 - Unit names come from the game's own text, in your game language. Object names come from the game's blueprint text
   where it has one; the rest show a readable form of the prefab name.
 
+### New — the guides say which settings only the server file changes
+
+- Each full mod guide (Bloodcraft, Beelzebub, Faust, Uriel, Nyarlathotep) now opens its **Server configuration**
+  section with a **Server-side** callout. It explains why these settings stay on the server, so a server is not open
+  to every in-game admin and its performance stays safe. It then lists where the files are, how to change a
+  server-file setting (restart or the mod's reload command), and what an admin can change in game.
+- Every settings row is marked **In game: applies at once**, **Server file only: restart to apply** or **Server file
+  only: reload to apply**.
+- Corrected against each mod's source:
+  - Beelzebub: ability_metadata_overrides.json needs a restart, not a reload. DropRateOverrides, SlotTemplate and lock
+    notes are file only. Two settings shown without a tag can be set in game.
+  - Uriel: RespawnGapFrames is used by every stair restyle. Admin: Controls only reads the switches.
+  - Faust: DataNamespace is changed only with the server stopped.
+- The guide tests now require the callout and a tag on every row.
+
 ### Fixed — a readable Bloodcraft reset report
 
 From a friend test of 0.73.0's **Reset Bloodcraft progress** card (Bloodcraft → Admin).

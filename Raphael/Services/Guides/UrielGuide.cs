@@ -152,7 +152,7 @@ internal static partial class Guides
                     ".uriel sharedall [player] · .uriel sharedebug · .uriel unshareplayer <player> · .uriel unshareall")
                 .Row("Admin: Objects", "<b>Blocklist</b>, <b>Boss map</b>, <b>Block</b> / <b>Unblock</b>, <b>View unlocks</b>, <b>Grant</b>, <b>Revoke</b>, <b>Grant ALL</b> with a subset, spawn conditions (per object and global), plot tools (<b>Purge plot</b>, <b>Arm force-despawn</b> + <b>Confirm</b>, <b>Purge orphans (server-wide)</b>) and a note on the overlap settings.",
                     ".uriel blocklist · bossmap list · block · unblock · unlocks <player> · grant · revoke · grantall · objcfglist · objcfg · objcfgglobal · purgeplot · forcepurgeplot · forcedespawn [confirm] · purgeorphans")
-                .Row("Admin: Controls", "<b>What's switched on</b>: every Uriel switch the server reports, with <b>Refresh</b>. <b>Undo what Uriel did</b>: <b>Stop all events</b>, <b>Remove all units</b>, <b>Remove all objects</b> and <b>Restore vanilla</b>, each an <b>Arm</b> + <b>Confirm</b> pair with the server's reply under it. Below them, the object-spawning handshake (collection, discovery mode and chance, admin-only, prefab totals).",
+                .Row("Admin: Controls", "<b>What's switched on</b>: every Uriel switch the server reports, with <b>Refresh</b>. It only reads them: switches change in the server file (see Server configuration). <b>Undo what Uriel did</b>: <b>Stop all events</b>, <b>Remove all units</b>, <b>Remove all objects</b> and <b>Restore vanilla</b>, each an <b>Arm</b> + <b>Confirm</b> pair with the server's reply under it. Below them, the object-spawning handshake (collection, discovery mode and chance, admin-only, prefab totals).",
                     ".uriel features · .uriel event stopall · .uriel unit purge [confirm] · .uriel purgeall [confirm] · .uriel killswitch [confirm] · .uriel api version")
                 .Row("Admin: Units", "Castle Events unit tools: <b>Spawn</b>, <b>Kill nearby</b>, <b>Despawn nearest</b>, <b>List</b>, <b>Status</b>, <b>Clear plot</b>, <b>Arm purge</b> + <b>Confirm purge</b>, <b>Rooms</b>, <b>Probe</b>, <b>Probe map</b>, and <b>Door</b> open / close / lock / unlock / show.",
                     ".uriel unit spawn · kill · despawn · list · status · clear · purge [confirm] · rooms · probe · probemap · door <action>"));
@@ -412,17 +412,26 @@ internal static partial class Guides
         // ------------------------------------------------------------------ 7. Server configuration
         b.Section(GuideSchema.Config, false, s =>
         {
-            s.P("File: <b>" + Cfg + "</b> on the server, created on first start. Uriel reads it at start-up, so <b>restart the server</b> after any change. Data lives next to it in <b>BepInEx/config/Uriel/</b>: spawned_objects.json, player_unlocks.json, blocked_prefabs.json, boss_unlocks.json, object_conditions.json, public_containers.json and castle_events.json.");
+            s.ServerSide(
+                "<b>" + Cfg + "</b> (every setting below), created on first start. Data lives next to it in <b>BepInEx/config/Uriel/</b>: " +
+                "spawned_objects.json, player_unlocks.json, blocked_prefabs.json, boss_unlocks.json, object_conditions.json, public_containers.json and castle_events.json.",
+                "stop the server, edit the file, then start it. Uriel reads the cfg once at start-up and has no reload command. Edit the JSON data " +
+                "files only with the server stopped too: Uriel reads each once at start and rewrites it from memory on every change, so an edit made " +
+                "while it runs is overwritten.",
+                "no setting. Every switch and limit below is server file only; " + Cmd(".uriel features") + " (Admin: Controls) only shows them. " +
+                "Admins change Uriel's data in game instead: grants and revokes, the block list, spawn conditions, the boss map, shares, and castle " +
+                "events. The cleanup commands (killswitch, purgeall, event stopall, unit purge) remove what Uriel placed but switch nothing off: to " +
+                "keep a feature off, set it to false in the file and restart.");
             s.Detail("[General] and [KillSwitch]", d => d.Settings("Master switch and reset", Cfg, r => r
                 .Row("General", "Enabled", "true", "Master switch. False turns every Uriel feature off for everyone, admins included. The admin cleanup commands (killswitch, purgeall, unshareall, unit purge, event stopall) still work.", "restart")
                 .Row("KillSwitch", "RestoreVanillaOnBoot", "false", "Emergency reset: the next start removes every Uriel-spawned object, makes every shared chest and cell private and puts back every door an event held. Uriel then sets it back to false itself, so it runs once. Saved settings are kept; swapped stairs stay.", "restart")));
             s.Detail("[ObjectSpawn]", d => d.Settings("Object spawning", Cfg, r => r
-                .Row("ObjectSpawn", "Enabled", "true", "Master switch for object spawning and its API. False disables every object command.", "restart")
+                .Row("ObjectSpawn", "Enabled", "true", "Master switch for object spawning and its API. False disables every object command except the admin cleanup commands.", "restart")
                 .Row("ObjectSpawn", "AdminOnly", "true", "Only admins may use the object commands. Set false to open spawning and collecting to players.", "restart")
                 .Row("ObjectSpawn", "PlayerAccessMode", "Discovery", "How players get objects when AdminOnly is false. Discovery: only objects they unlocked or were granted. Full: the whole catalog. Admins always have everything.", "restart")
                 .Row("ObjectSpawn", "CollectionEnabled", "true", "Master switch for unlocking by destroying objects. False: no discovery and no unlock messages; grants and Full mode still work.", "restart")
                 .Row("ObjectSpawn", "DiscoveryChancePercent", "25", "Chance (0-100) that destroying an eligible world object unlocks it for that player. 0 turns discovery off.", "restart")
-                .Row("ObjectSpawn", "DiscoveryNotify", "true", "Tell a player in chat when they unlock an object. Each player can still turn it off with .uriel notify off.", "restart")
+                .Row("ObjectSpawn", "DiscoveryNotify", "true", "Tell a player in chat when they unlock an object. When AdminOnly is false, each player can still turn it off with .uriel notify off.", "restart")
                 .Row("ObjectSpawn", "NonDestructibleUnlock", "Off", "How players earn objects that can't be destroyed. Off: grants only. Collection: at 100% of the discoverable set. FinalBoss: on defeating Dracula. AllBosses: on defeating every main V Blood.", "restart")
                 .Row("ObjectSpawn", "BossUnlocksEnabled", "false", "Defeating a V Blood listed in boss_unlocks.json grants its mapped objects. Build the map with .uriel bossmap; empty by default.", "restart")
                 .Row("ObjectSpawn", "IncludeCastleBuildables", "false", "Also put the normal build-menu pieces (about 1200) in the catalog. Off keeps it to world objects. Admins can spawn any GUID either way.", "restart")
@@ -441,13 +450,13 @@ internal static partial class Guides
             s.Detail("[PublicStorage]", d => d.Settings("Public storage", Cfg, r => r
                 .Row("PublicStorage", "Enabled", "true", "Master switch for sharing containers. False disables share, unshare, info, pay chest and prisoner commands for players.", "restart")
                 .Row("PublicStorage", "PrisonEnabled", "true", "Allow sharing prison cells and .uriel takeprisoner. Needs Enabled too.", "restart")
-                .Row("PublicStorage", "CostsEnabled", "true", "Allow paid shares (the cost rule). False: no new price can be set, and a chest that already has a price stays closed until its owner shares it again without one.", "restart")
+                .Row("PublicStorage", "CostsEnabled", "true", "Allow paid shares (the cost rule). False: no new price can be set, and a chest that already has a price stays closed until its owner removes the price (.uriel share cost 0 0) or unshares it.", "restart")
                 .Row("PublicStorage", "MaxTargetDistance", "5", "How close (metres) your aim point must be to a container for the share commands.", "restart")));
             s.Detail("[StairSwap]", d => d.Settings("Stair editing", Cfg, r => r
                 .Row("StairSwap", "Enabled", "true", "Allow stair restyling, .uriel stairstyles and .uriel removestairs.", "restart")
                 .Row("StairSwap", "MaxTargetDistance", "6", "How close (metres) your aim point must be to a staircase for the stair commands.", "restart")
                 .Row("StairSwap", "ExperimentalLiveRefresh", "false", "Experimental, admin testing only: lets .uriel stairrefresh attempt a live visual refresh. It can leave a staircase invisible until the next restart. Leave false.", "restart")
-                .Row("StairSwap", "RespawnGapFrames", "5", "Frames between removing the old staircase and placing the new one in an earlier experimental restyle path. Uriel 0.22.0 doesn't read it; the live restyle ignores it.", "restart")));
+                .Row("StairSwap", "RespawnGapFrames", "5", "Frames between removing the old staircase and placing the new one in every restyle (.uriel stairswap).", "restart")));
             s.Detail("[CastleEvents]", d => d.Settings("Castle Events", Cfg, r => r
                 .Row("CastleEvents", "Enabled", "false", "Experimental master switch for Castle Events and the .uriel unit tools. Spawned units are never saved.", "restart")
                 .Row("CastleEvents", "PlayerEvents", "false", "Let castle owners set up and run events on their own plot. Admins can always, on any plot.", "restart")

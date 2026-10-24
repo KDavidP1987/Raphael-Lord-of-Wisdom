@@ -20,7 +20,8 @@ internal enum GuideKind { FullMod, ShortMod, General }
 
 internal enum CmdScope { Player, Admin }
 
-internal enum CalloutKind { Note, AdminOnly, OffByDefault, Experimental, Planned, Warning }
+/// <summary>ServerSide (0.74.0): a setting or data file only the server's files change, never the game or Raphael.</summary>
+internal enum CalloutKind { Note, AdminOnly, OffByDefault, Experimental, Planned, Warning, ServerSide }
 
 internal sealed class Guide
 {
@@ -89,7 +90,10 @@ internal sealed class GuideSetting
     public string Key;
     public string Default;
     public string Meaning;
-    /// <summary>"restart" / "live" / null (unknown or not applicable).</summary>
+    /// <summary>Where and how the setting changes (0.74.0: shown on every row as "In game" or "Server file only"):
+    /// "live" = an in-game admin command changes it at once (the Config section names the command); "restart" = only by
+    /// editing the server's file, then restarting; "reload" = only by editing the server's file, then the mod's reload
+    /// command; null = retired or reserved (no effect).</summary>
     public string Applies;
 }
 
@@ -99,6 +103,24 @@ internal sealed class GuideTab
     public string Does;
     /// <summary>The command(s) the tab sends, plain text like Syntax. Optional.</summary>
     public string Sends;
+}
+
+/// <summary>0.74.0: the shared wording for server-side settings.</summary>
+internal static class GuideServerSide
+{
+    public const string Why =
+        "Most of these settings are set on the server, not in the game. Only someone with access to the server's files can " +
+        "change them, on purpose: they control load, performance, balance and safety, so they aren't open to every in-game " +
+        "admin. Each row below says <b>Server file only</b> or <b>In game</b>. Raphael can't change a server-file setting either.";
+
+    /// <summary>The row marker, by <see cref="GuideSetting.Applies"/>; null for a retired or reserved row.</summary>
+    public static string Marker(string applies) => applies switch
+    {
+        "live" => "In game: applies at once",
+        "restart" => "Server file only: restart to apply",
+        "reload" => "Server file only: reload to apply",
+        _ => null,
+    };
 }
 
 /// <summary>Section keys and the order each guide kind must follow (enforced by the logic tests).</summary>
@@ -290,6 +312,17 @@ internal sealed class GuideBuilder
         public Blocks Bullets(params string[] items) { _list.Add(new GBullets { Items = items }); return this; }
         public Blocks Steps(params string[] items) { _list.Add(new GSteps { Items = items }); return this; }
         public Blocks Callout(CalloutKind kind, string text) { _list.Add(new GCallout { Kind = kind, Text = text }); return this; }
+
+        /// <summary>0.74.0: the standard opening of every full mod guide's Server settings section (a logic test checks
+        /// it is there): which settings only the server's files change, why, how to change them, and what an in-game
+        /// admin can change instead.</summary>
+        public Blocks ServerSide(string where, string howToChange, string inGame)
+        {
+            Callout(CalloutKind.ServerSide, GuideServerSide.Why);
+            Bullets("<b>Where</b>: " + where, "<b>How to change a server-file setting</b>: " + howToChange,
+                "<b>What an admin can change in game</b>: " + inGame);
+            return this;
+        }
 
         public Blocks Detail(string title, Action<Blocks> fill)
         {

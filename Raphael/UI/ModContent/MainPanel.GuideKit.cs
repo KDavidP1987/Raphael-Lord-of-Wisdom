@@ -122,6 +122,7 @@ public partial class MainPanel
             CalloutKind.Experimental => ("Experimental", WARNING_TINT),
             CalloutKind.Planned => ("Planned", Theme.MutedBody),
             CalloutKind.Warning => ("Careful", WARNING_TINT),
+            CalloutKind.ServerSide => ("Server-side", GUIDE_ADMIN_TINT),
             _ => ("Note", ARTICLE_HEADING_ACCENT),
         };
         var card = UIFactory.CreateVerticalGroup(parent, "GuideCallout",
@@ -171,10 +172,12 @@ public partial class MainPanel
                 lastSection = row.Section;
             }
             var group = GuideRowGroup(parent, "GuideSet");
+            // 0.74.0: every row says where it is changed: in game (green) or only in the server's file (admin tint).
+            string marker = GuideServerSide.Marker(row.Applies);
+            string tint = row.Applies == "live" ? "90EE90" : Hex(GUIDE_ADMIN_TINT);
             var head = $"<color=#{accent}>{GuideText.Escape(row.Key)}</color>" +
                        $"<color=#{muted}>  =  {GuideText.Escape(row.Default ?? "")}</color>" +
-                       (row.Applies == "restart" ? $"   <size=85%><color=#{muted}>restart to apply</color></size>" :
-                        row.Applies == "live" ? $"   <size=85%><color=#{muted}>applies live</color></size>" : "");
+                       (marker != null ? $"   <size=85%><color=#{tint}>{marker}</color></size>" : "");
             GuideLabel(group, "Key", head, Theme.ScaledUI(13), null, FontStyles.Bold);
             if (!string.IsNullOrEmpty(row.Meaning))
                 GuideLabel(group, "Meaning", row.Meaning, Theme.ScaledUI(13), null, FontStyles.Normal);
