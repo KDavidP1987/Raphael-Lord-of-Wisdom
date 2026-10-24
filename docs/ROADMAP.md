@@ -3,7 +3,7 @@
 The engineering roadmap. The short player-facing version is the **Roadmap** section of
 [`README.md`](../README.md#roadmap). This file adds the detail needed to start an item.
 
-Last reviewed: **v0.73.0** (2026-10-17).
+Last reviewed: **v0.74.0** (2026-10-24).
 
 Status: **Planned** (agreed, not started) · **Spike** (needs a prototype first) · **Waiting** (needs a
 server-mod release) · **Deferred** · **Done**.
@@ -43,6 +43,8 @@ Each item waits on the server mod named. The source docs live in that mod's repo
 | Nyarlathotep | Apocalypse "goal: starting admin" can't start | Done | Fixed server-side in 0.13.0-rc.2 (`d492bd5`). Raphael keeps the Goal here button; the workaround text shows only on rc.1. |
 | Nyarlathotep | Wave variety: per-wave lists, pools, bosses, pursuit; grouped templates | Done | 0.72.0, for Nyarlathotep 0.13.0-rc.3 (`RAPHAEL_HANDOFF_WAVE_VARIETY.md`). |
 | Nyarlathotep | Undead hordes: Infestation and Horde march forms, destination waves, 500-unit limits, Undead hordes template group | Done | 0.73.0, for Nyarlathotep 0.14.0 (`RAPHAEL_HANDOFF_UNDEAD_HORDES.md`). |
+| Nyarlathotep | Horde pools: pool min-max ranges, library pools and a Pools library card, castle entry on horde events; tooltips and folded guides on every setting | Done | 0.74.0, for Nyarlathotep 0.15.0 (`RAPHAEL_HANDOFF_HORDE_POOLS.md`). |
+| All | Units & Objects reference: Help tab + floating panel, Browse buttons in Nyar, Beelzebub and Uriel forms | Done | 0.74.0 (`docs/plans/2026-10-24-nyar015-help-catalog/PLAN.md`). Object names from game text need an in-game check. |
 | Nyarlathotep | Communications (api 10): notice push, catch-up read, scheduled messages | Waiting | `RAPHAEL_HANDOFF_API8.md` §6 |
 | Nyarlathotep | Stats: `me` / `top` reads, hide / show, share | Waiting | Contract: PLANNED. Raphael tabs are built and gated. |
 | Nyarlathotep | Defended zones: `zones` read, add / remove | Waiting | Contract: PLANNED. Raphael tab is built and gated (`NyarState.SupportsZoneReads`). |
